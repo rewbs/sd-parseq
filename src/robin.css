@@ -1,0 +1,10 @@
+.ag-theme-alpine {
+    --ag-font-size: 10px;
+    --ag-grid-size: 3px;
+    --ag-cell-horizontal-padding: 2px;
+    --ag-header-column-separator-display: block;
+    --ag-header-column-separator-width: 1px;
+    --ag-header-column-separator-height: 100%;
+    
+  }
+

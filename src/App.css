@@ -1,3 +1,12 @@
+
+.ag-theme-alpine {
+  --ag-grid-size: 3px;
+  --ag-list-item-height: 20px;
+  --ag-font-size: 10px;
+  --ag-font-family: monospace;  
+}
+
+
 .App {
   text-align: center;
 }
@@ -36,3 +45,5 @@
     transform: rotate(360deg);
   }
 }
+
+/* Add application styles & imports to this file! */

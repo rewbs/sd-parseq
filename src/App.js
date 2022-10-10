@@ -3,23 +3,34 @@ import { render } from 'react-dom';
 import { AgGridReact } from 'ag-grid-react'; // the AG Grid React Component
 import { linear, step, polynomial } from 'everpolate'
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import CssBaseline from '@mui/material/CssBaseline';
+import Grid from '@mui/material/Unstable_Grid2'; // Grid version 2
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css'
 
+const interpolatableFields = ['seed', 'denoise', 'scale', 'rotx', 'roty', 'rotz', 'panx', 'pany', 'zoom', 'loopback_frames', 'loopback_decay'];
 const App = () => {
 
- const gridRef = useRef(); // Optional - for accessing Grid's API
- const [rowData, setRowData] = useState(); // Set rowData to Array of Objects, one Object per Row
+const gridRef = useRef();
+const [rowData, setRowData] = useState();
+const [rawData, setRawData] = useState([]);
+const [frameIdMap, setFrameIdMap] = useState(new Map());
+const [selectedField, setSelectedField] = useState("denoise");
 
- // Each Column Definition results in one Column.
- const [columnDefs, setColumnDefs] = useState([
-    {
-      headerName:'rowId',
-      comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
-      valueGetter: 'node.id',
-    },  
+const [columnDefs, setColumnDefs] = useState([
+    // {
+    //   headerName:'rowId',
+    //   comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
+    //   valueGetter: 'node.id',
+    // },  
     {
       headerName:'Frame #',
       field: 'frame',
@@ -36,113 +47,47 @@ const App = () => {
     {
       field: 'seed'
     },
+    interpolationColumn('seed'),
     {
-      headerName:'➟',
-      field: 'seed_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
+      field: 'scale'
     },
+    interpolationColumn('scale'),    
     {
       field: 'denoise'
     },
-    {
-      headerName:'➟',
-      field: 'denoise_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
+    interpolationColumn('denoise'),
     {
       field: 'rotx'
     },
-    {
-      headerName:'➟',
-      field: 'rotx_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
+    interpolationColumn('rotx'),
     {
       field: 'roty'
     },
-    {
-      headerName:'➟',
-      field: 'roty_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
+    interpolationColumn('roty'),
     {
       field: 'rotz'
     },
-    {
-      headerName:'➟',
-      field: 'rotz_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
+    interpolationColumn('rotz'),
     {
       field: 'panx'
     },
-    {
-      headerName:'➟',
-      field: 'panx_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
+    interpolationColumn('panx'),
     {
       field: 'pany'
     },
-    {
-      headerName:'➟',
-      field: 'pany_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
+    interpolationColumn('pany'),
     {
       field: 'zoom'
     },
+    interpolationColumn('zoom'),    
     {
-      headerName:'➟',
-      field: 'zoom_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
+      field: 'loopback_frames'
     },
+    interpolationColumn('loopback_frames'),
     {
-      field: 'blend'
+      field: 'loopback_decay'
     },
-    {
-      headerName:'➟',
-      field: 'blend_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
-    {
-      field: 'bd'
-    },
-    {
-      headerName:'➟',
-      field: 'bd_i',
-      cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-            values: ['.', '⎍', '/', '∿'],
-        }
-    },
+    interpolationColumn('loopback_decay'),       
     {
       field: 'prompt',
       cellEditor: 'agLargeTextCellEditor',
@@ -152,56 +97,64 @@ const App = () => {
           cols: 50
       }      
     }
-  
- ]);
+]);
 
- // DefaultColDef sets props common to all Columns
- const defaultColDef = useMemo( ()=> ({
-     editable: true,
-     resizable: true,
-     suppressKeyboardEvent: (params) => {
-        return params.event.key === '+'
-        || (params.event.key === '\\');
-     }
-   }));
+// DefaultColDef sets props common to all Columns
+const defaultColDef = useMemo( ()=> ({
+    editable: true,
+    resizable: true,
+    suppressKeyboardEvent: (params) => {
+      return params.event.key === '+'
+      || (params.event.key === '\\');
+    }
+  }));
 
- // Example of consuming Grid Event
- const cellClickedListener = useCallback( event => {
-   console.log('cellClicked', event);
- }, []);
-
- // Example load data from sever
- useEffect(() => {
-  setRowData([
-    {frame:0, seed: -1, denoise:0.6, rotx:0, roty:0, rotz:0, panx:0, pany:0, zoom:0, blend:3, bd:0.5, prompt:"hello fafsafsa fasfaa"},
-    {frame:10, seed: -1, denoise:0.6, rotx:0, roty:0, rotz:0, panx:0, pany:0, zoom:0, blend:3, bd:0.5, prompt:"hello fafsafsa fasfaa"}
-  ]);
-
- }, []);
-
- const addRow = useCallback((frame) => {
-  console.log("frame to add:", frame)
-  if (gridRef.current.api.getRowNode(frameIdMap.get(frame)) == undefined) {
-    const res = gridRef.current.api.applyTransaction({
-      add: [{"frame": frame}],
-      addIndex: frame,
-    });
-    gridRef.current.api.onSortChanged();
-    gridRef.current.api.sizeColumnsToFit();    
-  } else {
-    console.log("frame already exists");
-  }
+// Example of consuming Grid Event
+const cellClickedListener = useCallback( event => {
+  console.log('cellClicked', event);
 }, []);
 
-const deleteRow = useCallback((frame) => {
-  console.log("frame to delete:", frame)
+// Load initial data
+useEffect(() => {
+  setRowData([
+    {frame:0, seed: -1, scale:7.5, denoise:0.6, rotx:0, roty:0, rotz:0, panx:0,
+      pany:0, zoom:0, loopback_frames:1, loopback_decay:0.5,
+      prompt:"hello fafsafsa fasfaa"},
+    {frame:199, seed: -1, scale:7.5, denoise:0.6, rotx:0, roty:0, rotz:0, panx:0,
+      pany:0, zoom:0, loopback_frames:1, loopback_decay:0.5,
+      prompt:"hello fafsafsa fasfaa"}
+  ]);
+}, []);
+
+const addRow = useCallback((frame) => {
+  
+  while (gridRef.current.api.getRowNode(frameIdMap.get(frame)) != undefined) {
+   ++frame; 
+  }
+
+  console.log("frame to add:", frame)
   const res = gridRef.current.api.applyTransaction({
-    remove: [{frame: frame}]
+    add: [{"frame": frame}],
+    addIndex: frame,
+  });
+  frameIdMap.set(frame, res.add[0].id);
+  gridRef.current.api.onSortChanged();
+  gridRef.current.api.sizeColumnsToFit();    
+
+  console.log(frameIdMap);
+}, []);
+
+const deleteRow = useCallback((rowId) => {
+  console.log("frame to delete:", rowId)
+  let rowData = gridRef.current.api.getRowNode(rowId).data;
+  console.log(rowData);
+  frameIdMap.delete(rowData.frame);
+  const res = gridRef.current.api.applyTransaction({
+    remove: [ rowData ]
   });
   gridRef.current.api.onSortChanged();
   gridRef.current.api.sizeColumnsToFit();
 }, []);
-
 
 const onCellValueChanged = useCallback((event) => {
   gridRef.current.api.onSortChanged();
@@ -212,14 +165,14 @@ const render = useCallback((event) => {
   gridRef.current.api.onSortChanged();
 
   var allInterps = {};
-  ['denoise', 'rotx', 'roty', 'rotz', 'panx', 'pany', 'zoom', 'blend', 'bd'].forEach((field) => {
+  interpolatableFields.forEach((field) => {
     console.log("Computing interpolations for: ", field);
     allInterps[field] = computeAllInterpolations(gridRef, field);
   });
 
-
-  var data = [];  
-  ['denoise', 'rotx', 'roty', 'rotz', 'panx', 'pany', 'zoom', 'blend', 'bd'].forEach((field) => {
+  var data = [];
+  var lastPrompt = ""
+  interpolatableFields.forEach((field) => {
     var previousInterp = 'linear';
     getAllFrames(gridRef).forEach((frame, i) => {
 
@@ -240,9 +193,11 @@ const render = useCallback((event) => {
       data[i] =  {
         ... data[i] || {},
         frame: frame,
+        prompt: (declaredRow != undefined && declaredRow.data.prompt != undefined) ? declaredRow.data.prompt : lastPrompt,
         [field]: allInterps[field][frame][interp]
       }
       previousInterp = interp;
+      lastPrompt = data[i].prompt;
     });
   });
   
@@ -251,14 +206,10 @@ const render = useCallback((event) => {
 
 });
 
-const [rawData, setRawData] = useState([]);
-
-const [frameIdMap, setFrameIdMap] = useState(new Map());
 
 const renderLineChart = (
-  <LineChart width={600} height={300} data={rawData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-    <Line type="monotone" dataKey="denoise" dot="{ stroke: '#8884d8' }" stroke='#8884d8' activeDot={{r: 8}}/>
-    <Line type="monotone" dataKey="zoom" dot="{ stroke: '#4884d8' }" activeDot={{r: 8}}/>
+  <LineChart width={800} height={300} data={rawData}>
+    <Line type="monotone" dataKey={selectedField} dot="{ stroke: '#8884d8' }" stroke='#8884d8' activeDot={{r: 8}}/>
     <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
     <XAxis dataKey="frame" />
     <YAxis />
@@ -272,52 +223,81 @@ const onCellKeyPress = useCallback((e) => {
     if (keyPressed === '+') {
       addRow(parseInt(e.node.data.frame) + 1);
     } else if (keyPressed === '\\') {
-      deleteRow(e.node.data.frame);
+      console.log(e.node);
+      deleteRow(e.node.id);
     }
   }
 }, []);
 
-// const getRowId = useMemo(() => {
-//   return (params) => params.data.frame;
-// }, []);
+const selectChange = useCallback((e) => {
+  console.log(e.target.value);
+  setSelectedField(e.target.value);
+}, []);
 
  return (
-   <div>
-
+<Grid container spacing={2}>
+<CssBaseline />  
+  <Grid xs={12}>
      {/* On div wrapping Grid a) specify theme CSS Class Class and b) sets Grid size */}
-     <div className="ag-theme-alpine" style={{width: '100%', height: 500}}>
+     <div className="ag-theme-alpine" style={{width: '100%', height: 300}}>
 
        <AgGridReact
            ref={gridRef} // Ref for accessing Grid's API
-
            rowData={rowData} // Row Data for Rows
-
            columnDefs={columnDefs} // Column Defs for Columns
            defaultColDef={defaultColDef} // Default Column Properties
-
            animateRows={true} // Optional - set to 'true' to have rows animate when sorted
-           rowSelection='multiple' // Options - allows click selection of rows
-          onCellValueChanged={onCellValueChanged} // TODO - validation
+           onCellValueChanged={onCellValueChanged} // TODO - validation
            onCellKeyPress={onCellKeyPress}
-          //  getRowId={getRowId}
-
            //onCellClicked={cellClickedListener} // Optional - registering for Grid Event
            />
      </div>
      <button onClick={addRow}>Add row (+)</button>
      <button onClick={deleteRow}>Delete row (\)</button>
      <button onClick={render}>Render</button>
-
-     <div>
-      <pre>{JSON.stringify(rawData)}</pre>
-     </div>     
-     {<div> {renderLineChart} </div>}
-   </div>
-
+  </Grid>
+  <Grid xs={4}>
+    <TextField
+          style={{width: '100%'}}
+          id="filled-multiline-static"
+          label="Rendered output"
+          multiline
+          rows={10}
+          InputProps={{ style: { fontFamily: 'Monospace',fontSize: '0.75em' } }}
+          value={JSON.stringify(rawData, null, 4)}
+          variant="filled"
+      />      
+  </Grid>
+  <Grid xs={8}>
+    {<div> {renderLineChart} </div>}
+    <FormControl fullWidth>
+      <InputLabel id="demo-simple-select-label">Field</InputLabel>
+      <Select
+        labelId="demo-simple-select-label"
+        id="demo-simple-select"
+        label="field"
+        onChange={selectChange}
+      >
+        {interpolatableFields.map((field, i) => <MenuItem value={field}>{field}</MenuItem>)}
+      </Select>
+    </FormControl>     
+  </Grid>    
+</Grid>
  );
 };
 
 export default App;
+
+function interpolationColumn(field) {
+  return {
+    headerName: '➟',
+    field: field+'_i',
+    cellEditor: 'agSelectCellEditor',
+    cellEditorParams: {
+      values: ['/', '∿', '⎍'],
+    }
+  };
+}
 
 // Returns array of objects with values for all interpolation types for each frame.
 function computeAllInterpolations(gridRef, field) {
@@ -355,9 +335,9 @@ function getDeclaredPoints(gridRef, field, parser) {
   gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
     var frame = rowNode.data['frame'];
     var fieldValue = parser(rowNode.data[field]);
-    vals.set(frame, fieldValue)
+    if (fieldValue != undefined && !isNaN(fieldValue)) {
+      vals.set(frame, fieldValue)
+    }
   });
   return vals;
 }
-
-const zip = (a, b) => a.map((k, i) => [k, b[i]]);

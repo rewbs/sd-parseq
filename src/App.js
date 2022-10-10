@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback} from 'react';
 import { render } from 'react-dom';
 import { AgGridReact } from 'ag-grid-react'; // the AG Grid React Component
 import { linear, step, polynomial } from 'everpolate'
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -15,10 +16,22 @@ const App = () => {
  // Each Column Definition results in one Column.
  const [columnDefs, setColumnDefs] = useState([
     {
+      headerName:'rowId',
+      comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
+      valueGetter: 'node.id',
+    },  
+    {
       headerName:'Frame #',
       field: 'frame',
       comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
-      sort: 'asc'
+      sort: 'asc',
+      valueSetter: (params) => {
+        frameIdMap.delete(params.data.frame);
+        var newValue = parseInt(params.newValue);
+        params.data.frame = newValue;
+        frameIdMap.set(newValue, params.node.id);
+        console.log(frameIdMap)
+      }
     },
     {
       field: 'seed'
@@ -142,12 +155,14 @@ const App = () => {
   
  ]);
 
- 
-
  // DefaultColDef sets props common to all Columns
  const defaultColDef = useMemo( ()=> ({
      editable: true,
-     resizable: true
+     resizable: true,
+     suppressKeyboardEvent: (params) => {
+        return params.event.key === '+'
+        || (params.event.key === '\\');
+     }
    }));
 
  // Example of consuming Grid Event
@@ -157,56 +172,117 @@ const App = () => {
 
  // Example load data from sever
  useEffect(() => {
-  setRowData([{frame:0, seed: -1, denoise:0.6, rotx:0, roty:0, rotz:0, panx:0, pany:0, zoom:0, blend:3, bd:0.5, prompt:"hello fafsafsa fasfaa"}]);
+  setRowData([
+    {frame:0, seed: -1, denoise:0.6, rotx:0, roty:0, rotz:0, panx:0, pany:0, zoom:0, blend:3, bd:0.5, prompt:"hello fafsafsa fasfaa"},
+    {frame:10, seed: -1, denoise:0.6, rotx:0, roty:0, rotz:0, panx:0, pany:0, zoom:0, blend:3, bd:0.5, prompt:"hello fafsafsa fasfaa"}
+  ]);
+
  }, []);
 
- const addEmpty = useCallback((addIndex) => {
-  const newItem = [{}];
+ const addRow = useCallback((frame) => {
+  console.log("frame to add:", frame)
+  if (gridRef.current.api.getRowNode(frameIdMap.get(frame)) == undefined) {
+    const res = gridRef.current.api.applyTransaction({
+      add: [{"frame": frame}],
+      addIndex: frame,
+    });
+    gridRef.current.api.onSortChanged();
+    gridRef.current.api.sizeColumnsToFit();    
+  } else {
+    console.log("frame already exists");
+  }
+}, []);
+
+const deleteRow = useCallback((frame) => {
+  console.log("frame to delete:", frame)
   const res = gridRef.current.api.applyTransaction({
-    add: newItem,
-    addIndex: addIndex,
+    remove: [{frame: frame}]
   });
+  gridRef.current.api.onSortChanged();
   gridRef.current.api.sizeColumnsToFit();
 }, []);
 
+
 const onCellValueChanged = useCallback((event) => {
-  console.log(event);
   gridRef.current.api.onSortChanged();
-
-  var denoisePoints = getFieldColumn(gridRef, 'denoise', parseFloat);
-
-  var firstFrame = Math.min(...denoisePoints.keys())
-  var lastFrame = Math.max(...denoisePoints.keys())
-  var length = lastFrame - firstFrame + 1
-  var allFrames = Array.from({length:length},(v,k)=>k+firstFrame)
-
-  console.log(denoisePoints)
-
-  var denoise_linear = linear(allFrames, [...denoisePoints.keys()], [...denoisePoints.values()])
-  var denoise_poly = polynomial(allFrames, [...denoisePoints.keys()], [...denoisePoints.values()])
-  var denoise_step = step(allFrames, [...denoisePoints.keys()], [...denoisePoints.values()])
-
-  var denoiseLinearMap = new Map(zip(allFrames, denoise_linear))
-  var denoisePolyMap = new Map(zip(allFrames, denoise_poly))
-  var denoiseStepMap = new Map(zip(allFrames, denoise_step))
-
-  console.log(denoiseLinearMap)
-  console.log(denoisePolyMap)
-  console.log(denoiseStepMap)
-  
-  setRawData(denoiseLinearMap)
-
 });
 
 
+const render = useCallback((event) => {
+  gridRef.current.api.onSortChanged();
 
-const [rawData, setRawData] = useState("foo");
+  var allInterps = {};
+  ['denoise', 'rotx', 'roty', 'rotz', 'panx', 'pany', 'zoom', 'blend', 'bd'].forEach((field) => {
+    console.log("Computing interpolations for: ", field);
+    allInterps[field] = computeAllInterpolations(gridRef, field);
+  });
+
+
+  var data = [];  
+  ['denoise', 'rotx', 'roty', 'rotz', 'panx', 'pany', 'zoom', 'blend', 'bd'].forEach((field) => {
+    var previousInterp = 'linear';
+    getAllFrames(gridRef).forEach((frame, i) => {
+
+      let declaredRow = gridRef.current.api.getRowNode(frameIdMap.get(frame));
+      console.log(declaredRow);
+      var interp = previousInterp;
+      if (declaredRow != undefined && declaredRow.data[field+'_i']  != undefined) {
+        console.log("interp for frame", frame, "is", declaredRow.data[field+'_i']);
+        if (declaredRow.data[field+'_i'] == '∿') {
+          interp = 'poly';
+        } else if  (declaredRow.data[field+'_i'] == '⎍') {
+          interp = 'step';
+        } else {
+          interp = 'linear';
+        }
+      }
+      console.log("interp for frame", frame, "is", interp);
+      data[i] =  {
+        ... data[i] || {},
+        frame: frame,
+        [field]: allInterps[field][frame][interp]
+      }
+      previousInterp = interp;
+    });
+  });
+  
+  console.log(data);
+  setRawData(data);
+
+});
+
+const [rawData, setRawData] = useState([]);
+
+const [frameIdMap, setFrameIdMap] = useState(new Map());
+
+const renderLineChart = (
+  <LineChart width={600} height={300} data={rawData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+    <Line type="monotone" dataKey="denoise" dot="{ stroke: '#8884d8' }" stroke='#8884d8' activeDot={{r: 8}}/>
+    <Line type="monotone" dataKey="zoom" dot="{ stroke: '#4884d8' }" activeDot={{r: 8}}/>
+    <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
+    <XAxis dataKey="frame" />
+    <YAxis />
+    <Tooltip />
+  </LineChart>
+);
+
+const onCellKeyPress = useCallback((e) => {
+  if (e.event) {
+    var keyPressed = e.event.key;
+    if (keyPressed === '+') {
+      addRow(parseInt(e.node.data.frame) + 1);
+    } else if (keyPressed === '\\') {
+      deleteRow(e.node.data.frame);
+    }
+  }
+}, []);
+
+// const getRowId = useMemo(() => {
+//   return (params) => params.data.frame;
+// }, []);
 
  return (
    <div>
-
-     {/* Example using Grid's API */}
-     <button onClick={addEmpty}>Add row</button>
 
      {/* On div wrapping Grid a) specify theme CSS Class Class and b) sets Grid size */}
      <div className="ag-theme-alpine" style={{width: '100%', height: 500}}>
@@ -221,14 +297,21 @@ const [rawData, setRawData] = useState("foo");
 
            animateRows={true} // Optional - set to 'true' to have rows animate when sorted
            rowSelection='multiple' // Options - allows click selection of rows
-           onCellValueChanged={onCellValueChanged}
+          onCellValueChanged={onCellValueChanged} // TODO - validation
+           onCellKeyPress={onCellKeyPress}
+          //  getRowId={getRowId}
 
            //onCellClicked={cellClickedListener} // Optional - registering for Grid Event
            />
      </div>
+     <button onClick={addRow}>Add row (+)</button>
+     <button onClick={deleteRow}>Delete row (\)</button>
+     <button onClick={render}>Render</button>
+
      <div>
-     <pre>{rawData}</pre>
+      <pre>{JSON.stringify(rawData)}</pre>
      </div>     
+     {<div> {renderLineChart} </div>}
    </div>
 
  );
@@ -236,8 +319,38 @@ const [rawData, setRawData] = useState("foo");
 
 export default App;
 
-function getFieldColumn(gridRef, field, parser) {
+// Returns array of objects with values for all interpolation types for each frame.
+function computeAllInterpolations(gridRef, field) {
+  var allFrames = getAllFrames(gridRef);
+  var declaredPoints = getDeclaredPoints(gridRef, field, parseFloat); //TODO add per-field parser
+  var field_linear = linear(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);
+  var field_poly = polynomial(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);
+  var field_step = step(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);
 
+  return allFrames.map((frame) => {
+    return {
+      ['linear']: field_linear[frame],
+      ['poly']: field_poly[frame],
+      ['step']: field_step[frame],
+    } 
+  });
+
+}
+
+// Returns array of every frame to render, from [startFrame, ..., endFrame]
+function getAllFrames(gridRef) {
+  var declaredFrames = [];
+  gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
+    declaredFrames.push(rowNode.data.frame);
+  });
+
+  var minFrame = Math.min(...declaredFrames);
+  var maxFrame = Math.max(...declaredFrames);
+  return Array.from(Array(maxFrame - minFrame + 1).keys()).map((i) => i + minFrame);
+}
+
+// Returns map of (declaredFrame => declaredValue) for field.
+function getDeclaredPoints(gridRef, field, parser) {
   var vals = new Map();
   gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
     var frame = rowNode.data['frame'];

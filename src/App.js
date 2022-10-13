@@ -11,10 +11,14 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import CssBaseline from '@mui/material/CssBaseline';
 import Grid from '@mui/material/Unstable_Grid2'; // Grid version 2
+import nearley from 'nearley'
+import grammar from './grammar.js'
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css'
+
+const version = "0.01"
 
 const interpolatableFields = ['seed', 'denoise', 'scale', 'rotx', 'roty', 'rotz', 'panx', 'pany', 'zoom', 'loopback_frames', 'loopback_decay'];
 const App = () => {
@@ -104,8 +108,7 @@ const defaultColDef = useMemo( ()=> ({
     editable: true,
     resizable: true,
     suppressKeyboardEvent: (params) => {
-      return params.event.key === '+'
-      || (params.event.key === '\\');
+      return params.event.ctrlKey && (params.event.key === 'a'|| params.event.key === 'd');
     }
   }));
 
@@ -170,40 +173,64 @@ const render = useCallback((event) => {
     allInterps[field] = computeAllInterpolations(gridRef, field);
   });
 
-  var data = [];
+  var rendered_frames = [];
   var lastPrompt = ""
   interpolatableFields.forEach((field) => {
-    var previousInterp = 'linear';
+    var lastFetchFieldVal = f => allInterps[field][f]['linear']
     getAllFrames(gridRef).forEach((frame, i) => {
 
       let declaredRow = gridRef.current.api.getRowNode(frameIdMap.get(frame));
-      console.log(declaredRow);
-      var interp = previousInterp;
-      if (declaredRow != undefined && declaredRow.data[field+'_i']  != undefined) {
-        console.log("interp for frame", frame, "is", declaredRow.data[field+'_i']);
-        if (declaredRow.data[field+'_i'] == '∿') {
-          interp = 'poly';
-        } else if  (declaredRow.data[field+'_i'] == '⎍') {
-          interp = 'step';
-        } else {
-          interp = 'linear';
+      let fetchFieldVal = lastFetchFieldVal;
+      
+      if (declaredRow != undefined) {
+        if (declaredRow.data[field+'_i'] != undefined) {
+          const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
+          parser.feed(declaredRow.data[field+'_i']);
+          // TODO handle parse errors
+          var result = parser.results[0][0];
+          fetchFieldVal = interpret(result, allInterps, field) || lastFetchFieldVal; 
         }
       }
-      console.log("interp for frame", frame, "is", interp);
-      data[i] =  {
-        ... data[i] || {},
+
+      rendered_frames[i] =  {
+        ... rendered_frames[i] || {},
         frame: frame,
         prompt: (declaredRow != undefined && declaredRow.data.prompt != undefined) ? declaredRow.data.prompt : lastPrompt,
-        [field]: allInterps[field][frame][interp]
+        [field]: fetchFieldVal(frame)
       }
-      previousInterp = interp;
-      lastPrompt = data[i].prompt;
-    });
-  });
-  
-  console.log(data);
-  setRawData(data);
 
+      lastFetchFieldVal = fetchFieldVal;
+      lastPrompt = rendered_frames[i].prompt;
+    });
+
+  });
+
+  let keyframes = [];
+  gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
+    keyframes.push(rowNode.data);
+  });  
+
+  let prompts = [{
+    "positive": "xyz",
+    "negative": "abc",
+  },
+  {
+    "positive": "123",
+    "negative": "987",
+  }]
+
+  const data = {
+    "header": {
+      "generated_by": "sd_parseq",
+      "version": version,
+      "generated_at": new Date().toUTCString(),
+    }, 
+    "prompts": prompts,
+    "keyframes": keyframes,
+    "rendered_frames": rendered_frames
+  }
+  
+  setRawData(data);
 });
 
 
@@ -220,9 +247,9 @@ const renderLineChart = (
 const onCellKeyPress = useCallback((e) => {
   if (e.event) {
     var keyPressed = e.event.key;
-    if (keyPressed === '+') {
+    if (keyPressed === 'a' && e.event.ctrlKey) {
       addRow(parseInt(e.node.data.frame) + 1);
-    } else if (keyPressed === '\\') {
+    } else if (keyPressed === 'd' && e.event.ctrlKey) {
       console.log(e.node);
       deleteRow(e.node.id);
     }
@@ -288,14 +315,43 @@ const selectChange = useCallback((e) => {
 
 export default App;
 
+function interpret(ast, allInterps, field) {
+  switch (ast.operator) {
+    case 'L':
+      return f => {
+        return allInterps[field][f]['linear'];
+      }
+    case 'P':
+      return f => allInterps[field][f]['poly'];
+    case 'S':
+      return f => allInterps[field][f]['step'];
+    case 'sin':
+      return f => {
+        //let [centre, phase, period, amp] = ast.operands.map(parseFloat);
+        let [centre, phase, period, amp] = ast.operands;
+        return parseFloat(centre) + Math.sin((parseFloat(phase) + parseFloat(f)) * Math.PI * 2 / parseFloat(period)) * parseFloat(amp);
+      };
+    case 'sum':
+      return f => interpret(ast.leftOperand, allInterps, field)(f) + interpret(ast.rightOperand, allInterps, field)(f)
+    case 'sub':
+      return f => interpret(ast.leftOperand, allInterps, field)(f) - interpret(ast.rightOperand, allInterps, field)(f)
+    case 'mul':
+        return f => interpret(ast.leftOperand, allInterps, field)(f) * interpret(ast.rightOperand, allInterps, field)(f)
+    case 'div':
+        return f => interpret(ast.leftOperand, allInterps, field)(f) / interpret(ast.rightOperand, allInterps, field)(f)
+    default:
+      return null
+  }
+}
+
 function interpolationColumn(field) {
   return {
     headerName: '➟',
     field: field+'_i',
-    cellEditor: 'agSelectCellEditor',
-    cellEditorParams: {
-      values: ['/', '∿', '⎍'],
-    }
+    // cellEditor: 'agSelectCellEditor',
+    // cellEditorParams: {
+    //   values: ['/', '∿', '⎍', 'osc'],
+    // }
   };
 }
 

@@ -14,12 +14,12 @@ import os
 import sys
 from subprocess import Popen, PIPE
 from skimage import exposure
+import math
 
 class Parseq():
 
     def run(self, p, input_img, input_path:string, output_path:string, param_script_string:string, cc_window_size:int, cc_window_rate:float, sd_processor):
         # TODO - batch count & size support (only useful is seed is random)
-        # TODO - prompt morphing
         # TODO - seed travelling
 
         # Inputs:
@@ -35,7 +35,8 @@ class Parseq():
         input_frames = video_frames(input_path)
         input_width = video_width(input_path)
         input_height = video_height(input_path)
-        logging.info(f"input: {input_frames} frames @ {input_width}x{input_height}")
+        input_fps = video_fps(input_path)
+        logging.info(f"input: {input_frames} frames ({input_width}x{input_height} @ {input_fps})")
 
         # Compare input frame count to scripted frame count
         logging.info(f"Script frames: {param_script_frames}, input frames: {input_frames}")
@@ -49,15 +50,15 @@ class Parseq():
         process1 = (
             ffmpeg
             .input(input_path)
-            .output('pipe:', format='rawvideo', pix_fmt='rgb24', r=30)
+            .output('pipe:', format='rawvideo', pix_fmt='rgb24', r=input_fps)
             .run_async(pipe_stdout=True)
         )
 
-        video =ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(p.width, p.height))
+        video =ffmpeg.input('pipe:', framerate=input_fps, format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(p.width, p.height))
         audio =ffmpeg.input(input_path)
         process2 = (
             ffmpeg
-            .output(video, output_path, pix_fmt='yuv420p', r=30)
+            .output(video, output_path, pix_fmt='yuv420p', r=input_fps)
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -65,7 +66,7 @@ class Parseq():
         frame_pos = 0
         out_frame_history=[]
         while True:
-            if not param_script[frame_pos]:
+            if not frame_pos in param_script:
                 logging.info(f"Ending: no script information about how to process frame {frame_pos}.")
                 break     
 
@@ -80,8 +81,15 @@ class Parseq():
                 .frombuffer(in_bytes, np.uint8)
                 .reshape([input_height, input_width, 3])
             )
+            if frame_pos == 0:
+                initial_input_image = in_frame.copy()
             ##### if from loopback                  
-            #in_frame = out_frame_history[frame_pos-1] if frame_pos>0 else initial_input_frame
+            #if frame_pos == 0:
+                # in_frame = input_img
+                # initial_input_image = input_img
+            #else
+                # in_frame = out_frame_history[frame_pos-1]
+                
 
             # Resize
             in_frame_resized = cv2.resize(in_frame, (p.width, p.height), interpolation = cv2.INTER_LANCZOS4)
@@ -95,10 +103,8 @@ class Parseq():
             end_frame_pos = round(clamp(0, frame_pos-1, len(out_frame_history)-1))
             frames_to_blend = [in_frame_rotated] + out_frame_history[start_frame_pos:end_frame_pos]
             blend_decay = clamp(0.1, param_script[frame_pos]['loopback_decay'], 1)
-            logging.info(f"Blending {len(frames_to_blend)} frames (current frame plus {start_frame_pos} to {end_frame_pos}) with decay {blend_decay}.")
+            logging.debug(f"Blending {len(frames_to_blend)} frames (current frame plus {start_frame_pos} to {end_frame_pos}) with decay {blend_decay}.")
             in_frame_blended = self.blend_frames(frames_to_blend, blend_decay)
-            logging.debug(np.shape(in_frame_blended))           
-            
             
             # Do SD 
             # TODO - batch count & batch size support: for each batch, for each batch_item          
@@ -107,12 +113,16 @@ class Parseq():
             p.n_iter = 1
             p.batch_size = 1
             p.init_images = [Image.fromarray(in_frame_blended)] 
-            p.seed = param_script[frame_pos]['seed']
+            p.seed = math.floor(param_script[frame_pos]['seed'])
+            p.subseed = param_script[frame_pos]['subseed']
+            p.subseed_strength = param_script[frame_pos]['subseed_strength']
+
             p.scale = clamp(-100, param_script[frame_pos]['scale'], 100)
-            p.denoising_strength = clamp(0.1, param_script[frame_pos]['denoise'], 0.99)
-            p.prompt = param_script[frame_pos]['prompt'] 
+            p.denoising_strength = clamp(0.01, param_script[frame_pos]['denoise'], 1)
+            p.prompt = param_script[frame_pos]['positive_prompt'] 
+            p.negative_prompt = param_script[frame_pos]['negative_prompt'] 
             
-            logging.info(f"[{frame_pos}] - seed:{p.seed}; scale:{p.scale}; ds:{p.denoising_strength}; prompt: {p.prompt}")
+            logging.info(f"[{frame_pos}] - seed:{p.seed}; subseed:{p.subseed}; subseed_strength:{p.subseed_strength}; scale:{p.scale}; ds:{p.denoising_strength}; prompt: {p.prompt}; negative_prompt: {p.negative_prompt}")
             processed = sd_processor.process_images(p)
             
             out_frame = np.asarray(processed.images[0])
@@ -120,16 +130,20 @@ class Parseq():
             # Color correction (could do this before SD if applied to input only)
             cc_window_start, cc_window_end  = self.compute_cc_target_window(frame_pos, cc_window_size, cc_window_rate)
             cc_apply_to_output = False #TODO - make this an option
+            cc_include_initial_image = False #TODO - make this an option
             if (cc_window_end>0):
                 cc_target_images = out_frame_history[cc_window_start:cc_window_end]
             else:
-                cc_target_images = []            
+                cc_target_images = []
+            if (cc_include_initial_image):
+                cc_target_images.append(initial_input_image)
+
             cc_target_histogram = compute_cc_target(cc_target_images)
             if cc_target_histogram is None:
-                logging.info(f"Skipping color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end})")
+                logging.debug(f"Skipping color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end})")
                 out_frame_with_cc = out_frame
             else:
-                logging.info(f"Applying color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end}) effective window size: {len(cc_target_images)})")
+                logging.debug(f"Applying color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end}) effective window size: {len(cc_target_images)})")
                 out_frame_with_cc = apply_color_correction(out_frame, cc_target_histogram)
                 if cc_apply_to_output:
                     out_frame = out_frame_with_cc
@@ -165,32 +179,6 @@ class Parseq():
         if len(frames_to_blend) == 1:
             return frames_to_blend[0]
         return cv2.addWeighted(frames_to_blend[0], (1-decay), self.blend_frames(frames_to_blend[1:], decay), decay, 0)
-        
-
-        # Disable color correction in main config (stashing original settings)
-
-        
-        # For each script  frame...
-            # Read input frame
-        
-            # Transform frame
-            ### Loopback blend (frames, decay)
-            ### Rotate (x,y,z)
-            ### Zoom & pan (z, x, y)
-
-
-
-            # Apply SD processing (seed, scale, denoise, prompt)
-
-            # Stash pre-color corrected frame
-            # Apply color correction (window_size, window_rate, input_strength)
-
-            # Save frame
-        
-        # Save video (output_config)
-
-        # Finally: re-instate overridden options
-
 
 #### Image conversion utils
 def convert_from_cv2_to_image(img: np.ndarray) -> Image:
@@ -260,6 +248,9 @@ def video_width(video_file):
 
 def video_height(video_file):
     return get_video_info(video_file)['height']
+
+def video_fps(video_file):
+    return  int(get_video_info(video_file)['r_frame_rate'].split('/')[0])
 
 def get_video_info(video_file):
     probe = ffmpeg.probe(video_file)

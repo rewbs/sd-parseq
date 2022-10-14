@@ -28,7 +28,7 @@ class Script(scripts.Script):
 
         ### DEBUG so I can test with blank fields
         if not input_path:
-            input_path = "/home/rewbs_soal/20-eq-frames.mp4"
+            input_path = "/home/rewbs_soal/5-eq-frames.mp4"
         if not output_path:
             output_path = "/home/rewbs_soal/out.mp4"
         if not param_script:

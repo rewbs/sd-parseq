@@ -15,6 +15,7 @@
     "ag-grid-community": "^28.2.0",
     "ag-grid-react": "^28.2.0",
     "everpolate": "^0.0.3",
+    "nearley": "^2.20.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",

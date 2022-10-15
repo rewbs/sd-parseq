@@ -331,8 +331,8 @@ const App = () => {
 
   // Returns array of objects with values for all interpolation types for each frame.
   // TODO: this upfront calculation can be optimised away
-  function computeAllInterpolations(gridRef, field) {
-    var allFrames = getAllFrames(gridRef);
+  function computeAllInterpolations(field) {
+    var allFrames = getAllFrames();
     var declaredPoints = getDeclaredPoints(field, parseFloat); //TODO add per-field parser
     var field_linear = linear(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);
     var field_poly = polynomial(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);

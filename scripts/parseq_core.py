@@ -202,7 +202,7 @@ def compute_cc_target(target_images):
     return target_histogram
 
 def apply_color_correction(image, target):
-    logging.info("Applying color correction.")
+    logging.debug("Applying color correction.")
     corrected = cv2.cvtColor(exposure.match_histograms(
         cv2.cvtColor(
             image.copy(),

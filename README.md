@@ -1,70 +1,102 @@
-# Getting Started with Create React App
+# Stable Diffusion Parseq
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## What is this?
 
-## Available Scripts
+[Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool. (https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a web ui for that tool.
 
-In the project directory, you can run:
+Parseq is a "parameter sequencer" for [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui). You can use it to generate videos with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, denoising strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
-### `npm start`
+It is made of 2 components:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- A custom UI that allows you to sequence key frames and interpolation behaviour for all parameters, and which generates exact parameter values for all frames as a JSON blob.
+- A plug-in script for [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) that accepts the JSON blob, and applies the settings and processing as expected.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
 
-### `npm test`
+## A note on the current state of this project
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+This project is in a pretty alpha state, thrown together over a couple of days. The UI is not polished and many error paths have not been tested. Also, the code is pretty horrible. You've been warned! :)
 
-### `npm run build`
+That said, I expect to improve things over time especially if this is valuable to others. Contributions and bug reports are very welcome of course.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Examples
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Here's a few examples of what you can do with this:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- Playing with prompt strength: Oscillating between a `cat` and a `dog` whilst becoming increasingly `spider`:
 
-### `npm run eject`
+This example is effectively txt2img because the denoise ratio is set to 1, so the input image was ignored.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- Bouncy zooms & rotations with sudden prompt changes:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- Continuous zoom and pan on loopback
 
-## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Installation
+- Have a working installation of 
+- Copy `scripts/parseq_core.py` and `scripts/parseq_core.py` to the `/scripts` subdirectory in your SD webui installation.
+- Install the necessary python dependencies 
+- Restart the webui (or do a full reload from the setting screen)
 
-### Code Splitting
+If it is installed correctly, you should see `SD Parseq <version>` as a script available in the img2img section.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
 
-### Analyzing the Bundle Size
+## Usage
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### Step 1: Create your parameter script
 
-### Making a Progressive Web App
+* Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
+* Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
+* Hit `Render` to generate the JSON config for every frame.
+* Copy the contents of the textbox at the bottom
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Step 2: Run the script
+* Head to the SD web UI, go to the img2img tab and select the SD Parseq script.
+* Paste in the JSON blob you copied in step 1
+* Set your input path (if doing vid2vid – leave blank for loopback) and output video path.
+* Click generate
 
-### Advanced Configuration
+## Limitations & Caveats
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- Note that the script deliberately overrides/ignores various settings that are defined outside of the script's parameters, including: seed, denoise strength, denoise strength scale factor, color correction, output path, etc... This is intentional but may be a source of confusion.
+- Does not yet support batches. Only 1 output is ever generated per run. Batch size and batch count are ignored.
+- ...
 
-### Deployment
+## Features
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Input types: video, loopback or txt2img
 
-### `npm run build` fails to minify
+### Scriptable Stable Diffusion parameters
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+#### Seed travelling
+
+#### Prompt morphing
+
+### Scriptable image processing parameters
+
+#### Pan, zoom, 3d rotaion
+
+#### Historical frame blending
+
+### Colour correction
+
+### Interpolation language
+
+### Test mode
+
+## Processing pipeline
+
+## Colab
+
+Coming soon?
+
+## Development
+
+## Credits
+
+Thanks to the following:
+
+* 
+

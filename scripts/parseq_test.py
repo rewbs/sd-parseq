@@ -23,7 +23,7 @@ class DummySDProcessing:
         return dummy_processed
 
 class DummyP:
-    width=512
+    width=1024
     height=512
     n_iter=1
     batch_size=1
@@ -37,5 +37,5 @@ class DummyP:
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 param_script_string = open("./param_script.json", "r").read()
-Parseq().run(p=DummyP(), input_img=None, input_path='./20-eq-frames.mp4', output_path='./out.mp4', param_script_string=param_script_string, cc_window_size=10, cc_window_rate=1, sd_processor=DummySDProcessing())
+Parseq().run(p=DummyP(), input_img=None, input_path='./prod-30s.mp4', output_path='./out.mp4', param_script_string=param_script_string, sd_processor=DummySDProcessing())
 

@@ -1,7 +1,7 @@
 @builtin "whitespace.ne" # `_` means arbitrary amount of whitespace
 @builtin "number.ne"     # `int`, `decimal`, and `percentage` number primitives
 interp -> expr
-expr -> "sin" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
+expr -> "sin" _ "(" _ expr _ "," _ expr _ "," _ expr _ "," _ expr _ ")" {%
     function(data) {
         return {
             operator: "sin",
@@ -9,7 +9,7 @@ expr -> "sin" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
         };
     }
 %}
-expr -> "saw" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
+expr -> "saw" _ "(" _ expr _ "," _ expr _ "," _ expr _ "," _ expr _ ")" {%
     function(data) {
         return {
             operator: "saw",
@@ -17,7 +17,7 @@ expr -> "saw" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
         };
     }
 %}
-expr -> "sq" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
+expr -> "sq" _ "(" _ expr _ "," _ expr _ "," _ expr _ "," _ expr _ ")" {%
     function(data) {
         return {
             operator: "sq",
@@ -25,11 +25,27 @@ expr -> "sq" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
         };
     }
 %}
-expr -> "tri" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
+expr -> "tri" _ "(" _ expr _ "," _ expr _ "," _ expr _ "," _ expr _ ")" {%
     function(data) {
         return {
             operator: "tri",
             operands: [data[4],data[8],data[12],data[16]] 
+        };
+    }
+%}
+expr -> "min" _ "(" _ expr _ "," _ expr _ ")" {%
+    function(data) {
+        return {
+            operator: "min",
+            operands: [data[4],data[8]] 
+        };
+    }
+%}
+expr -> "max" _ "(" _ expr _ "," _ expr _ ")" {%
+    function(data) {
+        return {
+            operator: "max",
+            operands: [data[4],data[8]] 
         };
     }
 %}

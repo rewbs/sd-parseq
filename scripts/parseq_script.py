@@ -34,7 +34,7 @@ class Script(scripts.Script):
         
         original_input_image_resized = images.resize_image(p.resize_mode, p.init_images[0], p.width, p.height) if p.init_images[0] else None
         try:
-             [all_images, info] = Parseq().run(p, original_input_image_resized, input_path, output_path, param_script, 10, 1, processing)
+             [all_images, info] = Parseq().run(p, original_input_image_resized, input_path, output_path, param_script, processing)
              Processed(p, all_images, p.seed, info)
         finally:
             logging.info("Restoring CC option to: %s", old_cc_opt)

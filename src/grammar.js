@@ -100,7 +100,7 @@ var grammar = {
         },
     {"name": "interp", "symbols": ["expr"]},
     {"name": "expr$string$1", "symbols": [{"literal":"s"}, {"literal":"i"}, {"literal":"n"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "expr", "symbols": ["expr$string$1", "_", {"literal":"("}, "_", "centre", "_", {"literal":","}, "_", "phase", "_", {"literal":","}, "_", "period", "_", {"literal":","}, "_", "amp", "_", {"literal":")"}], "postprocess": 
+    {"name": "expr", "symbols": ["expr$string$1", "_", {"literal":"("}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":")"}], "postprocess": 
         function(data) {
             return {
                 operator: "sin",
@@ -109,7 +109,7 @@ var grammar = {
         }
         },
     {"name": "expr$string$2", "symbols": [{"literal":"s"}, {"literal":"a"}, {"literal":"w"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "expr", "symbols": ["expr$string$2", "_", {"literal":"("}, "_", "centre", "_", {"literal":","}, "_", "phase", "_", {"literal":","}, "_", "period", "_", {"literal":","}, "_", "amp", "_", {"literal":")"}], "postprocess": 
+    {"name": "expr", "symbols": ["expr$string$2", "_", {"literal":"("}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":")"}], "postprocess": 
         function(data) {
             return {
                 operator: "saw",
@@ -118,7 +118,7 @@ var grammar = {
         }
         },
     {"name": "expr$string$3", "symbols": [{"literal":"s"}, {"literal":"q"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "expr", "symbols": ["expr$string$3", "_", {"literal":"("}, "_", "centre", "_", {"literal":","}, "_", "phase", "_", {"literal":","}, "_", "period", "_", {"literal":","}, "_", "amp", "_", {"literal":")"}], "postprocess": 
+    {"name": "expr", "symbols": ["expr$string$3", "_", {"literal":"("}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":")"}], "postprocess": 
         function(data) {
             return {
                 operator: "sq",
@@ -127,11 +127,29 @@ var grammar = {
         }
         },
     {"name": "expr$string$4", "symbols": [{"literal":"t"}, {"literal":"r"}, {"literal":"i"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "expr", "symbols": ["expr$string$4", "_", {"literal":"("}, "_", "centre", "_", {"literal":","}, "_", "phase", "_", {"literal":","}, "_", "period", "_", {"literal":","}, "_", "amp", "_", {"literal":")"}], "postprocess": 
+    {"name": "expr", "symbols": ["expr$string$4", "_", {"literal":"("}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":")"}], "postprocess": 
         function(data) {
             return {
                 operator: "tri",
                 operands: [data[4],data[8],data[12],data[16]] 
+            };
+        }
+        },
+    {"name": "expr$string$5", "symbols": [{"literal":"m"}, {"literal":"i"}, {"literal":"n"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "expr", "symbols": ["expr$string$5", "_", {"literal":"("}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":")"}], "postprocess": 
+        function(data) {
+            return {
+                operator: "min",
+                operands: [data[4],data[8]] 
+            };
+        }
+        },
+    {"name": "expr$string$6", "symbols": [{"literal":"m"}, {"literal":"a"}, {"literal":"x"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "expr", "symbols": ["expr$string$6", "_", {"literal":"("}, "_", "expr", "_", {"literal":","}, "_", "expr", "_", {"literal":")"}], "postprocess": 
+        function(data) {
+            return {
+                operator: "max",
+                operands: [data[4],data[8]] 
             };
         }
         },
@@ -153,6 +171,13 @@ var grammar = {
         function(data) {
             return {
                 operator: "P"
+            };
+        }
+        },
+    {"name": "expr", "symbols": [{"literal":"f"}], "postprocess": 
+        function(data) {
+            return {
+                operator: "f"
             };
         }
         },

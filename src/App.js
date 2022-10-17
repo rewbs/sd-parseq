@@ -22,6 +22,23 @@ import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+const firebaseConfig = {
+  apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
+  authDomain: "sd-parseq.firebaseapp.com",
+  projectId: "sd-parseq",
+  storageBucket: "sd-parseq.appspot.com",
+  messagingSenderId: "830535540412",
+  appId: "1:830535540412:web:858dde0a82381e6f32bab9",
+  measurementId: "G-TPY8W4RQ83"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
 
 //////////////////////////////////////////
 // Config
@@ -45,7 +62,7 @@ const default_prompts = [...Array(numPrompts)].map((i) => ({ positive: "", negat
 const default_options = {
   input_fps: "",
   output_fps: "",
-  cc_window_width: "10",
+  cc_window_width: "0",
   cc_window_slide_rate: "1",
   cc_use_input: false
 }
@@ -97,7 +114,7 @@ const App = () => {
       {
         field: field,
         valueSetter: (params) => {
-          params.data[field] = parseFloat(params.newValue) || "";
+          params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
           setNeedsRender(true);
         }
       },
@@ -140,7 +157,6 @@ const App = () => {
     while (gridRef.current.api.getRowNode(frameIdMap.get(frame)) !== undefined) {
       ++frame;
     }
-    console.log("frame to add:", frame)
     const res = gridRef.current.api.applyTransaction({
       add: [{ "frame": frame }],
       addIndex: frame,
@@ -154,17 +170,16 @@ const App = () => {
   const deleteRow = useCallback((frame) => {
     let keyframes = getKeyframes()
     if (keyframes.length<=2) {
-      console.log("There must be at least 2 keyframes")
+      console.error("There must be at least 2 keyframes. Can't delete any more.")
       return;
     }
     if (isNaN(frame)) {
       // No frame selected, assume last row.
       frame = getKeyframes().pop().frame;
     }
-    console.log("frame to delete:", frame)
     let rowData = gridRef.current.api.getRowNode(frameIdMap.get(frame)).data;
     frameIdMap.delete(rowData.frame);
-    const res = gridRef.current.api.applyTransaction({
+    gridRef.current.api.applyTransaction({
       remove: [rowData]
     });
     gridRef.current.api.onSortChanged();
@@ -179,9 +194,7 @@ const App = () => {
   });
 
   const onGridReady = params => {
-    console.log(frameIdMap)
     getKeyframes();
-    console.log(frameIdMap)
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
     render();
@@ -235,7 +248,7 @@ const App = () => {
       return []
     }
     gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
-      if (typeof rowNode.data.frame !== undefined) {
+      if (rowNode.data.frame !== undefined) {
         frameIdMap.set(rowNode.data.frame, rowNode.id);
       }
       keyframes_local.push(rowNode.data);
@@ -251,7 +264,6 @@ const App = () => {
     setDisplayFields(selectedToShow);
 
     let columnsToShow = selectedToShow.flatMap(c => [c, c + '_i']);
-    console.log(columnsToShow);
 
     let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
 
@@ -282,7 +294,7 @@ const App = () => {
     const id = e.target.id;
     let [_, optionId] = id.split(/options_/);
     
-    const value = (optionId == 'cc_use_input') ? e.target.checked : e.target.value;
+    const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
     options[optionId] = value;
     setOptions(options);
     setQueryParamState();
@@ -292,7 +304,6 @@ const App = () => {
   function setQueryParamState() {
     const url = new URL(window.location);
     let qp = getPersistableState();
-    console.log(qp)
     url.searchParams.set('parsec', JSON.stringify(qp));
     window.history.replaceState({}, '', url);
   }
@@ -361,7 +372,7 @@ const App = () => {
             try {       
               parser.feed(declaredRow.data[field + '_i']);
             } catch(error){
-                console.log(error);
+                console.error(error);
                 setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (value: <pre>${declaredRow.data[field + '_i']}</pre>): ` + error);
             }
            
@@ -385,7 +396,7 @@ const App = () => {
       let weighted_prompts_neg = [];
       for (var p = 0; p < numPrompts; p++) {
         let weight = rendered_frames[frame]['prompt_' + (p + 1) + '_weight'];
-        if (rendered_frames[frame]['prompt_' + (p + 1) + '_weight'] != 0) {
+        if (rendered_frames[frame]['prompt_' + (p + 1) + '_weight'] > 0.001) {
           if (prompts[p].positive) {
             weighted_prompts_pos.push(prompts[p].positive + ' :' + weight)
           }
@@ -449,16 +460,15 @@ const App = () => {
 
     return allFrames.map((frame) => {
       return {
-        ['linear']: field_linear[frame],
-        ['poly']: field_poly[frame],
-        ['step']: field_step[frame],
+        'linear': field_linear[frame],
+        'poly': field_poly[frame],
+        'step': field_step[frame],
       }
     });
   }
 
   // Evaluation of parsec interpolation lang
   function interpret(ast, allInterps, field) {
-    console.log(ast)
     switch (ast.operator) {
       case 'L':
         return f => allInterps[field][f]['linear'];
@@ -467,29 +477,39 @@ const App = () => {
       case 'S':
         return f => allInterps[field][f]['step'];
       case 'f':
-        return f => f;
+        return f => parseFloat(f);
       case 'constant':
-        return f => ast.operand
+        return f => parseFloat(ast.operand)
       case 'sin':
         return f => {
-          let [centre, phase, period, amp] = ast.operands.map(parseFloat);
+          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
           return centre + Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period) * amp;
         };
       case 'sq':
         return f => {
-          let [centre, phase, period, amp] = ast.operands.map(parseFloat);
+          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
           return centre + (Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period) >= 0 ? 1 : -1) * amp;
         };
       case 'tri':
         return f => {
-          let [centre, phase, period, amp] = ast.operands.map(parseFloat);
+          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
           return centre + Math.asin(Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period)) * (2 * amp) / Math.PI;
         };
       case 'saw':
         return f => {
-          let [centre, phase, period, amp] = ast.operands.map(parseFloat);
+          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
           return centre + ((phase + parseFloat(f)) % period) * amp / period
         };
+      case 'min':
+          return f => {
+            let [left, right] = ast.operands.map(op => interpret(op, allInterps, field)()) 
+            return Math.min(left,right)
+          };
+      case 'max':
+        return f => {
+          let [left, right] = ast.operands.map(op => interpret(op, allInterps, field)()) 
+          return Math.max(left,right)
+        }          
       case 'sum':
         return f => interpret(ast.leftOperand, allInterps, field)(f) + interpret(ast.rightOperand, allInterps, field)(f)
       case 'sub':
@@ -521,7 +541,7 @@ const App = () => {
     }}>
       <CssBaseline />
       <Grid xs={12}>
-        <h2>Parseq v0.01 <small><small><small><a href="">(what is this?)</a></small></small></small></h2>
+        <h2>Parseq v0.01 <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>
         
       </Grid>
       <Grid xs={10}>

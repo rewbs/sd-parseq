@@ -43,26 +43,28 @@ class Parseq():
             return [None, error_message]
 
         # Load param_script
-        param_script = load_param_script(param_script_string)
+        param_script, options = load_param_script(param_script_string)
+        logging.info(options)
        
         # Get input frame info (TODO: other input types)
+        input_fps = None
         if (input_type == 'video'):
             input_frames = video_frames(input_path)
             input_width = video_width(input_path)
             input_height = video_height(input_path)
             source_fps = video_fps(input_path)
-            input_fps =  int(param_script['options']['input_fps']) or source_fps
+            input_fps =  parseIntOrDefault(options['input_fps'], source_fps)
             logging.info(f"Input: {input_frames} frames ({input_width}x{input_height} @ {input_fps}fps (source: {source_fps}fps))")
         else:
             input_width = video_width(input_path)
             input_width = p.width
             input_height = p.height
 
-        output_fps = int(param_script['options']['output_fps']) or input_fps or 20
-        cc_window_width = int(param_script['options']['cc_window_width'])
-        cc_window_rate = int(param_script['options']['cc_window_rate'])
-        cc_include_initial_image = bool(param_script['options']['cc_use_input'])
-        logging.info(f"Loaded options: input_fps override:{input_fps}; output_fps:{output_fps}; cc_window_width:{cc_window_width}; cc_window_rate:{cc_window_rate}; cc_include_initial_image:{cc_include_initial_image}")
+        output_fps = parseIntOrDefault(options['output_fps'], (input_fps or 20))
+        cc_window_width = parseIntOrDefault(options['cc_window_width'], 10)
+        cc_window_rate = parseIntOrDefault(options['cc_window_slide_rate'], 1)
+        cc_include_initial_image = bool(options['cc_use_input'])
+        logging.info(f"Loaded options: input_type:{input_type}; input_fps override:{input_fps}; output_fps:{output_fps}; cc_window_width:{cc_window_width}; cc_window_rate:{cc_window_rate}; cc_include_initial_image:{cc_include_initial_image}")
 
 
         # TODO: Compare input frame count to scripted frame count and decide what to do if they don't match.
@@ -238,9 +240,10 @@ def apply_color_correction(image, target):
 
 #### Param script utils:
 def load_param_script(param_script_string):
-    param_script_raw = json.loads(param_script_string)['rendered_frames']
+    json_obj = json.loads(param_script_string)
+    rendered_frames_raw = json_obj['rendered_frames']
     param_script = dict()
-    for event in param_script_raw:
+    for event in rendered_frames_raw:
         if event['frame'] in param_script:
             logging.debug(f"Duplicate frame {event['frame']} detected. Latest wins.")        
         param_script[event['frame']] = event
@@ -252,12 +255,14 @@ def load_param_script(param_script_string):
         if not event['frame'] in param_script:
             logging.warning(f"Script should contain contiguous frame definitions, but is missing frame {f}.")
 
-    return param_script
+    return param_script, json_obj['options']
 
 #### Math utils:
 def clamp(minvalue, value, maxvalue):
     return max(minvalue, min(value, maxvalue))
 
+def parseIntOrDefault(input, default):
+    return int(input) if input else default
 
 #### Video utils:
 def video_frames(video_file):

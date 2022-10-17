@@ -1,6 +1,6 @@
 {
-  "name": "sd-interpolator",
-  "version": "0.1.0",
+  "name": "sd-parseq",
+  "version": "0.0.1",
   "private": true,
   "dependencies": {
     "@ahooksjs/use-url-state": "^3.5.0",

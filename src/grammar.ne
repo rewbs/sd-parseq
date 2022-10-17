@@ -54,6 +54,21 @@ expr -> "tri" _ "(" _ centre _ "," _ phase _ "," _ period _ "," _ amp _ ")" {%
         };
     }
 %}
+          | "f" {%
+    function(data) {
+        return {
+            operator: "f"
+        };
+    }
+%}
+          | decimal  {%
+    function(data) {
+        return {
+            operator: "constant",
+            operand:  data[0]
+        };
+    }
+%}
           | "."  {%
     function(data) {
         return {

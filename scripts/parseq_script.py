@@ -26,14 +26,6 @@ class Script(scripts.Script):
     def run(self, p, input_path, output_path, param_script):
         logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
-        ### DEBUG so I can test with blank fields
-        if not input_path:
-            input_path = "/home/rewbs_soal/5-eq-frames.mp4"
-        if not output_path:
-            output_path = "/home/rewbs_soal/out.mp4"
-        if not param_script:
-            param_script = open("/home/rewbs_soal/param_script.json", "r").read()
-
         # HACK - ideally scripts could opt in to hooks at various points in the processing loop including file saving.
         logging.info("Overriding color correction option to false in main processing, so that we can control color correction in the script loop.")
         old_cc_opt = opts.img2img_color_correction
@@ -43,7 +35,6 @@ class Script(scripts.Script):
         original_input_image_resized = images.resize_image(p.resize_mode, p.init_images[0], p.width, p.height) if p.init_images[0] else None
         try:
              [all_images, info] = Parseq().run(p, original_input_image_resized, input_path, output_path, param_script, 10, 1, processing)
-
              Processed(p, all_images, p.seed, info)
         finally:
             logging.info("Restoring CC option to: %s", old_cc_opt)

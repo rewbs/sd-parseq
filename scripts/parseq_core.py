@@ -1,3 +1,4 @@
+from distutils.log import info
 import string
 import numpy as np
 from tqdm import trange
@@ -18,7 +19,7 @@ import math
 
 class Parseq():
 
-    def run(self, p, input_img, input_path:string, output_path:string, param_script_string:string, cc_window_size:int, cc_window_rate:float, sd_processor):
+    def run(self, p, input_img, input_path:string, output_path:string, param_script_string:string, sd_processor):
         # TODO - batch count & size support (only useful is seed is random)
         # TODO - seed travelling
 
@@ -27,38 +28,66 @@ class Parseq():
         # - directory: assume directory of images
         # - file: assume video
 
+        input_type = 'video'
+
+        if (not input_path):
+            logging.info("No input video supplied, assuming loopback.")
+            input_type = 'loopback'
+            if (not input_img):
+                error_message = "You must supply a path to an input video or an input image for loopback."
+                logging.error(error_message)
+                return [None, error_message]
+
+        if (not param_script_string):
+            error_message = "You must supply JSON paramter script."
+            return [None, error_message]
+
         # Load param_script
         param_script = load_param_script(param_script_string)
-        param_script_frames= max(param_script.keys())
-        
+       
         # Get input frame info (TODO: other input types)
-        input_frames = video_frames(input_path)
-        input_width = video_width(input_path)
-        input_height = video_height(input_path)
-        input_fps = video_fps(input_path)
-        logging.info(f"input: {input_frames} frames ({input_width}x{input_height} @ {input_fps})")
+        if (input_type == 'video'):
+            input_frames = video_frames(input_path)
+            input_width = video_width(input_path)
+            input_height = video_height(input_path)
+            source_fps = video_fps(input_path)
+            input_fps =  int(param_script['options']['input_fps']) or source_fps
+            logging.info(f"Input: {input_frames} frames ({input_width}x{input_height} @ {input_fps}fps (source: {source_fps}fps))")
+        else:
+            input_width = video_width(input_path)
+            input_width = p.width
+            input_height = p.height
 
-        # Compare input frame count to scripted frame count
-        logging.info(f"Script frames: {param_script_frames}, input frames: {input_frames}")
-        frame_ratio = param_script_frames / float(input_frames)
-        if frame_ratio < 1:
-            logging.warning(f"Some input frames will be skipped to match script frame count. Ratio: {frame_ratio}")
-        elif frame_ratio > 1:
-            logging.warning(f"Some input frames will be duplicated to match script frame count. Ratio: {frame_ratio}")
+        output_fps = int(param_script['options']['output_fps']) or input_fps or 20
+        cc_window_width = int(param_script['options']['cc_window_width'])
+        cc_window_rate = int(param_script['options']['cc_window_rate'])
+        cc_include_initial_image = bool(param_script['options']['cc_use_input'])
+        logging.info(f"Loaded options: input_fps override:{input_fps}; output_fps:{output_fps}; cc_window_width:{cc_window_width}; cc_window_rate:{cc_window_rate}; cc_include_initial_image:{cc_include_initial_image}")
+
+
+        # TODO: Compare input frame count to scripted frame count and decide what to do if they don't match.
+        #       For now we just stop on shortest.
+        # param_script_frames= max(param_script.keys())
+        # logging.info(f"Script frames: {param_script_frames}, input frames: {input_frames}")
+        # frame_ratio = param_script_frames / float(input_frames)
+        # if frame_ratio < 1:
+        #     logging.warning(f"Some input frames will be skipped to match script frame count. Ratio: {frame_ratio}")
+        # elif frame_ratio > 1:
+        #     logging.warning(f"Some input frames will be duplicated to match script frame count. Ratio: {frame_ratio}")
 
         # Init video in/out
-        process1 = (
-            ffmpeg
-            .input(input_path)
-            .output('pipe:', format='rawvideo', pix_fmt='rgb24', r=input_fps)
-            .run_async(pipe_stdout=True)
-        )
+        if (input_type == 'video'):
+            process1 = (
+                ffmpeg
+                .input(input_path)
+                .output('pipe:', format='rawvideo', pix_fmt='rgb24', r=input_fps)
+                .run_async(pipe_stdout=True)
+            )
 
         video =ffmpeg.input('pipe:', framerate=input_fps, format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(p.width, p.height))
-        audio =ffmpeg.input(input_path)
         process2 = (
             ffmpeg
-            .output(video, output_path, pix_fmt='yuv420p', r=input_fps)
+            .output(video, output_path, pix_fmt='yuv420p', r=output_fps)
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -71,25 +100,24 @@ class Parseq():
                 break     
 
             # Read frame
-            ##### if from video
-            in_bytes = process1.stdout.read(input_width * input_height * 3)
-            if not in_bytes:
-                logging.info(f"Ending: no further video input at frame {frame_pos}.")
-                break            
-            in_frame = (
-                np
-                .frombuffer(in_bytes, np.uint8)
-                .reshape([input_height, input_width, 3])
-            )
-            if frame_pos == 0:
-                initial_input_image = in_frame.copy()
-            ##### if from loopback                  
-            #if frame_pos == 0:
-                # in_frame = input_img
-                # initial_input_image = input_img
-            #else
-                # in_frame = out_frame_history[frame_pos-1]
-                
+            if (input_type == 'video'):
+                in_bytes = process1.stdout.read(input_width * input_height * 3)
+                if not in_bytes:
+                    logging.info(f"Ending: no further video input at frame {frame_pos}.")
+                    break            
+                in_frame = (
+                    np
+                    .frombuffer(in_bytes, np.uint8)
+                    .reshape([input_height, input_width, 3])
+                )
+                if frame_pos == 0:
+                    initial_input_image = in_frame.copy()
+            else: # loopback                  
+                if frame_pos == 0:
+                    in_frame = input_img
+                    initial_input_image = input_img
+                else:
+                    in_frame = out_frame_history[frame_pos-1]
 
             # Resize
             in_frame_resized = cv2.resize(in_frame, (p.width, p.height), interpolation = cv2.INTER_LANCZOS4)
@@ -106,31 +134,8 @@ class Parseq():
             logging.debug(f"Blending {len(frames_to_blend)} frames (current frame plus {start_frame_pos} to {end_frame_pos}) with decay {blend_decay}.")
             in_frame_blended = self.blend_frames(frames_to_blend, blend_decay)
             
-            # Do SD 
-            # TODO - batch count & batch size support: for each batch, for each batch_item          
-            # TODO - prompt morphing: craft weighted prompt object - can be done in client
-            # TODO - seed travelling based on decimal seeds?
-            p.n_iter = 1
-            p.batch_size = 1
-            p.init_images = [Image.fromarray(in_frame_blended)] 
-            p.seed = math.floor(param_script[frame_pos]['seed'])
-            p.subseed = param_script[frame_pos]['subseed']
-            p.subseed_strength = param_script[frame_pos]['subseed_strength']
-
-            p.scale = clamp(-100, param_script[frame_pos]['scale'], 100)
-            p.denoising_strength = clamp(0.01, param_script[frame_pos]['denoise'], 1)
-            p.prompt = param_script[frame_pos]['positive_prompt'] 
-            p.negative_prompt = param_script[frame_pos]['negative_prompt'] 
-            
-            logging.info(f"[{frame_pos}] - seed:{p.seed}; subseed:{p.subseed}; subseed_strength:{p.subseed_strength}; scale:{p.scale}; ds:{p.denoising_strength}; prompt: {p.prompt}; negative_prompt: {p.negative_prompt}")
-            processed = sd_processor.process_images(p)
-            
-            out_frame = np.asarray(processed.images[0])
-            
-            # Color correction (could do this before SD if applied to input only)
-            cc_window_start, cc_window_end  = self.compute_cc_target_window(frame_pos, cc_window_size, cc_window_rate)
-            cc_apply_to_output = False #TODO - make this an option
-            cc_include_initial_image = False #TODO - make this an option
+            # Color correction
+            cc_window_start, cc_window_end  = self.compute_cc_target_window(frame_pos, cc_window_width, cc_window_rate)
             if (cc_window_end>0):
                 cc_target_images = out_frame_history[cc_window_start:cc_window_end]
             else:
@@ -141,12 +146,28 @@ class Parseq():
             cc_target_histogram = compute_cc_target(cc_target_images)
             if cc_target_histogram is None:
                 logging.debug(f"Skipping color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end})")
-                out_frame_with_cc = out_frame
+                in_frame_cc = in_frame_blended
             else:
                 logging.debug(f"Applying color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end}) effective window size: {len(cc_target_images)})")
-                out_frame_with_cc = apply_color_correction(out_frame, cc_target_histogram)
-                if cc_apply_to_output:
-                    out_frame = out_frame_with_cc
+                in_frame_cc = apply_color_correction(in_frame_blended, cc_target_histogram)
+
+            # Do SD 
+            # TODO - batch count & batch size support: for each batch, for each batch_item          
+            p.n_iter = 1
+            p.batch_size = 1
+            p.init_images = [Image.fromarray(in_frame_cc)] 
+            p.seed = math.floor(param_script[frame_pos]['seed'])
+            p.subseed = param_script[frame_pos]['subseed']
+            p.subseed_strength = param_script[frame_pos]['subseed_strength']
+            p.scale = clamp(-100, param_script[frame_pos]['scale'], 100)
+            p.denoising_strength = clamp(0.01, param_script[frame_pos]['denoise'], 1)
+            p.prompt = param_script[frame_pos]['positive_prompt'] 
+            p.negative_prompt = param_script[frame_pos]['negative_prompt'] 
+
+            logging.info(f"[{frame_pos}] - seed:{p.seed}; subseed:{p.subseed}; subseed_strength:{p.subseed_strength}; scale:{p.scale}; ds:{p.denoising_strength}; prompt: {p.prompt}; negative_prompt: {p.negative_prompt}")
+            processed = sd_processor.process_images(p)
+            
+            out_frame = np.asarray(processed.images[0])
 
             # Save frame
             process2.stdin.write(
@@ -160,7 +181,8 @@ class Parseq():
             frame_pos += 1
 
         process2.stdin.close()
-        process1.wait()
+        if (input_type == 'video'):
+            process1.wait()
         process2.wait()
 
         return [out_frame_history, "Here's some info mate. Where you gonna put it mate?"]
@@ -238,7 +260,6 @@ def clamp(minvalue, value, maxvalue):
 
 
 #### Video utils:
-
 def video_frames(video_file):
     num_frames = get_video_info(video_file)['nb_frames']
     return num_frames

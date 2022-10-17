@@ -68,12 +68,12 @@ const default_options = {
 }
 const default_keyframes = [
   {
-    frame: 0, seed: -1, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
+    frame: 0, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
     pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
     prompt_1_weight: 1, prompt_2_weight: 0, prompt_3_weight: 0, prompt_4_weight: 0
   },
   {
-    frame: 199, seed: -1, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
+    frame: 199, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
     pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
     prompt_1_weight: 0, prompt_2_weight: 1, prompt_3_weight: 0, prompt_4_weight: 0
   }

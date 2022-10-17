@@ -19,7 +19,7 @@ import math
 
 class Parseq():
 
-    def run(self, p, input_img, input_path:string, output_path:string, param_script_string:string, sd_processor):
+    def run(self, p, input_img, input_path:string, output_path:string, save_images:bool, param_script_string:string, sd_processor):
         # TODO - batch count & size support (only useful is seed is random)
         # TODO - seed travelling
 
@@ -55,16 +55,17 @@ class Parseq():
             source_fps = video_fps(input_path)
             input_fps =  parseIntOrDefault(options['input_fps'], source_fps)
             logging.info(f"Input: {input_frames} frames ({input_width}x{input_height} @ {input_fps}fps (source: {source_fps}fps))")
+            output_fps = parseIntOrDefault(options['output_fps'], (input_fps or 20))
         else:
-            input_width = video_width(input_path)
             input_width = p.width
             input_height = p.height
+            output_fps = parseIntOrDefault(options['output_fps'], 20)
+            input_fps =  parseIntOrDefault(options['input_fps'], output_fps)
 
-        output_fps = parseIntOrDefault(options['output_fps'], (input_fps or 20))
         cc_window_width = parseIntOrDefault(options['cc_window_width'], 10)
-        cc_window_rate = parseIntOrDefault(options['cc_window_slide_rate'], 1)
+        cc_window_rate = parseFloatOrDefault(options['cc_window_slide_rate'], 1)
         cc_include_initial_image = bool(options['cc_use_input'])
-        logging.info(f"Loaded options: input_type:{input_type}; input_fps override:{input_fps}; output_fps:{output_fps}; cc_window_width:{cc_window_width}; cc_window_rate:{cc_window_rate}; cc_include_initial_image:{cc_include_initial_image}")
+        logging.info(f"Loaded options: input_type:{input_type}; input_fps:{input_fps}; output_fps:{output_fps}; cc_window_width:{cc_window_width}; cc_window_rate:{cc_window_rate}; cc_include_initial_image:{cc_include_initial_image}")
 
 
         # TODO: Compare input frame count to scripted frame count and decide what to do if they don't match.
@@ -77,7 +78,7 @@ class Parseq():
         # elif frame_ratio > 1:
         #     logging.warning(f"Some input frames will be duplicated to match script frame count. Ratio: {frame_ratio}")
 
-        # Init video in/out
+        # Init video in
         if (input_type == 'video'):
             process1 = (
                 ffmpeg
@@ -86,10 +87,11 @@ class Parseq():
                 .run_async(pipe_stdout=True)
             )
 
-        video =ffmpeg.input('pipe:', framerate=input_fps, format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(p.width, p.height))
+        # Init video out
         process2 = (
             ffmpeg
-            .output(video, output_path, pix_fmt='yuv420p', r=output_fps)
+            .input('pipe:', framerate=input_fps, format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(p.width, p.height))
+            .output(output_path, pix_fmt='yuv420p', r=output_fps)
             .overwrite_output()
             .run_async(pipe_stdin=True)
         )
@@ -99,6 +101,8 @@ class Parseq():
         while True:
             if not frame_pos in param_script:
                 logging.info(f"Ending: no script information about how to process frame {frame_pos}.")
+                if (input_type == 'video'):
+                    process1.stdin.close()
                 break     
 
             # Read frame
@@ -106,6 +110,7 @@ class Parseq():
                 in_bytes = process1.stdout.read(input_width * input_height * 3)
                 if not in_bytes:
                     logging.info(f"Ending: no further video input at frame {frame_pos}.")
+                    
                     break            
                 in_frame = (
                     np
@@ -116,26 +121,26 @@ class Parseq():
                     initial_input_image = in_frame.copy()
             else: # loopback                  
                 if frame_pos == 0:
-                    in_frame = input_img
-                    initial_input_image = input_img
+                    in_frame = np.asarray(input_img)
+                    initial_input_image = in_frame
                 else:
                     in_frame = out_frame_history[frame_pos-1]
 
             # Resize
             in_frame_resized = cv2.resize(in_frame, (p.width, p.height), interpolation = cv2.INTER_LANCZOS4)
-           
-            #Rotate, zoom & pan (x,y,z)
-            in_frame_rotated = ImageTransformer().rotate_along_axis(in_frame_resized, param_script[frame_pos]['rotx'], param_script[frame_pos]['roty'], param_script[frame_pos]['rotz'],
-               -param_script[frame_pos]['panx'], -param_script[frame_pos]['pany'], -param_script[frame_pos]['zoom'])
 
             # Blend historical frames
             start_frame_pos = round(clamp(0, frame_pos-param_script[frame_pos]['loopback_frames'], len(out_frame_history)-1))
             end_frame_pos = round(clamp(0, frame_pos-1, len(out_frame_history)-1))
-            frames_to_blend = [in_frame_rotated] + out_frame_history[start_frame_pos:end_frame_pos]
+            frames_to_blend = [in_frame_resized] + out_frame_history[start_frame_pos:end_frame_pos]
             blend_decay = clamp(0.1, param_script[frame_pos]['loopback_decay'], 1)
             logging.debug(f"Blending {len(frames_to_blend)} frames (current frame plus {start_frame_pos} to {end_frame_pos}) with decay {blend_decay}.")
             in_frame_blended = self.blend_frames(frames_to_blend, blend_decay)
-            
+
+            #Rotate, zoom & pan (x,y,z)
+            in_frame_rotated = ImageTransformer().rotate_along_axis(in_frame_blended, param_script[frame_pos]['rotx'], param_script[frame_pos]['roty'], param_script[frame_pos]['rotz'],
+            -param_script[frame_pos]['panx'], -param_script[frame_pos]['pany'], -param_script[frame_pos]['zoom'])
+        
             # Color correction
             cc_window_start, cc_window_end  = self.compute_cc_target_window(frame_pos, cc_window_width, cc_window_rate)
             if (cc_window_end>0):
@@ -148,10 +153,10 @@ class Parseq():
             cc_target_histogram = compute_cc_target(cc_target_images)
             if cc_target_histogram is None:
                 logging.debug(f"Skipping color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end})")
-                in_frame_cc = in_frame_blended
+                in_frame_cc = in_frame_rotated
             else:
                 logging.debug(f"Applying color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end}) effective window size: {len(cc_target_images)})")
-                in_frame_cc = apply_color_correction(in_frame_blended, cc_target_histogram)
+                in_frame_cc = apply_color_correction(in_frame_rotated, cc_target_histogram)
 
             # Do SD 
             # TODO - batch count & batch size support: for each batch, for each batch_item          
@@ -171,17 +176,20 @@ class Parseq():
             
             out_frame = np.asarray(processed.images[0])
 
-            # Save frame
+            #Save frame
             process2.stdin.write(
                 out_frame
                 .astype(np.uint8)
                 .tobytes()
             )
+            if (save_images):
+                cv2.imwrite(f"{output_path}-{frame_pos:05}.png", cv2.cvtColor(out_frame, cv2.COLOR_RGB2BGR))
 
             # Save frames for loopback
             out_frame_history.append(out_frame)
             frame_pos += 1
 
+        logging.info("About to close video streams.")
         process2.stdin.close()
         if (input_type == 'video'):
             process1.wait()
@@ -263,6 +271,9 @@ def clamp(minvalue, value, maxvalue):
 
 def parseIntOrDefault(input, default):
     return int(input) if input else default
+
+def parseFloatOrDefault(input, default):
+    return float(input) if input else default    
 
 #### Video utils:
 def video_frames(video_file):

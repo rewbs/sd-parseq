@@ -37,5 +37,13 @@ class DummyP:
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 param_script_string = open("./param_script.json", "r").read()
-Parseq().run(p=DummyP(), input_img=None, input_path='./prod-30s.mp4', output_path='./out.mp4', param_script_string=param_script_string, sd_processor=DummySDProcessing())
+
+input_img = Image.open("./Maggie.jpg")
+#input_img=None
+
+#input_path='./prod-30s.mp4'
+input_path=None
+
+
+Parseq().run(p=DummyP(), input_img=input_img, input_path=input_path, output_path='./out.mp4', save_images=True, param_script_string=param_script_string, sd_processor=DummySDProcessing())
 

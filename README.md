@@ -20,20 +20,20 @@ This project is in a pretty alpha state, thrown together over a couple of days. 
 
 That said, I expect to improve things over time especially if this is valuable to others. Contributions and bug reports are very welcome of course.
 
-## Examples
+## Examples (TODO: get some better examples - ones where things don't keep going off-centre)
 
-Here are some examples of what you can do with this:
+Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate.
 
-- Playing with prompt strength by oscillating between a `cat` and a `dog` whilst becoming increasingly `spider`:
+- Playing with prompt strength by oscillating between a `cat` and a `dog` whilst becoming increasingly `spider`-y. This example is effectively txt2img because the denoise ratio is set to 1, so the input image was ignored. 
 
-This example is effectively txt2img because the denoise ratio is set to 1, so the input image was ignored.
+https://user-images.githubusercontent.com/74455/196248930-4d5c88b8-04da-4e76-a17e-acf5185556ec.mp4
 
-- Playing with prompt strength on an input video
+- Here's a loopback video where we oscillate between a few famous faces with a zoom and occasional denoising spikes to reset the context.
 
-- Bouncy zooms & rotations with sudden prompt changes:
+https://user-images.githubusercontent.com/74455/196251751-cd0f3333-d3b5-4296-8d0b-2ccc785d1105.mp4
 
-- Continuous zoom and pan on loopback
-
+Here's what the param sequence looks like ([you can play with it directly here](https://sd-parseq.web.app/?parsec=%7B%22prompts%22%3A%5B%7B%22positive%22%3A%22Elon+Musk%2C+centered%2C+ecstatic%2C+laughing%2C+colorful%2C+cinematic+lighting+award+winning+studio+photo+portrait+by+Annie+Leibovitz.%22%2C%22negative%22%3A%22%22%7D%2C%7B%22positive%22%3A%22Jack+Nicholson%2C+centered%2C+snarling%2C+angry%2C+old%2C+colorful%2C+cinematic+lighting+award+winning+studio+photo+portrait+by+Annie+Leibovitz.%22%2C%22negative%22%3A%22%22%7D%2C%7B%22positive%22%3A%22Jennifer+Lawrence%2C+centered%2C+confused%2C+cinematic+lighting+award+winning+studio+photo+portrait+by+Annie+Leibovitz.%22%2C%22negative%22%3A%22%22%7D%2C%7B%22positive%22%3A%22Kanye+West%2C+serious%2C+thinking%2C+centered%2C+cinematic+lighting+award+winning+studio+photo+portrait+by+Annie+Leibovitz.%22%2C%22negative%22%3A%22%22%7D%5D%2C%22options%22%3A%7B%22input_fps%22%3A%22%22%2C%22output_fps%22%3A%22%22%2C%22cc_window_width%22%3A%225%22%2C%22cc_window_slide_rate%22%3A%220.2%22%2C%22cc_use_input%22%3Afalse%7D%2C%22keyframes%22%3A%5B%7B%22frame%22%3A0%2C%22seed%22%3A50%2C%22scale%22%3A12%2C%22denoise%22%3A0.25%2C%22rotx%22%3A0%2C%22roty%22%3A0%2C%22rotz%22%3A0%2C%22panx%22%3A0%2C%22pany%22%3A0%2C%22zoom%22%3A5%2C%22loopback_frames%22%3A1%2C%22loopback_decay%22%3A0.1%2C%22prompt_1_weight%22%3A1%2C%22prompt_2_weight%22%3A0%2C%22prompt_3_weight%22%3A0%2C%22prompt_4_weight%22%3A0%2C%22prompt_2_weight_i%22%3A%22sin%280.5%2C12.5%2C50%2C0.5%29%22%2C%22prompt_3_weight_i%22%3A%22sin%280.5%2C25%2C50%2C0.5%29%22%2C%22prompt_1_weight_i%22%3A%22sin%280.5%2C0%2C50%2C0.5%29%22%2C%22prompt_4_weight_i%22%3A%22sin%280.5%2C37.5%2C50%2C0.5%29%22%7D%2C%7B%22frame%22%3A20%2C%22denoise%22%3A0.4%7D%2C%7B%22frame%22%3A25%2C%22denoise%22%3A0.8%2C%22denoise_i%22%3Anull%7D%2C%7B%22frame%22%3A26%2C%22denoise%22%3A0.25%2C%22denoise_i%22%3A%22%22%7D%2C%7B%22frame%22%3A45%2C%22denoise%22%3A0.4%7D%2C%7B%22frame%22%3A50%2C%22denoise%22%3A0.8%7D%2C%7B%22frame%22%3A51%2C%22denoise%22%3A0.25%7D%2C%7B%22frame%22%3A70%2C%22denoise%22%3A0.4%7D%2C%7B%22frame%22%3A75%2C%22denoise%22%3A0.8%7D%2C%7B%22frame%22%3A76%2C%22denoise%22%3A0.25%7D%2C%7B%22frame%22%3A100%2C%22seed%22%3A150%2C%22scale%22%3A12%2C%22denoise%22%3A0.4%2C%22rotx%22%3A0%2C%22roty%22%3A0%2C%22rotz%22%3A0%2C%22panx%22%3A0%2C%22pany%22%3A0%2C%22zoom%22%3A50%2C%22loopback_frames%22%3A1%2C%22loopback_decay%22%3A0.1%2C%22prompt_1_weight%22%3A0%2C%22prompt_2_weight%22%3A1%2C%22prompt_3_weight%22%3A0%2C%22prompt_4_weight%22%3A0%7D%5D%7D) ):
+<img width="1887" alt="image" src="https://user-images.githubusercontent.com/74455/196251021-8251f6d9-a4e7-4cab-ad47-f2e6f0587836.png">
 
 
 

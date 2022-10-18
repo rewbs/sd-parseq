@@ -2,9 +2,9 @@
 
 ## What is this?
 
-[Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool. (https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a web ui for that tool.
+For context: [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool and [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a web ui for that tool.
 
-Parseq is a "parameter sequencer" for [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui). You can use it to generate videos with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, denoising strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
+Parseq is a "parameter sequencer" for [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui). You can use it to generate videos with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, denoising strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
 <img width="720" alt="Parseq_-_parameter_sequencer_for_Stable_Diffusion" src="https://user-images.githubusercontent.com/74455/196206868-d463a083-8069-41fe-ac8f-cfc1fd3df463.png">
 
@@ -24,7 +24,7 @@ That said, I expect to improve things over time especially if this is valuable t
 
 Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate.
 
-- Complex vid2vid example with fluctuations on many different params to attempt to synchronise param changes and image movement to music.
+- Complex vid2vid example with fluctuations on many different params to attempt to synchronise param changes and image movement to music. The input audio is an excerpt of [The Prodigy - Smack My Bitch Up (Noisia Remix)](https://www.youtube.com/watch?v=r5OgQCvqbYA), and the original input video was generated with [Butterchurn](https://butterchurnviz.com/).
 
 https://user-images.githubusercontent.com/74455/196309008-1d3f3a23-123c-4108-b673-3693f9935f57.mp4
 

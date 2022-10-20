@@ -15,21 +15,19 @@ import os
 import sys
 from subprocess import Popen, PIPE
 from skimage import exposure
+import re
 import math
+from datetime import datetime
 
 class Parseq():
 
-    def run(self, p, input_img, input_path:string, output_path:string, save_images:bool, param_script_string:string, sd_processor):
+    def run(self, p, input_img, input_path:string, output_path:string, save_images:bool, dry_run_mode:bool, overlay_metadata:bool, default_output_dir:string, param_script_string:string, sd_processor):
         # TODO - batch count & size support (only useful is seed is random)
-        # TODO - seed travelling
 
-        # Inputs:
-        # - blank: Single-image loopback
-        # - directory: assume directory of images
-        # - file: assume video
+        output_path = get_output_path(output_path, default_output_dir)
+        logging.info(f"Output will be written to: {output_path}")
 
         input_type = 'video'
-
         if (not input_path):
             logging.info("No input video supplied, assuming loopback.")
             input_type = 'loopback'
@@ -46,7 +44,7 @@ class Parseq():
         param_script, options = load_param_script(param_script_string)
         logging.info(options)
        
-        # Get input frame info (TODO: other input types)
+        # Get input frame info
         input_fps = None
         if (input_type == 'video'):
             input_frames = video_frames(input_path)
@@ -57,6 +55,7 @@ class Parseq():
             logging.info(f"Input: {input_frames} frames ({input_width}x{input_height} @ {input_fps}fps (source: {source_fps}fps))")
             output_fps = parseIntOrDefault(options['output_fps'], (input_fps or 20))
         else:
+            # Loopback
             input_width = p.width
             input_height = p.height
             output_fps = parseIntOrDefault(options['output_fps'], 20)
@@ -157,12 +156,13 @@ class Parseq():
             else:
                 logging.debug(f"Applying color correction on frame {frame_pos} (target frames: {cc_window_start} to {cc_window_end}) effective window size: {len(cc_target_images)})")
                 in_frame_cc = apply_color_correction(in_frame_rotated, cc_target_histogram)
-
+            
+            final_in_frame = in_frame_cc
             # Do SD 
             # TODO - batch count & batch size support: for each batch, for each batch_item          
             p.n_iter = 1
             p.batch_size = 1
-            p.init_images = [Image.fromarray(in_frame_cc)] 
+            p.init_images = [Image.fromarray(final_in_frame)] 
             p.seed = math.floor(param_script[frame_pos]['seed'])
             p.subseed = param_script[frame_pos]['subseed']
             p.subseed_strength = param_script[frame_pos]['subseed_strength']
@@ -170,23 +170,43 @@ class Parseq():
             p.denoising_strength = clamp(0.01, param_script[frame_pos]['denoise'], 1)
             p.prompt = param_script[frame_pos]['positive_prompt'] 
             p.negative_prompt = param_script[frame_pos]['negative_prompt'] 
+            #for name, value in param_script[frame_pos]:
+            logging.info(param_script[frame_pos])
+            p.extra_generation_params=param_script[frame_pos]
+            del p.extra_generation_params['positive_prompt']
+            del p.extra_generation_params['negative_prompt']
+            p.extra_generation_params['input_type']=input_type
 
             logging.info(f"[{frame_pos}] - seed:{p.seed}; subseed:{p.subseed}; subseed_strength:{p.subseed_strength}; scale:{p.scale}; ds:{p.denoising_strength}; prompt: {p.prompt}; negative_prompt: {p.negative_prompt}")
-            processed = sd_processor.process_images(p)
+            if dry_run_mode:
+                processed_image = Image.fromarray(final_in_frame)
+            else:
+                processed = sd_processor.process_images(p)
+                processed_image = processed.images[0]
             
-            out_frame = np.asarray(processed.images[0])
-
+            #overlay metadata
+            out_frame_with_metadata = None
+            if (overlay_metadata):
+                processed_image_with_metadata = processed_image.copy()
+                draw = ImageDraw.Draw(processed_image_with_metadata)
+                draw.text((20, 70), json.dumps(p.extra_generation_params, indent=2))
+                frame_to_render = np.asarray(processed_image_with_metadata)
+                frame_to_loop_back = np.asarray(processed_image)
+            else:
+                frame_to_render = np.asarray(processed_image)
+                frame_to_loop_back = frame_to_render
+            
             #Save frame
             process2.stdin.write(
-                out_frame
+                frame_to_render
                 .astype(np.uint8)
                 .tobytes()
             )
             if (save_images):
-                cv2.imwrite(f"{output_path}-{frame_pos:05}.png", cv2.cvtColor(out_frame, cv2.COLOR_RGB2BGR))
+                cv2.imwrite(f"{output_path}-{frame_pos:05}.png", cv2.cvtColor(frame_to_render, cv2.COLOR_RGB2BGR))
 
             # Save frames for loopback
-            out_frame_history.append(out_frame)
+            out_frame_history.append(frame_to_loop_back)
             frame_pos += 1
 
         logging.info("About to close video streams.")
@@ -275,6 +295,12 @@ def parseIntOrDefault(input, default):
 def parseFloatOrDefault(input, default):
     return float(input) if input else default    
 
+#### File utils:
+def get_output_path(output_path, img2img_default_output_path):
+    output_path = re.sub('<timestamp>', datetime.now().strftime("%Y%m%d-%H%M%S"), output_path)
+    output_path = re.sub('<img2img_output_path>', img2img_default_output_path, output_path)
+    return output_path
+
 #### Video utils:
 def video_frames(video_file):
     num_frames = get_video_info(video_file)['nb_frames']
@@ -340,7 +366,7 @@ class ImageTransformer():
         # Get projection matrix
         mat = self.get_M(rtheta, rphi, rgamma, dx, dy, dz)
         
-        return cv2.warpPerspective(self.image.copy(), mat, (self.width, self.height))
+        return cv2.warpPerspective(self.image.copy(), mat, (self.width, self.height), flags=cv2.INTER_LANCZOS4  , borderMode=cv2.BORDER_REFLECT)
 
 
     """ Get Perspective Projection Matrix """

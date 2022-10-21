@@ -43,8 +43,7 @@ const analytics = getAnalytics(app);
 //////////////////////////////////////////
 // Config
 
-const version = "0.01"
-const numPrompts = 4;
+const version = "0.02"
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
 const MenuProps = {
@@ -55,10 +54,11 @@ const MenuProps = {
     },
   },
 };
-const interpolatableFields = ['seed', 'denoise', 'prompt_1_weight', 'prompt_2_weight', 'prompt_3_weight', 'prompt_4_weight', 'scale', 'rotx', 'roty', 'rotz',
+const interpolatableFields = ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4', 'scale', 'rotx', 'roty', 'rotz',
   'panx', 'pany', 'zoom', 'loopback_frames', 'loopback_decay',
 ];
-const default_prompts = [...Array(numPrompts)].map((i) => ({ positive: "", negative: "" }))
+const default_prompts = { positive: "A cat :${prompt_weight_1} AND a dog :${prompt_weight_2} AND a duck :${prompt_weight_3} AND a psychopath :${prompt_weight_4}",
+negative: "boring" }
 const default_options = {
   input_fps: "",
   output_fps: "",
@@ -70,12 +70,13 @@ const default_keyframes = [
   {
     frame: 0, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
     pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
-    prompt_1_weight: 1, prompt_2_weight: 0, prompt_3_weight: 0, prompt_4_weight: 0
+    prompt_weight_1: 1, prompt_weight_2: 0, prompt_weight_3: 1, prompt_weight_3_i: 'L*tri(0.5,0,100,0.5)',
+    prompt_weight_4: 0, prompt_weight_4_i: 'L*sin(0.5,50,100,0.5)'
   },
   {
     frame: 199, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
     pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
-    prompt_1_weight: 0, prompt_2_weight: 1, prompt_3_weight: 0, prompt_4_weight: 0
+    prompt_weight_1: 0, prompt_weight_2: 1, prompt_weight_3: 0, prompt_weight_4: 1
   }
 ];
 
@@ -85,6 +86,59 @@ function loadFromQueryString(key) {
   let loadedStateStr = qps.get("parsec");
   if (loadedStateStr) {
     let loadedState = JSON.parse(loadedStateStr);
+
+    // Compatibility with query strings from previous versions: flatten separate prompts into template
+    let compat_applied = false;
+    if (key==='prompts' 
+        && typeof loadedState['prompts'] === 'object'
+        && loadedState['prompts'].length === 4) {
+        
+          let newPositivePrompts = [];
+          let newNegativePrompts = [];
+
+          for (let i=0; i<4; i++) {
+            let offset = i+1;
+            if (loadedState['prompts'][i]['negative']) {
+              newNegativePrompts.push(loadedState['prompts'][i]['negative'] + ' :${prompt_weight_'+(offset)+'}')
+              delete loadedState['prompts'][i]['negative'];
+              compat_applied = true;
+            }            
+            if (loadedState['prompts'][i]['positive']) {
+              newPositivePrompts.push(loadedState['prompts'][i]['positive'] + ' :${prompt_weight_'+(offset)+'}')
+              delete loadedState['prompts'][i]['positive'];
+              compat_applied = true;
+            }
+          }
+          loadedState['prompts'] = {
+            negative: newNegativePrompts.join(' AND '),
+            positive: newPositivePrompts.join(' AND ')
+          }
+    }
+    // Compatibility with query strings from previous versions: accomodate rename of parameters prompt_N_weight to prompt_weight_N
+    if (key==='keyframes') {
+      for (let f in loadedState['keyframes']) {
+        for (let i=1; i<=4; i++) {
+            if (typeof loadedState['keyframes'][f]['prompt_weight_'+i] === 'undefined'
+            && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight'] !== 'undefined') {
+              loadedState['keyframes'][f]['prompt_weight_'+i] = loadedState['keyframes'][f]['prompt_'+i+'_weight'];
+              delete loadedState['keyframes'][f]['prompt_'+i+'_weight'];
+              compat_applied = true;
+            }
+            if (typeof loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] === 'undefined'
+            && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight_i'] !== 'undefined') {
+              loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] = loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
+              delete loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
+              compat_applied = true;
+            }            
+        }
+      }
+    }
+    if (compat_applied) {
+      console.log("Some values in the query string were updated because they seem to be from an older version of Parseq");
+      const url = new URL(window.location);
+      url.searchParams.set('parsec', JSON.stringify(loadedState));
+    }
+
     return loadedState[key];
   }
 }
@@ -130,7 +184,7 @@ const App = () => {
   const [options, setOptions] = useState(loadFromQueryString('options') || default_options)
   const [frameIdMap, setFrameIdMap] = useState(new Map());
   const [displayFields, setDisplayFields] = useState(interpolatableFields);
-  const [visFields, setVisFields] = useState(['denoise', 'prompt_1_weight', 'prompt_2_weight']);
+  const [visFields, setVisFields] = useState(['denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
   const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
 
 
@@ -283,8 +337,9 @@ const App = () => {
   const handleChangePrompts = useCallback((e) => {
     const value = e.target.value;
     const id = e.target.id;
-    let [pos_or_neg, _, p] = id.split(/_/);
-    prompts[p][pos_or_neg] = value;
+    let [pos_or_neg, _] = id.split(/_/);
+    prompts[pos_or_neg] = value;
+    console.log(prompts)
     setPrompts(prompts);
     setQueryParamState();
     setNeedsRender(true);
@@ -392,24 +447,13 @@ const App = () => {
 
     // Calculate rendered prompt based on prompts and weights
     all_frame_numbers.forEach((frame) => {
-      let weighted_prompts_pos = [];
-      let weighted_prompts_neg = [];
-      for (var p = 0; p < numPrompts; p++) {
-        let weight = rendered_frames[frame]['prompt_' + (p + 1) + '_weight'];
-        if (rendered_frames[frame]['prompt_' + (p + 1) + '_weight'] > 0.001) {
-          if (prompts[p].positive) {
-            weighted_prompts_pos.push(prompts[p].positive + ' :' + weight)
-          }
-          if (prompts[p].negative) {
-            weighted_prompts_neg.push(prompts[p].negative + ' :' + weight)
-          }
-        }
-      }
+
       rendered_frames[frame] = {
         ...rendered_frames[frame] || {},
-        positive_prompt: "" + weighted_prompts_pos.join(' AND '),
-        negative_prompt: "" + weighted_prompts_neg.join(' AND ')
+        positive_prompt: prompts.positive.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight]),
+        negative_prompt: prompts.negative.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight])
       }
+
     });
 
     // Calculate subseed & subseed strength based on fractional part of seed.
@@ -642,33 +686,29 @@ const App = () => {
       <Grid xs={8}>
         <h3>Prompts</h3>
         <FormControl fullWidth>
-          {prompts.map((prompt, i) => <div>
             <TextField
-              id={"positive_prompt_" + i}
-              label={"Positive prompt " + (i + 1)}
+              id={"positive_prompt"}
+              label={"Positive prompt"}
               multiline
-              rows={2}
-              defaultValue={prompt.positive}
-              style={{ width: '40%', marginTop: '10px', marginRight: '10px' }}
+              rows={4}
+              defaultValue={prompts.positive}
+              style={{marginRight: '10px' }}
               InputProps={{ style: { fontSize: '0.75em' } }}
               onChange={handleChangePrompts}
               size="small"
               variant="standard" />
             <TextField
               hiddenLabel
-              id={"negative_prompt_" + i}
-              label={"Negative prompt " + (i + 1)}
+              id={"negative_prompt"}
+              label={"Negative prompt"}
               multiline
-              rows={2}
-              defaultValue={prompt.negative}
-              style={{ width: '40%', marginTop: '10px', marginRight: '10px' }}
+              rows={4}
+              defaultValue={prompts.negative}
+              style={{marginTop: '10px', marginRight: '10px' }}
               InputProps={{ style: { fontSize: '0.75em' } }}
               onChange={handleChangePrompts}
               size="small"
               variant="standard" />
-          </div>
-          )}
-
         </FormControl>
       </Grid>
       <Grid xs={4}>
@@ -760,5 +800,3 @@ const App = () => {
 };
 
 export default App;
-
-

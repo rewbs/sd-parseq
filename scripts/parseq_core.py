@@ -21,7 +21,8 @@ from datetime import datetime
 
 class Parseq():
 
-    def run(self, p, input_img, input_path:string, output_path:string, save_images:bool, dry_run_mode:bool, overlay_metadata:bool, default_output_dir:string, param_script_string:string, sd_processor):
+    def run(self, p, input_img, input_path:string, output_path:string, save_images:bool, dry_run_mode:bool,
+            overlay_metadata:bool, default_output_dir:string, param_script_string:string, sd_processor):
         # TODO - batch count & size support (only useful is seed is random)
 
         output_path = get_output_path(output_path, default_output_dir)
@@ -173,8 +174,6 @@ class Parseq():
             #for name, value in param_script[frame_pos]:
             logging.info(param_script[frame_pos])
             p.extra_generation_params=param_script[frame_pos]
-            del p.extra_generation_params['positive_prompt']
-            del p.extra_generation_params['negative_prompt']
             p.extra_generation_params['input_type']=input_type
 
             logging.info(f"[{frame_pos}] - seed:{p.seed}; subseed:{p.subseed}; subseed_strength:{p.subseed_strength}; scale:{p.scale}; ds:{p.denoising_strength}; prompt: {p.prompt}; negative_prompt: {p.negative_prompt}")
@@ -189,7 +188,7 @@ class Parseq():
             if (overlay_metadata):
                 processed_image_with_metadata = processed_image.copy()
                 draw = ImageDraw.Draw(processed_image_with_metadata)
-                draw.text((20, 70), json.dumps(p.extra_generation_params, indent=2))
+                draw.text((10, 10), json.dumps(p.extra_generation_params, indent=2))
                 frame_to_render = np.asarray(processed_image_with_metadata)
                 frame_to_loop_back = np.asarray(processed_image)
             else:

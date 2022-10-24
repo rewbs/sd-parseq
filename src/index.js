@@ -1,3 +1,5 @@
+import './wdyr'; 
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import {
@@ -18,7 +20,7 @@ const router = createBrowserRouter([
   {
     path: "/interpreter",
     element: <Interpreter/>,
-  },  
+  }  
 ]);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));

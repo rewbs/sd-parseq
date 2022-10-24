@@ -81,59 +81,6 @@ input
     -> _ expression _  {% d => [d[1]] %}
     
 
-# top_level_statements
-#     ->  top_level_statement
-#         {%
-#             d => [d[0]]
-#         %}
-#     |  top_level_statement _ "\n" _ top_level_statements
-#         {%
-#             d => [
-#                 d[0],
-#                 ...d[4]
-#             ]
-#         %}
-#     # below 2 sub-rules handle blank lines
-#     |  _ "\n" top_level_statements
-#         {%
-#             d => d[2]
-#         %}
-#     |  _
-#         {%
-#             d => []
-#         %}
-
-# top_level_statement
-#     -> fun_definition   {% id %}
-#     |  proc_definition  {% id %}
-#     |  line_comment     {% id %}
-
-# fun_definition
-#     -> "fun" __ identifier _ "(" _ parameter_list _ ")" _ code_block
-#         {%
-#             d => ({
-#                 type: "fun_definition",
-#                 name: d[2],
-#                 parameters: d[6],
-#                 body: d[10],
-#                 start: tokenStart(d[0]),
-#                 end: d[10].end
-#             })
-#         %}
-
-# proc_definition
-#     -> "proc" __ identifier _ "(" _ parameter_list _ ")" _ code_block
-#         {%
-#             d => ({
-#                 type: "proc_definition",
-#                 name: d[2],
-#                 parameters: d[6],
-#                 body: d[10],
-#                 start: tokenStart(d[0]),
-#                 end: d[10].end
-#             })
-#         %}
-
 parameter_list
     -> null        {% () => [] %}
     | identifier   {% d => [d[0]] %}
@@ -141,63 +88,6 @@ parameter_list
         {%
             d => [d[0], ...d[4]]
         %}
-
-# code_block -> "[" executable_statements "]"
-#     {%
-#         (d) => ({
-#             type: "code_block",
-#             statements: d[1],
-#             start: tokenStart(d[0]),
-#             end: tokenEnd(d[2])
-#         })
-#     %}
-
-# executable_statements
-#     -> _
-#         {% () => [] %}
-#     |  _ "\n" executable_statements
-#         {% (d) => d[2] %}
-#     |  _ executable_statement _
-#         {% d => [d[1]] %}
-#     |  _ executable_statement _ "\n" executable_statements
-#         {%
-#             d => [d[1], ...d[4]]
-#         %}
-
-# executable_statement
-#    -> return_statement     {% id %}
-#    |  var_assignment       {% id %}
-#    |  call_statement       {% id %}
-#    |  line_comment         {% id %}
-#    |  indexed_assignment   {% id %}
-#    |  while_loop           {% id %}
-#    |  if_statement         {% id %}
-#    |  for_loop             {% id %}
-
-# return_statement
-#    -> "return" __ expression
-#        {%
-#            d => ({
-#                type: "return_statement",
-#                value: d[2],
-#                start: tokenStart(d[0]),
-#                end: d[2].end
-#            })
-#        %}
-
-# var_assignment
-#     -> identifier _ "=" _ expression
-#         {%
-#             d => ({
-#                 type: "var_assignment",
-#                 var_name: d[0],
-#                 value: d[4],
-#                 start: d[0].start,
-#                 end: d[4].end
-#             })
-#         %}
-
-# call_statement -> call_expression  {% id %}
 
 call_expression
     ->  identifier _ "(" named_argument_list ")"
@@ -221,44 +111,6 @@ call_expression
             })
         %}
         
-
-# indexed_access
-#     -> unary_expression _ "[" _ expression _ "]"
-#         {%
-#             d => ({
-#                 type: "indexed_access",
-#                 subject: d[0],
-#                 index: d[4],
-#                 start: d[0].start,
-#                 end: tokenEnd(d[6])
-#             })
-#         %}
-
-# indexed_assignment
-#     -> unary_expression _ "[" _ expression _ "]" _ "=" _ expression
-#         {%
-#             d => ({
-#                 type: "indexed_assignment",
-#                 subject: d[0],
-#                 index: d[4],
-#                 value: d[10],
-#                 start: d[0].start,
-#                 end: d[10].end
-#             })
-#         %}
-
-# while_loop
-#     -> "while" __ expression __ code_block
-#         {%
-#             d => ({
-#                 type: "while_loop",
-#                 condition: d[2],
-#                 body: d[4],
-#                 start: tokenStart(d[0]),
-#                 end: d[4].end
-#             })
-#         %}
-
 if_expression
     -> "if" __ expression __ expression
         {%
@@ -294,19 +146,6 @@ if_expression
                 end: d[8].end
             })
        %}
-
-# for_loop
-#     -> "for" __ identifier __ "in" __ expression _ code_block
-#         {%
-#             d => ({
-#                 type: "for_loop",
-#                 loop_variable: d[2],
-#                 iterable: d[6],
-#                 body: d[8],
-#                 start: tokenStart(d[0]),
-#                 end: d[8].end
-#             })
-#         %}
 
 argument_list
     -> null {% () => [] %}
@@ -390,8 +229,8 @@ additive_expression
         %}
 
 multiplicative_expression
-    -> number_with_unit     {% id %}
-    |  number_with_unit _ [*/%] _ multiplicative_expression
+    -> negation     {% id %}
+    |  negation _ [*/%] _ multiplicative_expression
         {%
             d => ({
                 type: "binary_operation",
@@ -402,6 +241,18 @@ multiplicative_expression
                 end: d[4].end
             })
         %}
+
+negation
+    -> number_with_unit     {% id %}
+    | "-" number_with_unit
+        {%
+            d => ({
+                type: "negation",
+                value: d[1],
+                start: d[0].start,
+                end: d[1].end
+            })        
+        %}    
 
 number_with_unit
      -> number unit
@@ -417,8 +268,8 @@ number_with_unit
     | unary_expression      {% id %}
 
 unary_expression
-    -> number               {% id %}  
-    |  identifier
+    -> number               {% id %}
+    | identifier
         {%
             d => ({
                 type: "var_reference",
@@ -429,68 +280,11 @@ unary_expression
         %}
     |  call_expression      {% id %}
     |  if_expression      {% id %}
-    # |  string_literal       {% id %}
-    # |  list_literal         {% id %}
-    # |  dictionary_literal   {% id %}
     |  boolean_literal      {% id %}
-    # |  indexed_access       {% id %}
-    # |  fun_expression       {% id %}
     |  "(" expression ")"
         {%
             data => data[1]
         %}
-
-# list_literal
-#     -> "[" list_items "]"
-#         {%
-#             d => ({
-#                 type: "list_literal",
-#                 items: d[1],
-#                 start: tokenStart(d[0]),
-#                 end: tokenEnd(d[2])
-#             })
-#         %}
-
-# list_items
-#     -> null
-#         {% () => [] %}
-#     |  _ml expression _ml
-#         {% d => [d[1]] %}
-#     |  _ml expression _ml "," list_items
-#         {%
-#             d => [
-#                 d[1],
-#                 ...d[4]
-#             ]
-#         %}
-
-# dictionary_literal
-#     -> "{" dictionary_entries "}"
-#         {%
-#             d => ({
-#                 type: "dictionary_literal",
-#                 entries: d[1],
-#                 start: tokenStart(d[0]),
-#                 end: tokenEnd(d[2])
-#             })
-#         %}
-
-# dictionary_entries
-#     -> null  {% () => [] %}
-#     |  _ml dictionary_entry _ml
-#         {%
-#             d => [d[1]]
-#         %}
-#     |  _ml dictionary_entry _ml "," dictionary_entries
-#         {%
-#             d => [d[1], ...d[4]]
-#         %}
-
-# dictionary_entry
-#     -> identifier _ml ":" _ml expression
-#         {%
-#             d => [d[0], d[4]]
-#         %}
 
 boolean_literal
     -> "true"
@@ -511,18 +305,6 @@ boolean_literal
                 end: tokenEnd(d[0])
             })
         %}
-
-# fun_expression
-#     -> "fun" _ "(" _ parameter_list _ ")" _ code_block
-#         {%
-#             d => ({
-#                 type: "fun_expression",
-#                 parameters: d[4],
-#                 body: d[8],
-#                 start: tokenStart(d[0]),
-#                 end: d[8].end
-#             })
-#         %}
 
 line_comment -> %comment {% convertTokenId %}
 

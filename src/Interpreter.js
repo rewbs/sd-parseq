@@ -1,159 +1,81 @@
-import nearley from 'nearley';
-import grammar from './parseq-lang.js';
 import {TextField, Button} from '@mui/material';
-import { linear, polynomial, step } from 'everpolate';
 import React, { useCallback, useState } from 'react';
-
-const keyframes = [
-  {frame: 0, denoise: 0.5},
-  {frame: 50, denoise: 0.1},
-  {frame: 99, denoise: 1}
-]
-
-const FPS = 20;
-const BPM = 140;
-const time_sig = '4/4';
-
-function get_keyframes_interpolatable(field) {
-  return {
-    definedFrames: keyframes.map(kf => kf.frame),
-    definedValues: keyframes.map(kf => kf[field])
-  };
-}
-
-function linear_interpolation(field, frame) {
-  let {definedFrames, definedValues} = get_keyframes_interpolatable(field);
-  return linear(frame, definedFrames, definedValues);
-}
-
-function poly_interpolation(field, frame) {
-  let {definedFrames, definedValues} = get_keyframes_interpolatable(field);
-  return polynomial(frame, definedFrames, definedValues);
-}
-
-function step_interpolation(field, frame) {
-  let {definedFrames, definedValues} = get_keyframes_interpolatable(field);
-  return step(frame, definedFrames, definedValues);
-}
-
-
-
-// Evaluation of parsec interpolation lang
-function interpret(ast, field) {
-  switch (ast.type) {
-    case 'var_reference':
-      switch(ast.var_name.value) {
-        case 'L':
-          return f => linear_interpolation(field, f);
-        case 'P':
-          return f => poly_interpolation(field, f);
-        case 'S':
-          return f => step_interpolation(field,f);
-        case 'f':
-          return f => parseFloat(f);
-        default:
-          console.error(`Unrecognised variable ${ast.var_name.value} at ${ast.var_name.start.line}:${ast.var_name.start.col}`)
-          return null;
-      }
-    case 'number_literal':
-      return f => ast.value
-    case 'number_with_unit':
-      switch (ast.right.value) {
-        case 'f':
-          return f => interpret(ast.left, field);
-        case 's':
-          return f => interpret(ast.left, field);
-        case 's':
-          return f => interpret(ast.left, field);
-        default:
-          console.error(`Unrecognised conversion unit ${ast.right.value} at ${ast.right.start.line}:${ast.right.start.col}`)
-
-      }
-    // case 'sin':
-    //   return f => {
-    //     let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-    //     return centre + Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period) * amp;
-    //   };
-    // case 'sq':
-    //   return f => {
-    //     let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-    //     return centre + (Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period) >= 0 ? 1 : -1) * amp;
-    //   };
-    // case 'tri':
-    //   return f => {
-    //     let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-    //     return centre + Math.asin(Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period)) * (2 * amp) / Math.PI;
-    //   };
-    // case 'saw':
-    //   return f => {
-    //     let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-    //     return centre + ((phase + parseFloat(f)) % period) * amp / period
-    //   };
-    // case 'min':
-    //     return f => {
-    //       let [left, right] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-    //       return Math.min(left,right)
-    //     };
-    // case 'max':
-    //   return f => {
-    //     let [left, right] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-    //     return Math.max(left,right)
-    //   }          
-    // case 'sum':
-    //   return f => interpret(ast.leftOperand, allInterps, field)(f) + interpret(ast.rightOperand, allInterps, field)(f)
-    // case 'sub':
-    //   return f => interpret(ast.leftOperand, allInterps, field)(f) - interpret(ast.rightOperand, allInterps, field)(f)
-    // case 'mul':
-    //   return f => interpret(ast.leftOperand, allInterps, field)(f) * interpret(ast.rightOperand, allInterps, field)(f)
-    // case 'div':
-    //   return f => interpret(ast.leftOperand, allInterps, field)(f) / interpret(ast.rightOperand, allInterps, field)(f)
-
-    default:
-      console.error(`Unrecognised expression ${ast.type} at ${ast.start.line}:${ast.start.col}`)
-      return null
-  }
-}
-
+import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { parse, interpret, InterpreterContext } from './parseq-lang-interpreter'
 
 const Interpreter = () => {
 
-  const [output, setOutput] = useState();
+  const testKeyframes = [
+    {frame: 0, denoise: 0.5},
+    {frame: 50, denoise: 0.2},
+    {frame: 99, denoise: 1}
+  ]
+
   var input;
+  const [outputText, setOutputText] = useState();
+  const [dataToGraph, setDataToGraph] = useState();
+
+  function componentDidMount(prevProps) {
+    setOutputText("");
+    setDataToGraph([]);
+  }    
 
   const handleChangeInput = useCallback((e) => {
     input = e.target.value;
-    console.log(`Received: ${input}`);
+    setOutputText(`[Received: ${input}]`);
   }, []);
 
   const handleSubmit = useCallback((e) => {
-    setOutput(`Parsing: ${input}`);
-    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
+
+    const fieldName = "denoise";
+    const context = new InterpreterContext({
+      fieldName: fieldName,
+      thisKf: 0,
+      definedFrames: testKeyframes.filter(kf => typeof kf[fieldName] !== "undefined").map(kf => kf.frame),
+      definedValues: testKeyframes.filter(kf => typeof kf[fieldName] !== "undefined").map(kf => kf[fieldName]),
+      FPS: 20,
+      BPM: 140,
+    });
+
+    setOutputText(`Parsing: ${input}`);
+    let parsed;
     try {       
-      parser.feed(input);
+      parsed = parse(input);      
     } catch(error){
-        setOutput(`${output}\n\n${error}`);    
+        setOutputText(`Parsing: ${input}\n\nError: ${error}`);    
         console.error(error);
-        return
+        return;
     }
-    var parsed = parser.results[0][0];
     
-    setOutput(`${output}\n\nInterpreting: ${input}`);    
-    
-    const frameFetcher = interpret(parsed, "denoise")
+    setOutputText(`Parsing done. Interpreting: ${input}`);    
+
+    const frameFetcher = interpret(parsed, context)
     if (!frameFetcher) {
-      setOutput(`${output}\n\nFailed, see console.`);    
+      setOutputText(`Interpreting: ${input} for ${context.fieldName}:${context.thisKf} \n\nFailed, see console.`);    
       return;
     }
 
-    // TODO handle parse errors
+    setOutputText(`Interpreting done  for ${context.fieldName}:${context.thisKf}. Ready to invoke: ${input}`);    
 
-    let output_text = "Output:\n"
+    let result = [];
+    let output_text = "";
     for (let frame=0; frame<100; frame++) {
-      console.log(frameFetcher(frame))
-      output_text += `${frame}: ${frameFetcher(frame)}\n`
+      try {
+        let computedValue = frameFetcher(frame);
+        output_text += `${frame}: ${computedValue}\n`
+        result.push({
+          "frame": frame,
+          "denoise": computedValue
+        })
+      } catch (error) {
+        setOutputText(`Evaluating ${input} for ${context.fieldName}:${context.thisKf} with frame ${frame}:\n\nError: ${error}`);    
+        console.error(error);        
+        return
+      }
     }
-
-    setOutput(`${output}\n\nRESULT:\n\n${output_text}`);
+    
+    setDataToGraph(result);
+    setOutputText(output_text);
   }, []);
 
   return (<div >
@@ -168,11 +90,22 @@ const Interpreter = () => {
       onChange={handleChangeInput}
       variant="standard" />
     <Button variant="contained" style={{ marginRight: 10}} onClick={handleSubmit}>Interpret</Button>
+    <ResponsiveContainer width="100%" height={300}>
+          <LineChart margin={{ top: 20, right: 30, left: 0, bottom: 0 }} data={dataToGraph}>
+            <Line type="monotone" dataKey='denoise' dot={'{ stroke: red}'} stroke='red' activeDot={{ r: 8 }} />
+            <Legend layout="horizontal" wrapperStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #d5d5d5', borderRadius: 3, lineHeight: '40px' }} />
+            <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
+            <ReferenceLine y={0} stroke="black" />
+            <XAxis dataKey="frame" />
+            <YAxis />
+            <Tooltip />
+          </LineChart>
+    </ResponsiveContainer>    
     <TextField
       fullWidth
       id={"output"}
       label={"Output"}
-      value={output}
+      value={outputText}
       multiline
       rows={100}
       style={{margin: '10px' }}

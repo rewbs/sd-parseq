@@ -193,8 +193,8 @@ var grammar = {
             end: d[4].end
         })
                 },
-    {"name": "multiplicative_expression", "symbols": ["number_with_unit"], "postprocess": id},
-    {"name": "multiplicative_expression", "symbols": ["number_with_unit", "_", /[*/%]/, "_", "multiplicative_expression"], "postprocess": 
+    {"name": "multiplicative_expression", "symbols": ["negation"], "postprocess": id},
+    {"name": "multiplicative_expression", "symbols": ["negation", "_", /[*/%]/, "_", "multiplicative_expression"], "postprocess": 
         d => ({
             type: "binary_operation",
             operator: convertToken(d[2]),
@@ -203,6 +203,15 @@ var grammar = {
             start: d[0].start,
             end: d[4].end
         })
+                },
+    {"name": "negation", "symbols": ["number_with_unit"], "postprocess": id},
+    {"name": "negation", "symbols": [{"literal":"-"}, "number_with_unit"], "postprocess": 
+        d => ({
+            type: "negation",
+            value: d[1],
+            start: d[0].start,
+            end: d[1].end
+        })        
                 },
     {"name": "number_with_unit", "symbols": ["number", "unit"], "postprocess": 
         d => ({

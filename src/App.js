@@ -1,5 +1,4 @@
 import { AgGridReact } from 'ag-grid-react'; // the AG Grid React Component
-import { linear, polynomial, step } from 'everpolate';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
@@ -13,10 +12,9 @@ import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import { Tooltip as Tooltip2 } from '@mui/material';
 import { FormControlLabel, FormGroup, Checkbox, Alert, Button } from '@mui/material';
-import Grid from '@mui/material/Unstable_Grid2'; // Grid version 2
-import nearley from 'nearley';
-import grammar from './grammar.js';
+import Grid from '@mui/material/Unstable_Grid2';
 import stc from 'string-to-color';
+import { parse, interpret, defaultInterpolation, InterpreterContext } from './parseq-lang-interpreter'
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -25,6 +23,7 @@ import './robin.css';
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
+import { ContactSupportOutlined, LocalConvenienceStoreOutlined } from '@mui/icons-material';
 const firebaseConfig = {
   apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
   authDomain: "sd-parseq.firebaseapp.com",
@@ -43,8 +42,7 @@ const analytics = getAnalytics(app);
 //////////////////////////////////////////
 // Config
 
-const version = "0.01"
-const numPrompts = 4;
+const version = "0.02"
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
 const MenuProps = {
@@ -55,10 +53,11 @@ const MenuProps = {
     },
   },
 };
-const interpolatableFields = ['seed', 'denoise', 'prompt_1_weight', 'prompt_2_weight', 'prompt_3_weight', 'prompt_4_weight', 'scale', 'rotx', 'roty', 'rotz',
+const interpolatableFields = ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4', 'scale', 'rotx', 'roty', 'rotz',
   'panx', 'pany', 'zoom', 'loopback_frames', 'loopback_decay',
 ];
-const default_prompts = [...Array(numPrompts)].map((i) => ({ positive: "", negative: "" }))
+const default_prompts = { positive: "A cat :${prompt_weight_1} AND a dog :${prompt_weight_2} AND a duck :${prompt_weight_3} AND a psychopath :${prompt_weight_4}",
+negative: "boring" }
 const default_options = {
   input_fps: "",
   output_fps: "",
@@ -70,21 +69,94 @@ const default_keyframes = [
   {
     frame: 0, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
     pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
-    prompt_1_weight: 1, prompt_2_weight: 0, prompt_3_weight: 0, prompt_4_weight: 0
+    prompt_weight_1: 1, prompt_weight_2: 0, prompt_weight_3: 1, prompt_weight_3_i: 'L*tri(period=100, phase=0, amp=0.5, centre=0.5)',
+    prompt_weight_4: 0, prompt_weight_4_i: 'L*sin(period=100, phase=50, amp=0.5, centre=0.5)'
   },
   {
     frame: 199, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
     pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
-    prompt_1_weight: 0, prompt_2_weight: 1, prompt_3_weight: 0, prompt_4_weight: 0
+    prompt_weight_1: 0, prompt_weight_2: 1, prompt_weight_3: 0, prompt_weight_4: 1
   }
 ];
 
 
 function loadFromQueryString(key) {
   let qps = new URLSearchParams(window.location.search);
-  let loadedStateStr = qps.get("parsec");
+  let loadedStateStr = qps.get("parseq") || qps.get("parsec");
   if (loadedStateStr) {
     let loadedState = JSON.parse(loadedStateStr);
+
+    // Compatibility with query strings from previous versions: flatten separate prompts into template
+    let compat_applied = false;
+    if (key==='prompts' 
+        && typeof loadedState['prompts'] === 'object'
+        && loadedState['prompts'].length === 4) {
+        
+          let newPositivePrompts = [];
+          let newNegativePrompts = [];
+
+          for (let i=0; i<4; i++) {
+            let offset = i+1;
+            if (loadedState['prompts'][i]['negative']) {
+              newNegativePrompts.push(loadedState['prompts'][i]['negative'] + ' :${prompt_weight_'+(offset)+'}')
+              delete loadedState['prompts'][i]['negative'];
+              compat_applied = true;
+            }            
+            if (loadedState['prompts'][i]['positive']) {
+              newPositivePrompts.push(loadedState['prompts'][i]['positive'] + ' :${prompt_weight_'+(offset)+'}')
+              delete loadedState['prompts'][i]['positive'];
+              compat_applied = true;
+            }
+          }
+          loadedState['prompts'] = {
+            negative: newNegativePrompts.join(' AND '),
+            positive: newPositivePrompts.join(' AND ')
+          }
+    }
+    // Compatibility with query strings from previous versions: accomodate rename of parameters prompt_N_weight to prompt_weight_N
+    if (key==='keyframes') {
+      for (let f in loadedState['keyframes']) {
+        for (let i=1; i<=4; i++) {
+            if (typeof loadedState['keyframes'][f]['prompt_weight_'+i] === 'undefined'
+            && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight'] !== 'undefined') {
+              loadedState['keyframes'][f]['prompt_weight_'+i] = loadedState['keyframes'][f]['prompt_'+i+'_weight'];
+              delete loadedState['keyframes'][f]['prompt_'+i+'_weight'];
+              compat_applied = true;
+            }
+            if (typeof loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] === 'undefined'
+            && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight_i'] !== 'undefined') {
+              loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] = loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
+              delete loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
+              compat_applied = true;
+            }
+        }
+      }
+    }
+    // Compatibility with waveform param ordering form previous versions
+    if (key==='keyframes') {
+      if (typeof loadedState['meta'] === "undefined") {
+        for (let frame in loadedState['keyframes']) {
+          interpolatableFields.forEach((field) => {
+            let formula = loadedState['keyframes'][frame][field+'_i'];
+            if (formula != null) {
+              let matches = formula.match(/(?<before>.*?)(?<wave>sin|sq|tri|saw)\((?<centre>.*?),(?<phase>.*?),(?<period>.*?),(?<amp>.*?)\)(?<after>.*?)/);
+              if (matches != null && typeof matches['groups'] !== 'undefined' && matches.length >= 5) {                
+                let newFormula = `${matches.groups.before}${matches.groups.wave}(period=${matches.groups.period}, phase=${matches.groups.phase}, amp=${matches.groups.amp}, centre=${matches.groups.centre})${matches.groups.after}`
+                loadedState['keyframes'][frame][field+'_i'] = newFormula;
+                compat_applied = true;
+              }
+            }
+          });
+        }
+      }
+    }
+
+    if (compat_applied) {
+      console.log("Some values in the query string were updated because they seem to be from an older version of Parseq");
+      const url = new URL(window.location);
+      url.searchParams.set('parsec', JSON.stringify(loadedState));
+    }
+
     return loadedState[key];
   }
 }
@@ -130,7 +202,7 @@ const App = () => {
   const [options, setOptions] = useState(loadFromQueryString('options') || default_options)
   const [frameIdMap, setFrameIdMap] = useState(new Map());
   const [displayFields, setDisplayFields] = useState(interpolatableFields);
-  const [visFields, setVisFields] = useState(['denoise', 'prompt_1_weight', 'prompt_2_weight']);
+  const [visFields, setVisFields] = useState(['denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
   const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
 
 
@@ -283,8 +355,8 @@ const App = () => {
   const handleChangePrompts = useCallback((e) => {
     const value = e.target.value;
     const id = e.target.id;
-    let [pos_or_neg, _, p] = id.split(/_/);
-    prompts[p][pos_or_neg] = value;
+    let [pos_or_neg, _] = id.split(/_/);
+    prompts[pos_or_neg] = value;
     setPrompts(prompts);
     setQueryParamState();
     setNeedsRender(true);
@@ -304,12 +376,14 @@ const App = () => {
   function setQueryParamState() {
     const url = new URL(window.location);
     let qp = getPersistableState();
-    url.searchParams.set('parsec', JSON.stringify(qp));
+    url.searchParams.delete('parsec');
+    url.searchParams.set('parseq', JSON.stringify(qp));
     window.history.replaceState({}, '', url);
   }
 
   function getPersistableState() {
     return {
+      "meta": { "version": version },
       prompts: prompts,
       options: options,
       keyframes: getKeyframes(),
@@ -346,70 +420,75 @@ const App = () => {
       return;
     }
 
-
     var rendered_frames = [];
     var all_frame_numbers = getAllFrames();
 
-    // Pre-calculate all interpolations for all fields
-    // (TODO: optimise, do this lazily when required for render)
-    var allInterps = {};
-    interpolatableFields.forEach((field) => {
-      console.log("Computing interpolations for: ", field);
-      allInterps[field] = computeAllInterpolations(field);
-    });
-
     // Calculate actual rendered value for all interpolatable fields
     interpolatableFields.forEach((field) => {
-      var lastFetchFieldVal = f => allInterps[field][f]['linear']
+      const filtered = keyframes.filter(kf => !(kf[field] === undefined || isNaN(kf[field]) ||  kf[field] === ""))
+      const definedFrames = filtered.map(kf => kf.frame);
+      const definedValues = filtered.map(kf => Number(kf[field]))
+      let lastInterpolator = f => defaultInterpolation(definedFrames, definedValues, f);
+
       all_frame_numbers.forEach((frame, i) => {
 
         let declaredRow = gridRef.current.api.getRowNode(frameIdMap.get(frame));
-        let fetchFieldVal = lastFetchFieldVal;
+        let interpolator = lastInterpolator;
 
         if (declaredRow !== undefined) {
-          if (declaredRow.data[field + '_i']) {
-            const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
+          var toParse = declaredRow.data[field + '_i'];
+          if (toParse) {
+            let result; 
             try {       
-              parser.feed(declaredRow.data[field + '_i']);
-            } catch(error){
+              result = parse(toParse);
+            } catch (error) {
                 console.error(error);
-                setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (value: <pre>${declaredRow.data[field + '_i']}</pre>): ` + error);
+                setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (value: <pre>${toParse}</pre>): ` + error);
             }
-           
-            // TODO handle parse errors
-            var result = parser.results[0][0];
-            fetchFieldVal = interpret(result, allInterps, field) || lastFetchFieldVal;
+            var context = new InterpreterContext({
+              fieldName: field,
+              thisKf: frame,
+              definedFrames: definedFrames,
+              definedValues: definedValues,
+              FPS: 20,
+              BPM: 140,
+            });
+
+            try {
+              interpolator = interpret(result, context);
+            } catch (error) {
+              console.error(error);
+              setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error);              
+              interpolator = lastInterpolator;
+            }
           }
         }
+        let computed_value = 0;
+        try {
+          computed_value = interpolator(frame) 
+        } catch (error) {
+          console.error(error);
+          setRenderedErrorMessage(`Error invoking interpolation for ${field} at frame ${frame} (${toParse}): ` + error);              
+        }
+
         rendered_frames[frame] = {
           ...rendered_frames[frame] || {},
           frame: frame,
-          [field]: fetchFieldVal(frame)
+          [field]: computed_value
         }
-        lastFetchFieldVal = fetchFieldVal;
+        lastInterpolator = interpolator;
       });
     });
 
     // Calculate rendered prompt based on prompts and weights
     all_frame_numbers.forEach((frame) => {
-      let weighted_prompts_pos = [];
-      let weighted_prompts_neg = [];
-      for (var p = 0; p < numPrompts; p++) {
-        let weight = rendered_frames[frame]['prompt_' + (p + 1) + '_weight'];
-        if (rendered_frames[frame]['prompt_' + (p + 1) + '_weight'] > 0.001) {
-          if (prompts[p].positive) {
-            weighted_prompts_pos.push(prompts[p].positive + ' :' + weight)
-          }
-          if (prompts[p].negative) {
-            weighted_prompts_neg.push(prompts[p].negative + ' :' + weight)
-          }
-        }
-      }
+
       rendered_frames[frame] = {
         ...rendered_frames[frame] || {},
-        positive_prompt: "" + weighted_prompts_pos.join(' AND '),
-        negative_prompt: "" + weighted_prompts_neg.join(' AND ')
+        positive_prompt: prompts.positive.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight]),
+        negative_prompt: prompts.negative.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight])
       }
+
     });
 
     // Calculate subseed & subseed strength based on fractional part of seed.
@@ -427,7 +506,7 @@ const App = () => {
     });
 
     const data = {
-      "meta": {
+      "meta": { 
         "generated_by": "sd_parseq",
         "version": version,
         "generated_at": new Date().toUTCString(),
@@ -441,88 +520,6 @@ const App = () => {
     setRenderedData(data);
     setNeedsRender(false);
   });
-
-  //////////////////////////////////////////
-  // Render utils
-
-  // Returns array of objects with values for all interpolation types for each frame.
-  // TODO: this upfront calculation can be optimised away
-  function computeAllInterpolations(field) {
-    var allFrames = getAllFrames();
-    var declaredPoints = getDeclaredPoints(field, parseFloat); //TODO add per-field parser for clamping
-    if (declaredPoints.size <2) {
-      console.error("Need at least 2 points to interpolate!")
-      return {};
-    }
-    var field_linear = linear(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);
-    var field_poly = polynomial(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);
-    var field_step = step(allFrames, [...declaredPoints.keys()], [...declaredPoints.values()]);
-
-    return allFrames.map((frame) => {
-      return {
-        'linear': field_linear[frame],
-        'poly': field_poly[frame],
-        'step': field_step[frame],
-      }
-    });
-  }
-
-  // Evaluation of parsec interpolation lang
-  function interpret(ast, allInterps, field) {
-    switch (ast.operator) {
-      case 'L':
-        return f => allInterps[field][f]['linear'];
-      case 'P':
-        return f => allInterps[field][f]['poly'];
-      case 'S':
-        return f => allInterps[field][f]['step'];
-      case 'f':
-        return f => parseFloat(f);
-      case 'constant':
-        return f => parseFloat(ast.operand)
-      case 'sin':
-        return f => {
-          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-          return centre + Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period) * amp;
-        };
-      case 'sq':
-        return f => {
-          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-          return centre + (Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period) >= 0 ? 1 : -1) * amp;
-        };
-      case 'tri':
-        return f => {
-          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-          return centre + Math.asin(Math.sin((phase + parseFloat(f)) * Math.PI * 2 / period)) * (2 * amp) / Math.PI;
-        };
-      case 'saw':
-        return f => {
-          let [centre, phase, period, amp] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-          return centre + ((phase + parseFloat(f)) % period) * amp / period
-        };
-      case 'min':
-          return f => {
-            let [left, right] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-            return Math.min(left,right)
-          };
-      case 'max':
-        return f => {
-          let [left, right] = ast.operands.map(op => interpret(op, allInterps, field)()) 
-          return Math.max(left,right)
-        }          
-      case 'sum':
-        return f => interpret(ast.leftOperand, allInterps, field)(f) + interpret(ast.rightOperand, allInterps, field)(f)
-      case 'sub':
-        return f => interpret(ast.leftOperand, allInterps, field)(f) - interpret(ast.rightOperand, allInterps, field)(f)
-      case 'mul':
-        return f => interpret(ast.leftOperand, allInterps, field)(f) * interpret(ast.rightOperand, allInterps, field)(f)
-      case 'div':
-        return f => interpret(ast.leftOperand, allInterps, field)(f) / interpret(ast.rightOperand, allInterps, field)(f)
-      default:
-        return null
-    }
-  }
-
 
   //////////////////////////////////////////
   // Page
@@ -547,22 +544,7 @@ const App = () => {
       <Grid xs={10}>
         <h3>Keyframes for parameter flow</h3>
         <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
-          <AgGridReact
-            ref={gridRef}
-            rowData={loadFromQueryString('keyframes') || default_keyframes}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            animateRows={true}
-            onCellValueChanged={onCellValueChanged}
-            onCellKeyPress={onCellKeyPress}
-            onGridReady={onGridReady}
-            columnHoverHighlight={true}
-            undoRedoCellEditing={true}
-            undoRedoCellEditingLimit={100}
-            enableRangeSelection={true}
-            enableFillHandle={true}
-            enableCellChangeFlash={true}
-          />
+          {newFunction(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady)}
         </div>
         <Button variant="outlined" style={{ marginRight: 10}} onClick={addRow}>Add row (ctrl-a)</Button>
         <Button variant="outlined" style={{ marginRight: 10}} onClick={deleteRow}>Delete row (ctrl-d)</Button>
@@ -642,33 +624,29 @@ const App = () => {
       <Grid xs={8}>
         <h3>Prompts</h3>
         <FormControl fullWidth>
-          {prompts.map((prompt, i) => <div>
             <TextField
-              id={"positive_prompt_" + i}
-              label={"Positive prompt " + (i + 1)}
+              id={"positive_prompt"}
+              label={"Positive prompt"}
               multiline
-              rows={2}
-              defaultValue={prompt.positive}
-              style={{ width: '40%', marginTop: '10px', marginRight: '10px' }}
+              rows={4}
+              defaultValue={prompts.positive}
+              style={{marginRight: '10px' }}
               InputProps={{ style: { fontSize: '0.75em' } }}
               onChange={handleChangePrompts}
               size="small"
               variant="standard" />
             <TextField
               hiddenLabel
-              id={"negative_prompt_" + i}
-              label={"Negative prompt " + (i + 1)}
+              id={"negative_prompt"}
+              label={"Negative prompt"}
               multiline
-              rows={2}
-              defaultValue={prompt.negative}
-              style={{ width: '40%', marginTop: '10px', marginRight: '10px' }}
+              rows={4}
+              defaultValue={prompts.negative}
+              style={{marginTop: '10px', marginRight: '10px' }}
               InputProps={{ style: { fontSize: '0.75em' } }}
               onChange={handleChangePrompts}
               size="small"
               variant="standard" />
-          </div>
-          )}
-
         </FormControl>
       </Grid>
       <Grid xs={4}>
@@ -761,4 +739,21 @@ const App = () => {
 
 export default App;
 
+function newFunction(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady) {
+  return <AgGridReact
+  ref={gridRef}
+  rowData={loadFromQueryString('keyframes') || default_keyframes}
+  columnDefs={columnDefs}
+  defaultColDef={defaultColDef}
+  animateRows={true}
+  onCellValueChanged={onCellValueChanged}
+  onCellKeyPress={onCellKeyPress}
+  onGridReady={onGridReady}
+  columnHoverHighlight={true}
+  undoRedoCellEditing={true}
+  undoRedoCellEditingLimit={100}
+  enableRangeSelection={true}
+  enableFillHandle={true}
+  enableCellChangeFlash={true} />
 
+}

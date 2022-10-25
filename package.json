@@ -15,6 +15,8 @@
     "ag-charts-react": "^6.2.0",
     "ag-grid-community": "^28.2.0",
     "ag-grid-react": "^28.2.0",
+    "bezier-js": "^6.1.0",
+    "cubic-spline": "^3.0.3",
     "everpolate": "^0.0.3",
     "firebase": "^9.12.1",
     "nearley": "^2.20.1",

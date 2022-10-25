@@ -1,6 +1,7 @@
 import nearley from 'nearley';
 import grammar from './parseq-lang.js';
 import { linear, polynomial, step } from 'everpolate';
+import Spline from 'cubic-spline';
 
 
 export function defaultInterpolation(definedFrames, definedValues, frame) {
@@ -9,6 +10,11 @@ export function defaultInterpolation(definedFrames, definedValues, frame) {
 
 function linear_interpolation(definedFrames, definedValues, frame) {
   return linear(frame, definedFrames, definedValues)[0];
+}
+
+function cubic_spline_interpolation(definedFrames, definedValues, frame) {
+  const spline = new Spline(definedFrames, definedValues);
+  return spline.at(frame);
 }
 
 function poly_interpolation(definedFrames, definedValues, frame) {
@@ -51,7 +57,7 @@ export function interpret(ast, context) {
     || context.thisKf === "undefined"
     || context.definedFrames === "undefined"
     || context.definedValues === "undefined") {
-    throw `Invalid context when interpreting ${ast}: ${context}`
+    throw new Error(`Invalid context when interpreting ${ast}: ${context}`);
   }
 
   // TODO replace this with proper polymorphic evaluatable AST nodes
@@ -66,10 +72,12 @@ export function interpret(ast, context) {
           return f => poly_interpolation(context.definedFrames, context.definedValues, f);
         case 'S':
           return f => step_interpolation(context.definedFrames, context.definedValues, f);
+        case 'C':
+          return f => cubic_spline_interpolation(context.definedFrames, context.definedValues, f);
         case 'f':
           return f => f;
         default:
-          throw `Unrecognised variable ${ast.var_name.value} at ${ast.var_name.start.line}:${ast.var_name.start.col}`
+          throw new Error(`Unrecognised variable ${ast.var_name.value} at ${ast.var_name.start.line}:${ast.var_name.start.col}`);
       }
     case 'number_with_unit':
       switch (ast.right.value) {
@@ -80,7 +88,7 @@ export function interpret(ast, context) {
         case 'b':
           return f => interpret(ast.left, context)(f) * (context.FPS*60)/context.BPM
         default:
-          throw `Unrecognised conversion unit ${ast.right.value} at ${ast.right.start.line}:${ast.right.start.col}`
+          throw new Error(`Unrecognised conversion unit ${ast.right.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
     case 'negation':
       let term = interpret(ast.value, context)
@@ -95,15 +103,15 @@ export function interpret(ast, context) {
           let [period, phase, amp, centre, pulse] = get_waveform_arguments(ast.arguments).map(arg => interpret(arg, context));
           return f => wave(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f));
         case 'min':
-          let l1 = named_argument_extractor(ast.arguments, ['left', 'l'], null);
-          let r1 = named_argument_extractor(ast.arguments, ['right', 'r'], null);          
+          let l1 = interpret(named_argument_extractor(ast.arguments, ['left', 'l'], null), context);
+          let r1 = interpret(named_argument_extractor(ast.arguments, ['right', 'r'], null), context);          
           return f => Math.min(l1(f), r1(f)) 
         case 'max':  
-          let l2 = named_argument_extractor(ast.arguments, ['left', 'l'], null);
-          let r2 = named_argument_extractor(ast.arguments, ['right', 'r'], null);                    
+          let l2 = interpret(named_argument_extractor(ast.arguments, ['left', 'l'], null), context);          
+          let r2 =interpret( named_argument_extractor(ast.arguments, ['right', 'r'], null), context);           
           return f => Math.max(l2(f), r2(f))
         default:
-          throw `Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}` 
+          throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
       case 'call_expression':
         switch(ast.fun_name.value) {
@@ -119,7 +127,7 @@ export function interpret(ast, context) {
           case 'max':  
             return f => Math.max(interpret(ast.arguments[0], context)(f), interpret(ast.arguments[1], context)(f));
           default:
-            throw `Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}` 
+            throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}`);
         }      
     case "binary_operation":
       let left = interpret(ast.left, context);
@@ -130,11 +138,10 @@ export function interpret(ast, context) {
         case '*': return f => left(f)*right(f)
         case '/': return f => left(f)/right(f)
         case '%': return f => left(f)%right(f)        
-        default: throw `Unrecognised operator ${ast.operator.value} at ${ast.right.start.line}:${ast.right.start.col}` 
+        default: throw new Error(`Unrecognised operator ${ast.operator.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
     default:
-      throw `Unrecognised expression ${ast.type} at ${ast.start.line}:${ast.start.col}`
-      return null
+      throw new Error(`Unrecognised expression ${ast.type} at ${ast.start.line}:${ast.start.col}`);
   }
 }
 
@@ -145,21 +152,21 @@ function wave(wave, period, pos, amp, centre, pulsewidth) {
     case 'saw': return centre + (pos % period) * amp / period
     case 'sq':  return centre + (Math.sin(pos * Math.PI * 2 / period) >= 0 ? 1 : -1) * amp;    
     case 'pulse':  return centre + amp *((pos%period) < pulsewidth ? 1 : 0);
-    default:  throw `Unrecognised waveform ${wave}` 
+    default:  throw new Error(`Unrecognised waveform ${wave}`);
   }
   
 } 
 
 function named_argument_extractor(args, argNames, defaultValue) {
     let matchingArgs = args.filter( arg => argNames.includes(arg.name.value));
-    if (matchingArgs.length == 0) {
+    if (matchingArgs.length === 0) {
       if (defaultValue != null) {
         return defaultValue;
       } else {
-        throw `Mandatory argument missing: ${argNames.join(' or ')}`;
+        throw new Error(`Mandatory argument missing: ${argNames.join(' or ')}`);
       }
     } else if (matchingArgs.length > 1) {
-      throw `Cannot have multiple arguments called: ${argNames}`;
+      throw new Error(`Cannot have multiple arguments called: ${argNames}`);
     } else {
       return matchingArgs[0].value;
     }  

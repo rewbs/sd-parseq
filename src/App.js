@@ -1,7 +1,8 @@
-import { AgGridReact } from 'ag-grid-react'; // the AG Grid React Component
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+// import {ITooltipParams} from "@ag-grid-community/core";
+// import {ITooltipReactComp} from "@ag-grid-community/react";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -23,7 +24,7 @@ import './robin.css';
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { ContactSupportOutlined, LocalConvenienceStoreOutlined } from '@mui/icons-material';
+
 const firebaseConfig = {
   apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
   authDomain: "sd-parseq.firebaseapp.com",
@@ -54,15 +55,16 @@ const MenuProps = {
   },
 };
 const interpolatableFields = ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4', 'scale', 'rotx', 'roty', 'rotz',
-  'panx', 'pany', 'zoom', 'loopback_frames', 'loopback_decay',
+  'panx', 'pany', 'zoom', 'loopback_frames', 'loopback_decay'
 ];
 const default_prompts = { positive: "A cat :${prompt_weight_1} AND a dog :${prompt_weight_2} AND a duck :${prompt_weight_3} AND a psychopath :${prompt_weight_4}",
 negative: "boring" }
 const default_options = {
   input_fps: "",
-  output_fps: "",
-  cc_window_width: "0",
-  cc_window_slide_rate: "1",
+  bpm: 140,
+  output_fps: 20,
+  cc_window_width: 0,
+  cc_window_slide_rate: 1,
   cc_use_input: false
 }
 const default_keyframes = [
@@ -79,62 +81,62 @@ const default_keyframes = [
   }
 ];
 
-
 function loadFromQueryString(key) {
   let qps = new URLSearchParams(window.location.search);
   let loadedStateStr = qps.get("parseq") || qps.get("parsec");
   if (loadedStateStr) {
     let loadedState = JSON.parse(loadedStateStr);
 
-    // Compatibility with query strings from previous versions: flatten separate prompts into template
+    // Loading from a previous version that didn't include version in the query string.
     let compat_applied = false;
-    if (key==='prompts' 
-        && typeof loadedState['prompts'] === 'object'
-        && loadedState['prompts'].length === 4) {
-        
-          let newPositivePrompts = [];
-          let newNegativePrompts = [];
+    if (typeof loadedState['meta'] === "undefined") {
+      // Compatibility with query strings from previous versions: flatten separate prompts into template
+      if (key==='prompts' 
+          && typeof loadedState['prompts'] === 'object'
+          && loadedState['prompts'].length === 4) {
+          
+            let newPositivePrompts = [];
+            let newNegativePrompts = [];
 
-          for (let i=0; i<4; i++) {
-            let offset = i+1;
-            if (loadedState['prompts'][i]['negative']) {
-              newNegativePrompts.push(loadedState['prompts'][i]['negative'] + ' :${prompt_weight_'+(offset)+'}')
-              delete loadedState['prompts'][i]['negative'];
-              compat_applied = true;
-            }            
-            if (loadedState['prompts'][i]['positive']) {
-              newPositivePrompts.push(loadedState['prompts'][i]['positive'] + ' :${prompt_weight_'+(offset)+'}')
-              delete loadedState['prompts'][i]['positive'];
-              compat_applied = true;
+            for (let i=0; i<4; i++) {
+              let offset = i+1;
+              if (loadedState['prompts'][i]['negative']) {
+                newNegativePrompts.push(loadedState['prompts'][i]['negative'] + ' :${prompt_weight_'+(offset)+'}')
+                delete loadedState['prompts'][i]['negative'];
+                compat_applied = true;
+              }            
+              if (loadedState['prompts'][i]['positive']) {
+                newPositivePrompts.push(loadedState['prompts'][i]['positive'] + ' :${prompt_weight_'+(offset)+'}')
+                delete loadedState['prompts'][i]['positive'];
+                compat_applied = true;
+              }
             }
+            loadedState['prompts'] = {
+              negative: newNegativePrompts.join(' AND '),
+              positive: newPositivePrompts.join(' AND ')
+            }
+      }
+      // Compatibility with query strings from previous versions: accomodate rename of parameters prompt_N_weight to prompt_weight_N
+      if (key==='keyframes') {
+        for (let f in loadedState['keyframes']) {
+          for (let i=1; i<=4; i++) {
+              if (typeof loadedState['keyframes'][f]['prompt_weight_'+i] === 'undefined'
+              && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight'] !== 'undefined') {
+                loadedState['keyframes'][f]['prompt_weight_'+i] = loadedState['keyframes'][f]['prompt_'+i+'_weight'];
+                delete loadedState['keyframes'][f]['prompt_'+i+'_weight'];
+                compat_applied = true;
+              }
+              if (typeof loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] === 'undefined'
+              && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight_i'] !== 'undefined') {
+                loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] = loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
+                delete loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
+                compat_applied = true;
+              }
           }
-          loadedState['prompts'] = {
-            negative: newNegativePrompts.join(' AND '),
-            positive: newPositivePrompts.join(' AND ')
-          }
-    }
-    // Compatibility with query strings from previous versions: accomodate rename of parameters prompt_N_weight to prompt_weight_N
-    if (key==='keyframes') {
-      for (let f in loadedState['keyframes']) {
-        for (let i=1; i<=4; i++) {
-            if (typeof loadedState['keyframes'][f]['prompt_weight_'+i] === 'undefined'
-            && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight'] !== 'undefined') {
-              loadedState['keyframes'][f]['prompt_weight_'+i] = loadedState['keyframes'][f]['prompt_'+i+'_weight'];
-              delete loadedState['keyframes'][f]['prompt_'+i+'_weight'];
-              compat_applied = true;
-            }
-            if (typeof loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] === 'undefined'
-            && typeof loadedState['keyframes'][f]['prompt_'+i+'_weight_i'] !== 'undefined') {
-              loadedState['keyframes'][f]['prompt_weight_'+i+'_i'] = loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
-              delete loadedState['keyframes'][f]['prompt_'+i+'_weight_i'];
-              compat_applied = true;
-            }
         }
       }
-    }
-    // Compatibility with waveform param ordering form previous versions
-    if (key==='keyframes') {
-      if (typeof loadedState['meta'] === "undefined") {
+      // Compatibility with waveform param ordering form previous versions
+      if (key==='keyframes') {
         for (let frame in loadedState['keyframes']) {
           interpolatableFields.forEach((field) => {
             let formula = loadedState['keyframes'][frame][field+'_i'];
@@ -161,6 +163,19 @@ function loadFromQueryString(key) {
   }
 }
 
+const GridTooltip = (props) => {
+  const data = props.api.getDisplayedRowAtIndex(props.rowIndex).data;
+  return (
+      <div style={{backgroundColor: '#d0ecd0'}}>
+        <div>Frame: {data.frame}</div>
+        <div>Seconds: {(data.frame / props.getFps()).toFixed(3)}</div>
+        <div>Beat:  {((data.frame/props.getFps())*60/props.getBpm()).toFixed(3)}</div>        
+      </div>
+  );
+};  
+
+
+
 const App = () => {
 
   const gridRef = useRef();
@@ -168,6 +183,7 @@ const App = () => {
   //////////////////////////////////////////
   // App State
   //////////////////////////////////////////
+  const [options, setOptions] = useState(loadFromQueryString('options') || default_options)
   const [columnDefs, setColumnDefs] = useState([
     {
       headerName: 'Frame #',
@@ -180,7 +196,10 @@ const App = () => {
         params.data.frame = newValue;
         frameIdMap.set(newValue, params.node.id);
         setNeedsRender(true);
-      }
+      },
+      tooltipField: 'frame',
+      tooltipComponent: GridTooltip,
+      tooltipComponentParams: {getBpm: _ => options.bpm, getFps: _ => options.output_fps},
     },
     ...interpolatableFields.flatMap(field => [
       {
@@ -192,18 +211,26 @@ const App = () => {
       },
       {
         headerName: '➟',
-        field: field + '_i'
+        field: field + '_i',
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorPopup: true,
+        cellEditorParams: {
+            maxLength: 1000,
+            rows: 2,
+            cols: 50
+        }        
       }
     ])
   ]);
   const [renderedData, setRenderedData] = useState([]);
+  const [graphableData, setGraphableData] = useState([]);  
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
   const [needsRender, setNeedsRender] = useState(true);
-  const [options, setOptions] = useState(loadFromQueryString('options') || default_options)
   const [frameIdMap, setFrameIdMap] = useState(new Map());
   const [displayFields, setDisplayFields] = useState(interpolatableFields);
   const [visFields, setVisFields] = useState(['denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
   const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
+  const [graphAsPercentages, setGraphAsPercentages] = useState(true);
 
 
   // DefaultColDef sets props common to all Columns
@@ -216,7 +243,8 @@ const App = () => {
         || params.event.key === 'd'
         || params.event.key === 'r'
       );
-    }
+    },
+    tooltipComponent: GridTooltip,
   }));
 
   //////////////////////////////////////////
@@ -373,6 +401,11 @@ const App = () => {
     setNeedsRender(true);
   }, []);
 
+  const handleChangeGraphType = useCallback((e) => {
+    setGraphAsPercentages(e.target.checked);
+    render()
+  }, []);
+
   function setQueryParamState() {
     const url = new URL(window.location);
     let qp = getPersistableState();
@@ -450,8 +483,8 @@ const App = () => {
               thisKf: frame,
               definedFrames: definedFrames,
               definedValues: definedValues,
-              FPS: 20,
-              BPM: 140,
+              FPS: options.output_fps,
+              BPM: options.bpm,
             });
 
             try {
@@ -517,9 +550,25 @@ const App = () => {
       "rendered_frames": rendered_frames
     }
 
+    var graphable_data = []
+    interpolatableFields.forEach((field) => {
+      var maxValue = Math.max(...rendered_frames.map( rf => Math.abs(rf[field])))
+      all_frame_numbers.forEach((frame) => {
+        graphable_data[frame] = {
+          ...graphable_data[frame] || {},
+          "frame": frame,
+          [field]: rendered_frames[frame][field],
+          [field+"_pc"]: (maxValue != 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field]
+        }
+      });
+    });
+
     setRenderedData(data);
+    setGraphableData(graphable_data);    
     setNeedsRender(false);
   });
+
+
 
   //////////////////////////////////////////
   // Page
@@ -538,13 +587,35 @@ const App = () => {
     }}>
       <CssBaseline />
       <Grid xs={12}>
-        <h2>Parseq v0.01 <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>
+        <h2>Parseq v{version} <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>
         
       </Grid>
       <Grid xs={10}>
         <h3>Keyframes for parameter flow</h3>
+        <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
+            <TextField
+              id={"options_output_fps"}
+              label={"Output FPS"}
+              defaultValue={options['output_fps']}
+              onChange={handleChangeOption}
+              style={{ marginBottom: '10px', marginTop: '0px' }}
+              InputProps={{ style: { fontSize: '0.75em' } }}
+              size="small"
+              variant="standard" />
+        </Tooltip2>
+        <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
+            <TextField
+              id={"options_bpm"}
+              label={"BPM"}
+              defaultValue={options['bpm']}
+              onChange={handleChangeOption}
+              style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px' }}
+              InputProps={{ style: { fontSize: '0.75em' } }}
+              size="small"
+              variant="standard" />
+        </Tooltip2>        
         <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
-          {newFunction(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady)}
+          {getGridComponent(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady)}
         </div>
         <Button variant="outlined" style={{ marginRight: 10}} onClick={addRow}>Add row (ctrl-a)</Button>
         <Button variant="outlined" style={{ marginRight: 10}} onClick={deleteRow}>Delete row (ctrl-d)</Button>
@@ -581,16 +652,28 @@ const App = () => {
         <h3>Visualised parameter flow</h3>
         { renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></> }
         { needsRender ? <Alert severity="info">Keyframes, prompts, or options have changed. Please hit render to update the output.</Alert> : <Alert severity="success">Output is up-to-date.</Alert>}
+        <FormControlLabel control={
+                <Checkbox defaultChecked={true}
+                  id={"graph_as_percent"}
+                  onChange={handleChangeGraphType}
+                 />}
+                label="Show as percentage of max" />
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart margin={{ top: 20, right: 30, left: 0, bottom: 0 }} data={renderedData.rendered_frames}>
-            {visFields.map((field) => <Line type="monotone" dataKey={field} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
+          <LineChart margin={{ top: 20, right: 30, left: 0, bottom: 0 }} data={ graphableData }>
+            {visFields.map((field) => <Line type="monotone" dataKey={ graphAsPercentages ? `${field}_pc` : field} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
             <Legend layout="horizontal" wrapperStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #d5d5d5', borderRadius: 3, lineHeight: '40px' }} />
             <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
             {getKeyframes().map((keyframe) => <ReferenceLine x={keyframe.frame} stroke="green" strokeDasharray="2 2" />)}
             <ReferenceLine y={0} stroke="black" />
             <XAxis dataKey="frame" />
             <YAxis />
-            <Tooltip />
+            <Tooltip
+              formatter = {(value, name, props) => {
+                let fieldName = name.replace(/_pc$/, '');
+                return [`${value.toFixed(3)} (${props.payload[fieldName+'_pc'].toFixed(3)}% of max used)`, fieldName];
+              }}
+              contentStyle={{ fontSize: '0.8em', fontFamily: 'Monospace' }}
+              />
           </LineChart>
         </ResponsiveContainer>
       </Grid>
@@ -663,17 +746,6 @@ const App = () => {
               size="small"
               variant="standard" />
           </Tooltip2>
-          <Tooltip2 title="Output FPS: Generate video at this frame rate (leave blank to use same as original input video).">
-            <TextField
-              id={"options_output_fps"}
-              label={"Output FPS"}
-              defaultValue={options['output_fps']}
-              onChange={handleChangeOption}
-              style={{ marginTop: '10px', marginRight: '10px' }}
-              InputProps={{ style: { fontSize: '0.75em' } }}
-              size="small"
-              variant="standard" />
-          </Tooltip2>
         </FormGroup>
         <br />
         <FormGroup>
@@ -739,7 +811,7 @@ const App = () => {
 
 export default App;
 
-function newFunction(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady) {
+function getGridComponent(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady) {
   return <AgGridReact
   ref={gridRef}
   rowData={loadFromQueryString('keyframes') || default_keyframes}
@@ -754,6 +826,7 @@ function newFunction(gridRef, columnDefs, defaultColDef, onCellValueChanged, onC
   undoRedoCellEditingLimit={100}
   enableRangeSelection={true}
   enableFillHandle={true}
-  enableCellChangeFlash={true} />
+  enableCellChangeFlash={true}
+  tooltipShowDelay={0} />
 
 }

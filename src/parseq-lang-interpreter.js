@@ -1,5 +1,5 @@
 import nearley from 'nearley';
-import * as grammar from './parseq-lang';
+import getGrammar from './parseq-lang.js';
 import { linear, polynomial, step } from 'everpolate';
 import Spline from 'cubic-spline';
 
@@ -36,7 +36,7 @@ export class InterpreterContext {
 }
 
 export function parse(input) {
-    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
+    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(getGrammar()));
     const parsed = parser.feed(input);
     return parsed.results[0][0];
 }

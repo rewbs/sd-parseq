@@ -1,11 +1,12 @@
-// Generated automatically by nearley, version 2.20.1
-// http://github.com/Hardmath123/nearley
-(function () {
 function id(x) { return x[0]; }
 
 const moo = require("moo");
 
 let comment, string_literal, number_literal, identifier, unit, ws;
+export default function getGrammar() {
+    return grammar;
+}  
+
 
 const lexer = moo.compile({
     ws: {match: /[ \t\r\n]+/, lineBreaks: true }, 
@@ -79,7 +80,7 @@ function convertTokenId(data) {
     return convertToken(data[0]);
 }
 
-var grammar = {
+const grammar = {
     Lexer: lexer,
     ParserRules: [
     {"name": "input", "symbols": ["_", "expression", "_"], "postprocess": d => [d[1]]},
@@ -270,9 +271,4 @@ var grammar = {
 ]
   , ParserStart: "input"
 }
-if (typeof module !== 'undefined'&& typeof module.exports !== 'undefined') {
-   module.exports = grammar;
-} else {
-   window.grammar = grammar;
-}
-})();
+

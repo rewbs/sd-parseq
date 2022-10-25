@@ -1,29 +1,33 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
-// import {ITooltipParams} from "@ag-grid-community/core";
-// import {ITooltipReactComp} from "@ag-grid-community/react";
-import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Checkbox, FormControlLabel, FormGroup, Tooltip as Tooltip2 } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
-import { Tooltip as Tooltip2 } from '@mui/material';
-import { FormControlLabel, FormGroup, Checkbox, Alert, Button } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
+import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import stc from 'string-to-color';
-import { parse, interpret, defaultInterpolation, InterpreterContext } from './parseq-lang-interpreter'
+import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
+import { initializeApp } from "firebase/app";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
@@ -225,6 +229,9 @@ const App = () => {
   const [renderedData, setRenderedData] = useState([]);
   const [graphableData, setGraphableData] = useState([]);  
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
+
+  const [frameToAdd, setFrameToAdd] = useState();
+  const [frameToDelete, setFrameToDelete] = useState();
   const [needsRender, setNeedsRender] = useState(true);
   const [frameIdMap, setFrameIdMap] = useState(new Map());
   const [displayFields, setDisplayFields] = useState(interpolatableFields);
@@ -251,10 +258,12 @@ const App = () => {
   // Grid action callbacks 
   const addRow = useCallback((frame) => {
     if (isNaN(frame)) {
-      // No frame selected, assume add after last row
-      frame = getKeyframes().pop().frame;
+      console.error(`Invalid frame: ${frame}`)
+      return;
     }
+
     while (gridRef.current.api.getRowNode(frameIdMap.get(frame)) !== undefined) {
+      // Add frame in closest next free slot.
       ++frame;
     }
     const res = gridRef.current.api.applyTransaction({
@@ -268,15 +277,21 @@ const App = () => {
   }, []);
 
   const deleteRow = useCallback((frame) => {
+    if (isNaN(frame)) {
+      console.error(`Invalid frame: ${frame}`)
+      return;
+    }
+    if (typeof frameIdMap.get(frame) === "undefined") {
+      console.error(`No such frame: ${frame}`)
+      return;      
+    }
+
     let keyframes = getKeyframes()
     if (keyframes.length<=2) {
       console.error("There must be at least 2 keyframes. Can't delete any more.")
       return;
     }
-    if (isNaN(frame)) {
-      // No frame selected, assume last row.
-      frame = getKeyframes().pop().frame;
-    }
+
     let rowData = gridRef.current.api.getRowNode(frameIdMap.get(frame)).data;
     frameIdMap.delete(rowData.frame);
     gridRef.current.api.applyTransaction({
@@ -289,7 +304,6 @@ const App = () => {
 
   const onCellValueChanged = useCallback((event) => {
     gridRef.current.api.onSortChanged();
-    gridRef.current.api.sizeColumnsToFit();
     setQueryParamState();
   });
 
@@ -405,6 +419,34 @@ const App = () => {
     setGraphAsPercentages(e.target.checked);
     render()
   }, []);
+
+  const [openAddRowDialog, setOpenAddRowDialog] = React.useState(false);
+  const handleClickOpenAddRowDialog = () => {
+    setOpenAddRowDialog(true);
+  };
+  const handleCloseAddRowDialog = (e) => {
+    setOpenAddRowDialog(false);
+
+    if (e.target.id==="add") {
+      console.log(`add ${frameToAdd}`)
+      addRow(parseInt(frameToAdd));
+    }    
+
+  };
+
+  const [openDeleteRowDialog, setOpenDeleteRowDialog] = React.useState(false);
+  const handleClickOpenDeleteRowDialog = () => {
+    setOpenDeleteRowDialog(true);
+  };
+  const handleCloseDeleteRowDialog = (e) => {
+    setOpenDeleteRowDialog(false);
+
+    if (e.target.id==="delete") {
+      console.log(`deleting ${frameToDelete}`)
+      deleteRow(parseInt(frameToDelete));
+    }
+
+  };  
 
   function setQueryParamState() {
     const url = new URL(window.location);
@@ -569,6 +611,56 @@ const App = () => {
   });
 
 
+  let addRowDialog = <Dialog open={openAddRowDialog} onClose={handleCloseAddRowDialog}>
+  <DialogTitle><AddIcon />Add a keyframe</DialogTitle>
+  <DialogContent>
+    <DialogContentText>
+    Add a keyframe at the following position:
+    </DialogContentText>
+    <TextField
+      autoFocus
+      margin="dense"
+      id="add_keyframe_at"
+      label="Frame"
+      variant="standard"
+      defaultValue={frameToAdd}
+      onChange={(e) => setFrameToAdd(e.target.value)}
+    />
+  <DialogContentText>
+  <small><small>TODO: warning here if frame doesn't exist</small></small>
+  </DialogContentText>    
+  </DialogContent>  
+  <DialogActions>
+    <Button id="cancel_add" onClick={handleCloseAddRowDialog}>Cancel</Button>
+    <Button variant="contained"  id="add" onClick={handleCloseAddRowDialog}>Add</Button>
+  </DialogActions>
+</Dialog>
+
+let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDeleteRowDialog}>
+<DialogTitle><DeleteIcon />Delete a keyframe</DialogTitle>
+<DialogContent>
+  <DialogContentText>
+  Delete a keyframe at the following position. NB: this cannot be undone!:
+  </DialogContentText>
+  <TextField
+    autoFocus
+    margin="dense"
+    id="delete_keyframe_at"
+    label="Frame"
+    variant="standard"
+    defaultValue={frameToDelete}
+    onChange={(e) => setFrameToDelete(e.target.value)}    
+  />
+  <DialogContentText>
+    <small><small>TODO: warning here if frame doesn't exist</small></small>
+  </DialogContentText>
+</DialogContent>
+<DialogActions>
+  <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
+  <Button variant="contained"  id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
+</DialogActions>
+</Dialog>
+
 
   //////////////////////////////////////////
   // Page
@@ -617,9 +709,11 @@ const App = () => {
         <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
           {getGridComponent(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady)}
         </div>
-        <Button variant="outlined" style={{ marginRight: 10}} onClick={addRow}>Add row (ctrl-a)</Button>
-        <Button variant="outlined" style={{ marginRight: 10}} onClick={deleteRow}>Delete row (ctrl-d)</Button>
+        <Button variant="outlined" style={{ marginRight: 10}} onClick={handleClickOpenAddRowDialog}>Add keyframe (ctrl-a)</Button>
+        <Button variant="outlined" style={{ marginRight: 10}} onClick={handleClickOpenDeleteRowDialog}>Delete keyframe (ctrl-d)</Button>
         <Button variant="contained" style={{ marginRight: 10}} onClick={render}>Render (ctrl-r)</Button>
+        {addRowDialog}
+        {deleteRowDialog}
       </Grid>
       <Grid xs={2}>
         Fields to display:
@@ -670,7 +764,7 @@ const App = () => {
             <Tooltip
               formatter = {(value, name, props) => {
                 let fieldName = name.replace(/_pc$/, '');
-                return [`${value.toFixed(3)} (${props.payload[fieldName+'_pc'].toFixed(3)}% of max used)`, fieldName];
+                return [`${props.payload[fieldName].toFixed(3)} (${props.payload[fieldName+'_pc'].toFixed(3)}% of max used)`, fieldName];
               }}
               contentStyle={{ fontSize: '0.8em', fontFamily: 'Monospace' }}
               />

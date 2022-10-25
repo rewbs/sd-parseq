@@ -1,5 +1,5 @@
 import nearley from 'nearley';
-import grammar from './parseq-lang.js';
+import * as grammar from './parseq-lang';
 import { linear, polynomial, step } from 'everpolate';
 import Spline from 'cubic-spline';
 

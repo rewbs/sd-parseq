@@ -61,6 +61,7 @@ const MenuProps = {
 const interpolatableFields = ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4', 'scale', 'rotx', 'roty', 'rotz',
   'panx', 'pany', 'zoom', 'loopback_frames', 'loopback_decay'
 ];
+// eslint-disable-next-line
 const default_prompts = { positive: "A cat :${prompt_weight_1} AND a dog :${prompt_weight_2} AND a duck :${prompt_weight_3} AND a psychopath :${prompt_weight_4}",
 negative: "boring" }
 const default_options = {
@@ -340,19 +341,6 @@ const App = () => {
     var minFrame = Math.min(...declaredFrames);
     var maxFrame = Math.max(...declaredFrames);
     return Array.from(Array(maxFrame - minFrame + 1).keys()).map((i) => i + minFrame);
-  }
-
-  // Returns map of (declaredFrame => declaredValue) for field.
-  function getDeclaredPoints(field, parser) {
-    var vals = new Map();
-    gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
-      var frame = rowNode.data['frame'];
-      var fieldValue = parser(rowNode.data[field]);
-      if (fieldValue !== undefined && !isNaN(fieldValue)) {
-        vals.set(frame, fieldValue)
-      }
-    });
-    return vals;
   }
 
   function getKeyframes() {

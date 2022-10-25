@@ -5,6 +5,8 @@ function id(x) { return x[0]; }
 
 const moo = require("moo");
 
+let comment, string_literal, number_literal, identifier, unit, ws;
+
 const lexer = moo.compile({
     ws: {match: /[ \t\r\n]+/, lineBreaks: true }, 
     lte: "<=",
@@ -254,7 +256,7 @@ var grammar = {
             end: tokenEnd(d[0])
         })
                 },
-    {"name": "line_comment", "symbols": [(lexer.has("comment") ? {type: "comment"} : comment)], "postprocess": convertTokenId},
+    {"name": "line_comment", "symbols": [(lexer.has("comment") ? {type: "comment"} : comment )], "postprocess": convertTokenId},
     {"name": "string_literal", "symbols": [(lexer.has("string_literal") ? {type: "string_literal"} : string_literal)], "postprocess": convertTokenId},
     {"name": "number", "symbols": [(lexer.has("number_literal") ? {type: "number_literal"} : number_literal)], "postprocess": convertTokenId},
     {"name": "identifier", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)], "postprocess": convertTokenId},

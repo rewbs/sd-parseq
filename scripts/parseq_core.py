@@ -133,7 +133,7 @@ class Parseq():
             start_frame_pos = round(clamp(0, frame_pos-param_script[frame_pos]['loopback_frames'], len(out_frame_history)-1))
             end_frame_pos = round(clamp(0, frame_pos-1, len(out_frame_history)-1))
             frames_to_blend = [in_frame_resized] + out_frame_history[start_frame_pos:end_frame_pos]
-            blend_decay = clamp(0.1, param_script[frame_pos]['loopback_decay'], 1)
+            blend_decay = clamp(0, param_script[frame_pos]['loopback_decay'], 1)
             logging.debug(f"Blending {len(frames_to_blend)} frames (current frame plus {start_frame_pos} to {end_frame_pos}) with decay {blend_decay}.")
             in_frame_blended = self.blend_frames(frames_to_blend, blend_decay)
 

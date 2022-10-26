@@ -174,7 +174,7 @@ const GridTooltip = (props) => {
       <div style={{backgroundColor: '#d0ecd0'}}>
         <div>Frame: {data.frame}</div>
         <div>Seconds: {(data.frame / props.getFps()).toFixed(3)}</div>
-        <div>Beat:  {((data.frame/props.getFps())*60/props.getBpm()).toFixed(3)}</div>        
+        <div>Beat:  {(data.frame/props.getFps()/60*props.getBpm()).toFixed(3)}</div>        
       </div>
   );
 };  
@@ -588,7 +588,7 @@ const App = () => {
           ...graphable_data[frame] || {},
           "frame": frame,
           [field]: rendered_frames[frame][field],
-          [field+"_pc"]: (maxValue != 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field]
+          [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field]
         }
       });
     });

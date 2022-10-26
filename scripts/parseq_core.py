@@ -18,6 +18,7 @@ from skimage import exposure
 import re
 import math
 from datetime import datetime
+import textwrap
 
 class Parseq():
 
@@ -62,7 +63,7 @@ class Parseq():
             output_fps = parseIntOrDefault(options['output_fps'], 20)
             input_fps =  parseIntOrDefault(options['input_fps'], output_fps)
 
-        cc_window_width = parseIntOrDefault(options['cc_window_width'], 10)
+        cc_window_width = parseIntOrDefault(options['cc_window_width'], 0)
         cc_window_rate = parseFloatOrDefault(options['cc_window_slide_rate'], 1)
         cc_include_initial_image = bool(options['cc_use_input'])
         logging.info(f"Loaded options: input_type:{input_type}; input_fps:{input_fps}; output_fps:{output_fps}; cc_window_width:{cc_window_width}; cc_window_rate:{cc_window_rate}; cc_include_initial_image:{cc_include_initial_image}")
@@ -133,7 +134,7 @@ class Parseq():
             start_frame_pos = round(clamp(0, frame_pos-param_script[frame_pos]['loopback_frames'], len(out_frame_history)-1))
             end_frame_pos = round(clamp(0, frame_pos-1, len(out_frame_history)-1))
             frames_to_blend = [in_frame_resized] + out_frame_history[start_frame_pos:end_frame_pos]
-            blend_decay = clamp(0.1, param_script[frame_pos]['loopback_decay'], 1)
+            blend_decay = clamp(0, param_script[frame_pos]['loopback_decay'], 1)
             logging.debug(f"Blending {len(frames_to_blend)} frames (current frame plus {start_frame_pos} to {end_frame_pos}) with decay {blend_decay}.")
             in_frame_blended = self.blend_frames(frames_to_blend, blend_decay)
 
@@ -188,7 +189,7 @@ class Parseq():
             if (overlay_metadata):
                 processed_image_with_metadata = processed_image.copy()
                 draw = ImageDraw.Draw(processed_image_with_metadata)
-                draw.text((10, 10), json.dumps(p.extra_generation_params, indent=2))
+                draw.text((10, 10), textwrap.fill(json.dumps(p.extra_generation_params, indent=2),64))
                 frame_to_render = np.asarray(processed_image_with_metadata)
                 frame_to_loop_back = np.asarray(processed_image)
             else:
@@ -289,10 +290,16 @@ def clamp(minvalue, value, maxvalue):
     return max(minvalue, min(value, maxvalue))
 
 def parseIntOrDefault(input, default):
-    return int(input) if input else default
+    try:
+        return int(input)
+    except ValueError:
+        return default
 
 def parseFloatOrDefault(input, default):
-    return float(input) if input else default    
+    try:
+        return float(input)
+    except ValueError:
+        return default
 
 #### File utils:
 def get_output_path(output_path, img2img_default_output_path):

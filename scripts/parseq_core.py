@@ -289,10 +289,16 @@ def clamp(minvalue, value, maxvalue):
     return max(minvalue, min(value, maxvalue))
 
 def parseIntOrDefault(input, default):
-    return int(input) if input else default
+    try:
+        return int(input)
+    except ValueError:
+        return default
 
 def parseFloatOrDefault(input, default):
-    return float(input) if input else default    
+    try:
+        return float(input)
+    except ValueError:
+        return default
 
 #### File utils:
 def get_output_path(output_path, img2img_default_output_path):

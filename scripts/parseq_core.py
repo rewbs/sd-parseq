@@ -18,6 +18,7 @@ from skimage import exposure
 import re
 import math
 from datetime import datetime
+import textwrap
 
 class Parseq():
 
@@ -62,7 +63,7 @@ class Parseq():
             output_fps = parseIntOrDefault(options['output_fps'], 20)
             input_fps =  parseIntOrDefault(options['input_fps'], output_fps)
 
-        cc_window_width = parseIntOrDefault(options['cc_window_width'], 10)
+        cc_window_width = parseIntOrDefault(options['cc_window_width'], 0)
         cc_window_rate = parseFloatOrDefault(options['cc_window_slide_rate'], 1)
         cc_include_initial_image = bool(options['cc_use_input'])
         logging.info(f"Loaded options: input_type:{input_type}; input_fps:{input_fps}; output_fps:{output_fps}; cc_window_width:{cc_window_width}; cc_window_rate:{cc_window_rate}; cc_include_initial_image:{cc_include_initial_image}")
@@ -188,7 +189,7 @@ class Parseq():
             if (overlay_metadata):
                 processed_image_with_metadata = processed_image.copy()
                 draw = ImageDraw.Draw(processed_image_with_metadata)
-                draw.text((10, 10), json.dumps(p.extra_generation_params, indent=2))
+                draw.text((10, 10), textwrap.fill(json.dumps(p.extra_generation_params, indent=2),64))
                 frame_to_render = np.asarray(processed_image_with_metadata)
                 frame_to_loop_back = np.asarray(processed_image)
             else:

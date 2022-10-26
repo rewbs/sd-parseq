@@ -42,7 +42,7 @@ class Script(scripts.Script):
         original_input_image_resized = images.resize_image(p.resize_mode, p.init_images[0], p.width, p.height) if p.init_images[0] else None
         try:
              [all_images, info] = Parseq().run(p, input_img=original_input_image_resized, input_path=input_path, output_path=output_path,
-                                               save_images=save_images, dry_run_mode=dry_run_mode, overlay_metadata=overlay_metadata, default_output_path=img2img_default_output_path,
+                                               save_images=save_images, dry_run_mode=dry_run_mode, overlay_metadata=overlay_metadata, default_output_dir=img2img_default_output_path,
                                                param_script=param_script, sd_processor=processing)
              Processed(p, all_images, p.seed, info)
         finally:

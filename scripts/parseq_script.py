@@ -43,7 +43,7 @@ class Script(scripts.Script):
         try:
              [all_images, info] = Parseq().run(p, input_img=original_input_image_resized, input_path=input_path, output_path=output_path,
                                                save_images=save_images, dry_run_mode=dry_run_mode, overlay_metadata=overlay_metadata, default_output_dir=img2img_default_output_path,
-                                               param_script=param_script, sd_processor=processing)
+                                               param_script_string=param_script, sd_processor=processing)
              Processed(p, all_images, p.seed, info)
         finally:
             logging.info("Restoring CC option to: %s", old_cc_opt)

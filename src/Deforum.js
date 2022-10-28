@@ -60,20 +60,33 @@ const MenuProps = {
 };
 const interpolatableFields = [
   'seed',
-  'denoise',
+  'noise',
+  'strength', //?
+  'scale',  
   'prompt_weight_1',
   'prompt_weight_2',
   'prompt_weight_3',
   'prompt_weight_4',
-  'scale',
-  'rotx',
-  'roty',
-  'rotz',
-  'panx',
-  'pany',
+  'prompt_weight_5',
+  'prompt_weight_6',
+  'prompt_weight_7',
+  'prompt_weight_8',
+  'angle',
   'zoom',
-  'loopback_frames',
-  'loopback_decay'
+  'translation_x',
+  'translation_y',
+  'translation_z',
+  'rotation_3d_x',
+  'rotation_3d_y',
+  'rotation_3d_z',
+  'perspective_flip_theta',
+  'perspective_flip_phi',
+  'perspective_flip_gamma',
+  'perspective_flip_fv',
+  'contrast',
+  'fov',
+  'near',
+  'far',
 ];
 
 
@@ -90,15 +103,68 @@ const default_options = {
 }
 const default_keyframes = [
   {
-    frame: 0, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
-    pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
-    prompt_weight_1: 1, prompt_weight_2: 0, prompt_weight_3: 1, prompt_weight_3_i: 'L*tri(period=100, phase=0, amp=0.5, centre=0.5)',
-    prompt_weight_4: 0, prompt_weight_4_i: 'L*sin(period=100, phase=50, amp=0.5, centre=0.5)'
+    frame: 0,
+    seed: 303,
+    scale: 7.5,
+    noise: 0.6,
+    strength: 0,
+    prompt_weight_1: 1,
+    prompt_weight_2: 0,
+    prompt_weight_3: 1,
+    prompt_weight_3_i: 'L*tri(period=100, phase=0, amp=0.5, centre=0.5)',
+    prompt_weight_4: 0,
+    prompt_weight_4_i: 'L*sin(period=100, phase=50, amp=0.5, centre=0.5)',
+    prompt_weight_5: 0,
+    prompt_weight_6: 0,
+    prompt_weight_7: 0,
+    prompt_weight_8: 0,
+    angle: 0,
+    zoom: 0,
+    translation_x: 0,
+    translation_y: 0,
+    translation_z: 0,
+    rotation_3d_x: 0,
+    rotation_3d_y: 0,
+    rotation_3d_z: 0,
+    perspective_flip_theta: 0,
+    perspective_flip_phi: 0,
+    perspective_flip_gamma: 0,
+    perspective_flip_fv: 0,
+    contrast: 0,
+    fov: 0,
+    near: 0,
+    far: 0,
   },
   {
-    frame: 199, seed: 303, scale: 7.5, denoise: 0.6, rotx: 0, roty: 0, rotz: 0, panx: 0,
-    pany: 0, zoom: 0, loopback_frames: 1, loopback_decay: 0.25,
-    prompt_weight_1: 0, prompt_weight_2: 1, prompt_weight_3: 0, prompt_weight_4: 1
+    frame: 199,
+    seed: 303,
+    scale: 7.5,
+    noise: 0.6,
+    strength: 0,
+    prompt_weight_1: 0,
+    prompt_weight_2: 1,
+    prompt_weight_3: 0,
+    prompt_weight_4: 1,
+    prompt_weight_5: 0,
+    prompt_weight_6: 0,
+    prompt_weight_7: 0,
+    prompt_weight_8: 0,
+    angle: 100,
+    zoom: 50,
+    translation_x: 120,
+    translation_y: 50,
+    translation_z: 25,
+    rotation_3d_x: 180,
+    rotation_3d_y: 90,
+    rotation_3d_z: 45,
+    perspective_flip_theta: 45,
+    perspective_flip_phi: 90,
+    perspective_flip_gamma: -45,
+    perspective_flip_fv: -90,
+    contrast: 0.5,
+    fov: 0.5,
+    near: 0.6,
+    far: 0.7,
   }
 ];
 
@@ -197,7 +263,7 @@ const GridTooltip = (props) => {
 
 
 
-const App = () => {
+const Deforum = () => {
 
   const gridRef = useRef();
 
@@ -252,7 +318,7 @@ const App = () => {
   const [needsRender, setNeedsRender] = useState(true);
   const [frameIdMap, setFrameIdMap] = useState(new Map());
   const [displayFields, setDisplayFields] = useState(interpolatableFields);
-  const [visFields, setVisFields] = useState(['denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
+  const [visFields, setVisFields] = useState(['noise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
   const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
   const [graphAsPercentages, setGraphAsPercentages] = useState(true);
 
@@ -562,10 +628,14 @@ const App = () => {
     // Calculate rendered prompt based on prompts and weights
     all_frame_numbers.forEach((frame) => {
 
+      let positive_prompt = prompts.positive.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight])
+      let negative_prompt = prompts.negative.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight])
+
       rendered_frames[frame] = {
         ...rendered_frames[frame] || {},
-        positive_prompt: prompts.positive.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight]),
-        negative_prompt: prompts.negative.replace(/\$\{(.*?)\}/g, (_,weight) => rendered_frames[frame][weight])
+        positive_prompt: positive_prompt,
+        negative_prompt: negative_prompt,
+        deforum_prompt: `${positive_prompt} --neg ${negative_prompt}`
       }
 
     });
@@ -683,7 +753,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
     }}>
       <CssBaseline />
       <Grid xs={12}>
-        <h2>Parseq v{version} <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>
+        <h2>Parseq Deforum Mode v{version} <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>
         
       </Grid>
       <Grid xs={10}>
@@ -907,7 +977,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
   );
 };
 
-export default App;
+export default Deforum;
 
 function getGridComponent(gridRef, columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady) {
   return <AgGridReact

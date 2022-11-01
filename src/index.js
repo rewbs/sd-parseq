@@ -10,6 +10,7 @@ import {
 import './index.css';
 import App from './App';
 import Interpreter from './Interpreter';
+import Deforum from './Deforum';
 import reportWebVitals from './reportWebVitals';
 
 const router = createBrowserRouter([
@@ -20,7 +21,11 @@ const router = createBrowserRouter([
   {
     path: "/interpreter",
     element: <Interpreter/>,
-  }  
+  },
+  {
+    path: "/deforum",
+    element: <Deforum/>,
+  },
 ]);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));

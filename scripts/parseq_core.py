@@ -265,7 +265,6 @@ def apply_color_correction(image, target):
     ), cv2.COLOR_LAB2RGB).astype("uint8")
     return corrected
 
-
 #### Param script utils:
 def load_param_script(param_script_string):
     json_obj = json.loads(param_script_string)
@@ -273,7 +272,7 @@ def load_param_script(param_script_string):
     param_script = dict()
     for event in rendered_frames_raw:
         if event['frame'] in param_script:
-            logging.debug(f"Duplicate frame {event['frame']} detected. Latest wins.")        
+            logging.warning(f"Duplicate frame {event['frame']} detected. Latest wins.")        
         param_script[event['frame']] = event
 
     last_frame=max(param_script.keys())

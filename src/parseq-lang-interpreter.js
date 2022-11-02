@@ -110,6 +110,9 @@ export function interpret(ast, context) {
           let l2 = interpret(named_argument_extractor(ast.arguments, ['left', 'l'], null), context);          
           let r2 =interpret( named_argument_extractor(ast.arguments, ['right', 'r'], null), context);           
           return f => Math.max(l2(f), r2(f))
+        case 'abs':  
+          let v = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);          
+          return f => Math.abs(v(f))          
         default:
           throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
@@ -124,11 +127,13 @@ export function interpret(ast, context) {
             return f => wave(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f))
           case 'min':
             return f => Math.min(interpret(ast.arguments[0], context)(f), interpret(ast.arguments[1], context)(f));
-          case 'max':  
+          case 'max':
             return f => Math.max(interpret(ast.arguments[0], context)(f), interpret(ast.arguments[1], context)(f));
+          case 'abs':
+            return f => Math.abs(interpret(ast.arguments[0], context)(f));
           default:
             throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}`);
-        }      
+        }
     case "binary_operation":
       let left = interpret(ast.left, context);
       let right = interpret(ast.right, context);
@@ -137,9 +142,20 @@ export function interpret(ast, context) {
         case '-': return f => left(f)-right(f)
         case '*': return f => left(f)*right(f)
         case '/': return f => left(f)/right(f)
-        case '%': return f => left(f)%right(f)        
+        case '%': return f => left(f)%right(f)
+        case '==': return f => left(f)==right(f) ? 1 : 0
+        case '<': return f => left(f)<right(f) ? 1 : 0
+        case '<=': return f => left(f)<=right(f) ? 1 : 0
+        case '>=': return f => left(f)>=right(f) ? 1 : 0
+        case '>': return f => left(f)>right(f) ? 1 : 0
         default: throw new Error(`Unrecognised operator ${ast.operator.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
+    case "if_expression":
+      console.log(ast)
+      let condition = interpret(ast.condition, context);
+      let consequent = interpret(ast.consequent, context);
+      let alternate = ast.alternate ? interpret(ast.alternate, context) : f => 0;
+      return f => (condition(f)>0) ? consequent(f) : alternate(f)
     default:
       throw new Error(`Unrecognised expression ${ast.type} at ${ast.start.line}:${ast.start.col}`);
   }

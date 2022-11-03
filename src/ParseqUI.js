@@ -154,8 +154,7 @@ const ParseqUI = (props) => {
   const [frameToDelete, setFrameToDelete] = useState();
   const [needsRender, setNeedsRender] = useState(true);
   const [frameIdMap, setFrameIdMap] = useState(new Map());
-  const [displayFields, setDisplayFields] = useState(interpolatable_fields);
-  const [visFields, setVisFields] = useState(['noise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
+  const [displayFields, setDisplayFields] = useState(['seed', 'noise', 'strength', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
   const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
   const [graphAsPercentages, setGraphAsPercentages] = useState(true);
 
@@ -294,11 +293,6 @@ const ParseqUI = (props) => {
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
 
-  }, []);
-
-  const handleChangeVisFields = useCallback((e) => {
-    const value = e.target.value;
-    setVisFields(typeof value === 'string' ? value.split(',') : value);
   }, []);
 
   const handleChangePrompts = useCallback((e) => {
@@ -513,7 +507,7 @@ const ParseqUI = (props) => {
         } else {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
-            [field + '_cum' ]: rendered_frames[frame-1][field] + rendered_frames[frame][field],
+            [field + '_cum' ]: rendered_frames[frame-1][field+ '_cum'] + rendered_frames[frame][field],
             [field + '_delta' ]: rendered_frames[frame][field] - rendered_frames[frame-1][field]
           }
         }
@@ -629,7 +623,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       },
     }}>
       <CssBaseline />
-      <Grid xs={10}>
+      <Grid xs={12}>
         <h3>Keyframes for parameter flow</h3>
         <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
             <TextField
@@ -652,7 +646,35 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
               InputProps={{ style: { fontSize: '0.75em' } }}
               size="small"
               variant="standard" />
-        </Tooltip2>        
+        </Tooltip2>
+        <Grid xs={12}>
+        Show columns:
+          <Select
+            id="select-display-fields"
+            label={"Show columns"}
+            multiple
+            value={displayFields}
+            onChange={handleChangeDisplayFields}
+            input={<OutlinedInput id="select-display-fields" label="Chip" />}
+            renderValue={(selected) => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {selected.map((value) => (
+                  <Chip key={value} label={value} />
+                ))}
+              </Box>
+            )}
+            MenuProps={MenuProps}
+          >
+            {interpolatable_fields.map((field) => (
+              <MenuItem
+                key={field}
+                value={field}
+              >
+                {field}
+              </MenuItem>
+            ))}
+          </Select>
+        </Grid>        
         <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
           <AgGridReact
             ref={gridRef}
@@ -676,34 +698,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
         {addRowDialog}
         {deleteRowDialog}
       </Grid>
-      <Grid xs={2}>
-        Fields to display:
-        <Select
-          id="select-display-fields"
-          multiple
-          value={displayFields}
-          onChange={handleChangeDisplayFields}
-          input={<OutlinedInput id="select-display-fields" label="Chip" />}
-          renderValue={(selected) => (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {selected.map((value) => (
-                <Chip key={value} label={value} />
-              ))}
-            </Box>
-          )}
-          MenuProps={MenuProps}
-        >
-          {interpolatable_fields.map((field) => (
-            <MenuItem
-              key={field}
-              value={field}
-            >
-              {field}
-            </MenuItem>
-          ))}
-        </Select>
-      </Grid>
-      <Grid xs={10}>
+      <Grid xs={12}>
         <h3>Visualised parameter flow</h3>
         { renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></> }
         { needsRender ? <Alert severity="info">Keyframes, prompts, or options have changed. Please hit render to update the output.</Alert> : <Alert severity="success">Output is up-to-date.</Alert>}
@@ -715,7 +710,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
                 label="Show as percentage of max" />
         <ResponsiveContainer width="100%" height={300}>
           <LineChart margin={{ top: 20, right: 30, left: 0, bottom: 0 }} data={ graphableData }>
-            {visFields.map((field) => <Line type="monotone" dataKey={ graphAsPercentages ? `${field}_pc` : field+'_delta'} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
+            {displayFields.map((field) => <Line type="monotone" dataKey={ graphAsPercentages ? `${field}_pc` : field} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
             <Legend layout="horizontal" wrapperStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #d5d5d5', borderRadius: 3, lineHeight: '40px' }} />
             <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
             {getKeyframes().map((keyframe) => <ReferenceLine x={keyframe.frame} stroke="green" strokeDasharray="2 2" />)}
@@ -732,33 +727,6 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           </LineChart>
         </ResponsiveContainer>
       </Grid>
-      <Grid xs={2}>
-        Fields to display:
-        <Select
-          id="select-vis-fields"
-          multiple
-          value={visFields}
-          onChange={handleChangeVisFields}
-          input={<OutlinedInput id="select-vis-fields" label="Chip" />}
-          renderValue={(selected) => (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {selected.map((value) => (
-                <Chip key={value} label={value} />
-              ))}
-            </Box>
-          )}
-          MenuProps={MenuProps}
-        >
-          {interpolatable_fields.map((field) => (
-            <MenuItem
-              key={field}
-              value={field}
-            >
-              {field}
-            </MenuItem>
-          ))}
-        </Select>
-      </Grid>
       <Grid xs={12}>
         <h3>Sparklines</h3>
         Hiding the following because they are flat: {graphableData[0] && interpolatable_fields.filter((field) => graphableData[0][field+'_isFlat']).join(", ")}
@@ -773,6 +741,10 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           <Sparklines data={graphableData.slice(1).map(gf => gf[field+'_delta'].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
           </Sparklines>                    
+          <p margin-left={1} margin-right={1} ><small><small><small>cumulative:</small></small></small></p>
+          <Sparklines data={graphableData.slice(1).map(gf => gf[field+'_cum'].toFixed(5))} margin={1}  padding={1}>
+            <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
+          </Sparklines>          
          </Grid>
       )}
       <Grid xs={12}></Grid>

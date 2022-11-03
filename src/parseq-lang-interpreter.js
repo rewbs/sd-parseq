@@ -46,7 +46,7 @@ export function parse(input) {
 // Evaluation of parseq lang
 // Returns: a function that takes a frame number and returns a float value
 export function interpret(ast, context) {
-  console.log("Interpreting: ", ast, context);
+  //console.log("Interpreting: ", ast, context);
 
   if (typeof ast === 'number') {
     // Node was interpreted down to a constant.
@@ -73,7 +73,7 @@ export function interpret(ast, context) {
         case 'P':
           return f => poly_interpolation(context.definedFrames, context.definedValues, f);
         case 'S':
-          return f => step_interpolation(context.definedFrames, context.definedValues, f);
+          return f => getPreviousKeyframeValue(context, f);
         case 'C':
           return f => cubic_spline_interpolation(context.definedFrames, context.definedValues, f);
         case 'f':
@@ -170,7 +170,6 @@ export function interpret(ast, context) {
         default: throw new Error(`Unrecognised operator ${ast.operator.value} at ${ast.operator.start.line}:${ast.operator.start.col}`);
       }
     case "if_expression":
-      console.log(ast)
       let condition = interpret(ast.condition, context);
       let consequent = interpret(ast.consequent, context);
       let alternate = ast.alternate ? interpret(ast.alternate, context) : f => 0;
@@ -180,23 +179,29 @@ export function interpret(ast, context) {
   }
 }
 
-function getNextKeyframeValue(context, f) {
+function getPreviousKeyframe(context, f) {
+  let idx = context.definedFrames.findLastIndex(v => v <= f);
+  return idx != -1 ? context.definedFrames[idx] : context.definedFrames.at(0);
+}
+
+function getNextKeyframe(context, f) {
   let idx = context.definedFrames.findIndex(v => v > f);
-  return idx ? context.definedValues[idx] : context.definedValues.at(-1);
+  return idx != -1 ? context.definedFrames[idx] : context.definedFrames.at(-1);
 }
 
 function getPreviousKeyframeValue(context, f) {
   let idx = context.definedFrames.findLastIndex(v => v <= f);
-  return idx ? context.definedValues[idx] : context.definedValues.at(0);
+  return idx != -1 ? context.definedValues[idx] : context.definedValues.at(0);
 }
 
-function getNextKeyframe(context, f) {
-  return context.definedFrames.find(v => v > f) || context.definedFrames.at(-1);
+function getNextKeyframeValue(context, f) {
+  let idx = context.definedFrames.findIndex(v => v > f);
+  return idx != -1 ? context.definedValues[idx] : context.definedValues.at(-1);
 }
 
-function getPreviousKeyframe(context, f) {
-  return context.definedFrames.findLast(v => v <= f) || context.definedFrames.at(0);
-}
+
+
+
 
 function oscillator(osc, period, pos, amp, centre, pulsewidth) {
   switch(osc) {
@@ -212,11 +217,10 @@ function oscillator(osc, period, pos, amp, centre, pulsewidth) {
 
 function bezier(f, x1, y1, x2, y2, context) {
   let bezier = BezierEasing(x1, y1, x2, y2);
-  let start_x = context.thisKf;
-  let range_x = getNextKeyframe(context, context.thisKf) - getPreviousKeyframe(context, context.thisKf);
-  let start_y = getPreviousKeyframeValue(context, context.thisKf);
-  let range_y = getNextKeyframeValue(context, context.thisKf) - getPreviousKeyframeValue(context, context.thisKf);
-  console.log(range_x, start_y, range_y);
+  let start_x = getPreviousKeyframe(context, f);
+  let range_x = getNextKeyframe(context, f) - getPreviousKeyframe(context, f);
+  let start_y = getPreviousKeyframeValue(context, f);
+  let range_y = getNextKeyframeValue(context, f) - getPreviousKeyframeValue(context, f);
   return start_y + bezier((f-start_x) / range_x) * range_y;
 }
 

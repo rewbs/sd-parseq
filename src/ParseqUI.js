@@ -20,6 +20,7 @@ import stc from 'string-to-color';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import { Sparklines, SparklinesLine, SparklinesReferenceLine } from 'react-sparklines';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -73,6 +74,7 @@ const default_options = {
 }
 
 function loadFromQueryString(key) {
+  console.log(`Reloading from query string: ${key}`)
   let qps = new URLSearchParams(window.location.search);
   let loadedStateStr = qps.get("parseq") || qps.get("parsec");
   if (loadedStateStr) {
@@ -136,7 +138,11 @@ const ParseqUI = (props) => {
             maxLength: 1000,
             rows: 2,
             cols: 50
-        }        
+        },
+        valueSetter: (params) => {
+          params.data[field + '_i'] = params.newValue;
+          setNeedsRender(true);
+        },        
       }
     ])
   ]);
@@ -370,6 +376,12 @@ const ParseqUI = (props) => {
   //////////////////////////////////////////
   // Main render action callback
   const render = useCallback((event) => {
+    if (!needsRender) {
+      console.log("Interrupted unnecessary render.")
+      return;
+    }
+    console.time('Render time');
+
     gridRef.current.api.onSortChanged();
     setRenderedErrorMessage("");
 
@@ -419,7 +431,7 @@ const ParseqUI = (props) => {
               result = parse(toParse);
             } catch (error) {
                 console.error(error);
-                setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (value: <pre>${toParse}</pre>): ` + error);
+                setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
             }
             var context = new InterpreterContext({
               fieldName: field,
@@ -434,7 +446,7 @@ const ParseqUI = (props) => {
               interpolator = interpret(result, context);
             } catch (error) {
               console.error(error);
-              setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error);              
+              setRenderedErrorMessage(`Error interpreting interpolation for ${field} at frame ${frame} (${toParse}): ` + error);              
               interpolator = lastInterpolator;
             }
           }
@@ -444,7 +456,7 @@ const ParseqUI = (props) => {
           computed_value = interpolator(frame) 
         } catch (error) {
           console.error(error);
-          setRenderedErrorMessage(`Error invoking interpolation for ${field} at frame ${frame} (${toParse}): ` + error);              
+          setRenderedErrorMessage(`Error evaluating interpolation for ${field} at frame ${frame} (${toParse}): ` + error);              
         }
 
         rendered_frames[frame] = {
@@ -489,6 +501,25 @@ const ParseqUI = (props) => {
       }
     });
 
+    // Calculate delta and commulative variants
+    all_frame_numbers.forEach((frame) => {
+      interpolatable_fields.forEach((field) => {
+        if (frame == 0) {
+          rendered_frames[frame] = {
+            ...rendered_frames[frame] || {},
+            [field + '_cum' ]: rendered_frames[0][field],
+            [field + '_delta' ]: rendered_frames[0][field]
+          }
+        } else {
+          rendered_frames[frame] = {
+            ...rendered_frames[frame] || {},
+            [field + '_cum' ]: rendered_frames[frame-1][field] + rendered_frames[frame][field],
+            [field + '_delta' ]: rendered_frames[frame][field] - rendered_frames[frame-1][field]
+          }
+        }
+        });
+    });
+
     const data = {
       "meta": { 
         "generated_by": "sd_parseq",
@@ -504,12 +535,20 @@ const ParseqUI = (props) => {
     var graphable_data = []
     interpolatable_fields.forEach((field) => {
       var maxValue = Math.max(...rendered_frames.map( rf => Math.abs(rf[field])))
+      var maxValue_cum = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_cum'])))
+      var maxValue_delta = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_delta'])))
+      var minValue = Math.min(...rendered_frames.map(rf => rf[field]))
       all_frame_numbers.forEach((frame) => {
         graphable_data[frame] = {
           ...graphable_data[frame] || {},
           "frame": frame,
           [field]: rendered_frames[frame][field],
-          [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field]
+          [field+"_cum"]: rendered_frames[frame][field+'_cum'],
+          [field+"_delta"]: rendered_frames[frame][field+'_delta'],
+          [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field],
+          [field+"_cum_pc"]: (maxValue_cum !== 0) ? rendered_frames[frame][field+'_cum']/maxValue_cum*100 : rendered_frames[frame][field+'_cum'],
+          [field+"_delta_pc"]: (maxValue_delta !== 0) ? rendered_frames[frame][field+'_delta']/maxValue_delta*100 : rendered_frames[frame][field+'_delta'],
+          [field+"_isFlat"] : minValue === maxValue
         }
       });
     });
@@ -517,6 +556,9 @@ const ParseqUI = (props) => {
     setRenderedData(data);
     setGraphableData(graphable_data);    
     setNeedsRender(false);
+    console.timeEnd('Render time');
+
+    console.log(graphable_data);
   });
 
 
@@ -624,7 +666,6 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
             columnHoverHighlight={true}
             undoRedoCellEditing={true}
             undoRedoCellEditingLimit={100}
-            enableRangeSelection={true}
             enableFillHandle={true}
             enableCellChangeFlash={true}
             tooltipShowDelay={0} />
@@ -674,7 +715,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
                 label="Show as percentage of max" />
         <ResponsiveContainer width="100%" height={300}>
           <LineChart margin={{ top: 20, right: 30, left: 0, bottom: 0 }} data={ graphableData }>
-            {visFields.map((field) => <Line type="monotone" dataKey={ graphAsPercentages ? `${field}_pc` : field} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
+            {visFields.map((field) => <Line type="monotone" dataKey={ graphAsPercentages ? `${field}_pc` : field+'_delta'} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
             <Legend layout="horizontal" wrapperStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #d5d5d5', borderRadius: 3, lineHeight: '40px' }} />
             <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
             {getKeyframes().map((keyframe) => <ReferenceLine x={keyframe.frame} stroke="green" strokeDasharray="2 2" />)}
@@ -718,6 +759,23 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           ))}
         </Select>
       </Grid>
+      <Grid xs={12}>
+        <h3>Sparklines</h3>
+        Hiding the following because they are flat: {graphableData[0] && interpolatable_fields.filter((field) => graphableData[0][field+'_isFlat']).join(", ")}
+      </Grid>
+      {graphableData[0] && interpolatable_fields.filter((field) => !graphableData[0][field+'_isFlat']).map((field) => 
+        <Grid xs={2}>
+        <p margin-left={1} margin-right={1} ><small><small><strong>{field}:</strong></small></small></p>
+          <Sparklines data={graphableData.map(gf => gf[field].toFixed(5))} margin={1}  padding={1}>
+            <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
+          </Sparklines>
+          <p margin-left={1} margin-right={1} ><small><small><small>delta:</small></small></small></p>
+          <Sparklines data={graphableData.slice(1).map(gf => gf[field+'_delta'].toFixed(5))} margin={1}  padding={1}>
+            <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
+          </Sparklines>                    
+         </Grid>
+      )}
+      <Grid xs={12}></Grid>
       <Grid xs={8}>
         <h3>Prompts</h3>
         <FormControl fullWidth>
@@ -811,13 +869,8 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
         />
       </Grid>
       <Grid xs={6}>
-        <ul>
-        <li>
-        { renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></> }
-        </li>
-        <li><p>TODO: Better error messages /  warnings. For now check the console.</p></li>
-        <li><a href="">Link to this page, including values for prompts, options, keyframes</a></li>
-        </ul>
+        { renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <Alert severity="success">Rendered OK.</Alert> }
+        <p><a href="">Link to this page, including values for prompts, options, keyframes</a></p>
       </Grid>
     </Grid>
   );

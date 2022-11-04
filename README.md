@@ -134,19 +134,21 @@ Parseq also supports simple expressions so you can combine oscillators and even 
 
 #### Values
 
-| value  	|  description 	| example  	|
-|---	    |---	|---	|
-| `S`   	| Step interpolation: use the last keyframed value 	|   	|
-| `L` 	  | (default) Linear interpolation betwen the last and next keyframed value |   	|
-| `C`  	| Cubic spline interpolation betwen the last and next keyframed value  	|   	|
-| `P`  	| Polinomial interpolation betwen the last and next keyframed value  	|   	|
-| `f`  	| Frame number  	|   	|
-| `prev_keyframe`  	| Previous keyframe number for this column 	|   	|
-| `next_keyframe`  	| Next keyframe number for this column 	|   	|
-| `prev_keyframe_value`  	| Previous keyframed value for this column 	|   	|
-| `next_keyframe_value`  	| Next keyframed value for this column 	|   	|
+| value  	|  description 	| example  	| example output 	|
+|---	    |---	|---	|---	|
+| `S`   	| Step interpolation: use the last keyframed value 	|<img width="166" alt="image" src="https://user-images.githubusercontent.com/74455/199902063-da5c054c-9572-4f63-aa26-1b6853b89ac9.png">| <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199902277-2009c100-08b1-487d-84d8-d0d5194df302.png"> |
+| `L` 	  | (default) Linear interpolation betwen the last and next keyframed value |   	| |
+| `C`  	| Cubic spline interpolation betwen the last and next keyframed value  	| <img width="194" alt="image" src="https://user-images.githubusercontent.com/74455/199900924-7e709a58-fa6d-44cb-babe-acb3fe5e351e.png"> | <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199901099-7ee4a56a-9b56-4ce0-b403-6099c2d1f5c3.png"> |
+| `P`  	| Polinomial interpolation betwen the last and next keyframed value  	|   	| |
+| `f`  	| Frame number  	|   	| |
+| `prev_keyframe`  	| Previous keyframe number for this column 	|   	| |
+| `next_keyframe`  	| Next keyframe number for this column 	|   	| |
+| `prev_keyframe_value`  	| Previous keyframed value for this column 	|   	| |
+| `next_keyframe_value`  	| Next keyframed value for this column 	|   	| |
 
 #### Functions
+
+All functions can be called either with unnamed args (e.g. `sin(10)`) or named args (e.g. `sin(period=10, amplitude=2)`). Most arguments have long and short names.
 
 | function  	|  description 	| example  	|
 |---	    |---	|---	|

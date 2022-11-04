@@ -61,8 +61,8 @@ const MenuProps = {
 
 // eslint-disable-next-line
 const default_prompts = {
-  positive: "A cat :${prompt_weight_1} AND a dog :${prompt_weight_2} AND a duck :${prompt_weight_3} AND a psychopath :${prompt_weight_4}",
-  negative: "boring"
+  positive: "Cat :${prompt_weight_1} AND duck :${prompt_weight_2} AND open mouth :${prompt_weight_3} AND centered, high detail",
+  negative: "low quality, artefacts, watermark, logo, signature"
 }
 const default_options = {
   input_fps: "",
@@ -99,6 +99,7 @@ const ParseqUI = (props) => {
   const gridRef = useRef();
   const interpolatable_fields = props.interpolatable_fields;
   const default_keyframes = props.default_keyframes;
+  const default_visible = props.default_visible || [];
 
   //////////////////////////////////////////
   // App State
@@ -154,7 +155,7 @@ const ParseqUI = (props) => {
   const [frameToDelete, setFrameToDelete] = useState();
   const [needsRender, setNeedsRender] = useState(true);
   const [frameIdMap, setFrameIdMap] = useState(new Map());
-  const [displayFields, setDisplayFields] = useState(['seed', 'noise', 'strength', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4']);
+  const [displayFields, setDisplayFields] = useState(default_visible);
   const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
   const [graphAsPercentages, setGraphAsPercentages] = useState(true);
 
@@ -508,7 +509,7 @@ const ParseqUI = (props) => {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
             [field + '_cum' ]: rendered_frames[frame-1][field+ '_cum'] + rendered_frames[frame][field],
-            [field + '_delta' ]: rendered_frames[frame][field] - rendered_frames[frame-1][field]
+            [field + '_delta' ]: rendered_frames[frame][field] - rendered_frames[frame-1][field] + rendered_frames[0][field]
           }
         }
         });
@@ -648,7 +649,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
               variant="standard" />
         </Tooltip2>
         <Grid xs={12}>
-        Show columns:
+        Show fields:
           <Select
             id="select-display-fields"
             label={"Show columns"}
@@ -733,18 +734,18 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       </Grid>
       {graphableData[0] && interpolatable_fields.filter((field) => !graphableData[0][field+'_isFlat']).map((field) => 
         <Grid xs={2}>
-        <p margin-left={1} margin-right={1} ><small><small><strong>{field}:</strong></small></small></p>
+          <p margin-left={1} margin-right={1} ><small><small><strong>{field}:</strong></small></small></p>
           <Sparklines data={graphableData.map(gf => gf[field].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
           </Sparklines>
           <p margin-left={1} margin-right={1} ><small><small><small>delta:</small></small></small></p>
-          <Sparklines data={graphableData.slice(1).map(gf => gf[field+'_delta'].toFixed(5))} margin={1}  padding={1}>
+          <Sparklines data={graphableData.map(gf => gf[field+'_delta'].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
           </Sparklines>                    
-          <p margin-left={1} margin-right={1} ><small><small><small>cumulative:</small></small></small></p>
-          <Sparklines data={graphableData.slice(1).map(gf => gf[field+'_cum'].toFixed(5))} margin={1}  padding={1}>
+          {/* <p margin-left={1} margin-right={1} ><small><small><small>cumulative:</small></small></small></p>
+          <Sparklines data={graphableData.map(gf => gf[field+'_cum'].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
-          </Sparklines>          
+          </Sparklines>           */}
          </Grid>
       )}
       <Grid xs={12}></Grid>
@@ -826,7 +827,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
         </FormGroup>        
       </Grid>
       <Grid xs={6}>
-        <h3>Output <small><small> - copy this and paste it in the Parseq script in the Stable Diffusion Web UI</small></small></h3>
+        <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
         <Button variant="contained" onClick={render}>Render</Button>
         { needsRender ? <Alert severity="info">Keyframes, prompts, or options have changed. Please hit render to update the output.</Alert> : <Alert severity="success">Output is up-to-date.</Alert>}
         <TextField

@@ -63,7 +63,7 @@ const default_keyframes = [
       "strength": 0.5,
       "prompt_weight_1": 1,
       "prompt_weight_2": 0,
-      "prompt_weight_3": 0,
+      "prompt_weight_3": 1,
       "prompt_weight_3_i": "tri(period=240, phase=0, amp=S)",
       "prompt_weight_4": 0,
       "prompt_weight_4_i": null,

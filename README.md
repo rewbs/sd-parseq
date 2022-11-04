@@ -110,17 +110,12 @@ Now we'll add some keyframes. We'll set them at frames 25, 50 and 75. We can alw
 
 In this video, we'd like prompt 1 to start off weak, become strong in the middle of the video, and then become weak again. Easy! Put in some values for prompt_1_weight and hit render. You'll see it interpolates linearly by default, and if a value is empty in a keyframe we interpolate straight through it.
 
-<img width="858" alt="image" src="https://user-images.githubusercontent.com/74455/196232646-171e2755-48f9-454b-bb80-db5462e55ea4.png">
-
-Now you might be wondering what the arrow (➟) columns are next to the value columns. These are the interpolation columns, and they let you specify how the value should "travel" from this point onwards. The default is linear interpolation, but you override this with `S` for Step, `C` for cubic, and `P` for Polinomial. Let's give it a go:
+You might be wondering what the arrow (➟) columns are next to the value columns. These are the interpolation columns, and they let you specify how the value should "travel" from this point onwards. The default is linear interpolation, but you override this with `S` for Step, `C` for cubic, and `P` for Polinomial. Let's give it a go:
 
 <img width="1063" alt="image" src="https://user-images.githubusercontent.com/74455/196233767-bf10dfdf-78ed-4d1f-8974-1b99d12de49d.png">
 
-<img width="1063" alt="image" src="https://user-images.githubusercontent.com/74455/196233894-16560a04-2fce-4e41-a8c9-501db44394cf.png">
+You can also switch interpolation part way through.
 
-You can also switch interpolation part way through:
-
-<img width="1063" alt="image" src="https://user-images.githubusercontent.com/74455/196234083-d6bea98e-9d0a-4e54-a2d2-baf698100962.png">
 
 But that's not all! Let's say you want to make something happen rhythmically, such as synchronising prompt strength to the beat of a song. Adding keyframe for each beat would be a pain the arse. Instead, you can use **oscillators**. Here, we enter `sin(0.5, 0, 50, 0.5)` to make prompt 2's weight oscillate along a sine wave with y offset 0.5 and 0 phase shift, with a period of 50 frames and an amplitude of 0.5: 
 

@@ -6,13 +6,9 @@ For context: [Stable Diffusion](https://stability.ai/blog/stable-diffusion-publi
 
 Parseq is a _parameter sequencer_ for [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui). You can use it to generate videos with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, denoising strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
-<img width="500" alt="Parseq_-_parameter_sequencer_for_Stable_Diffusion" src="https://user-images.githubusercontent.com/74455/196206868-d463a083-8069-41fe-ac8f-cfc1fd3df463.png">
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199899245-46643e77-bb10-4367-b6bd-b2a699fb612c.png">
 
 It can be used in 2 ways: with a custom script for Automatic1111, or with the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui).
-
-
-- A custom UI that allows you to sequence key frames and interpolation behaviour for all parameters, and which generates exact parameter values for all frames as a JSON blob. A version of this UI is hosted here: https://sd-parseq.web.app/.
-- A plug-in script for [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) that accepts the JSON blob, and applies the settings and processing as expected.
 
 ## Installation
 
@@ -137,7 +133,7 @@ Parseq also supports simple expressions so you can combine oscillators and even 
 <img width="1066" alt="image" src="https://user-images.githubusercontent.com/74455/196236628-e9786d42-52fb-458a-b39c-3f173c43818f.png">
 
 
-### Available interpolation modifiers
+### Interpolation modifiers
 
 **TODO: descriptions and examples.**
 

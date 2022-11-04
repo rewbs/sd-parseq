@@ -8,7 +8,9 @@ Parseq is a _parameter sequencer_ for [AUTOMATIC1111/stable-diffusion-webui](htt
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199899245-46643e77-bb10-4367-b6bd-b2a699fb612c.png">
 
-It can be used in 2 ways: with a custom script for Automatic1111, or with the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui).
+It can be used in 2 ways: with a custom script for Automatic1111, or with the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). 
+
+You can jump straight into the UI here: https://sd-parseq.web.app/ .
 
 ## Installation
 

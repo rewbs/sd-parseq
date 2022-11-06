@@ -16,7 +16,7 @@ You can jump straight into the UI here: https://sd-parseq.web.app/ .
 
 ### Option 1: Deforum integration 
 
-Use this approach if you like animating with Deforum and want to use Parseq as a IU to degine
+Preferred approach. Use this if you like animating with Deforum and want to use Parseq as an alternative to math keyframing. To get started:
 
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - Install the Deforum extension [from this branch](https://github.com/rewbs/deforum-for-automatic1111-webui). 

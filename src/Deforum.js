@@ -140,6 +140,7 @@ const Deforum = () => {
         interpolatable_fields={ interpolatable_fields }
         default_keyframes={ default_keyframes }
         default_visible={ ['seed', 'noise', 'strength', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'angle', 'zoom'] }
+        show_options = { false }
       />
      </div>
   );

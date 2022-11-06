@@ -20,7 +20,8 @@ import stc from 'string-to-color';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { Sparklines, SparklinesLine, SparklinesReferenceLine } from 'react-sparklines';
+import { Sparklines, SparklinesLine } from 'react-sparklines';
+import {CopyToClipboard} from 'react-copy-to-clipboard';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -100,6 +101,7 @@ const ParseqUI = (props) => {
   const interpolatable_fields = props.interpolatable_fields;
   const default_keyframes = props.default_keyframes;
   const default_visible = props.default_visible || [];
+  const show_options = props.show_options;
 
   //////////////////////////////////////////
   // App State
@@ -625,6 +627,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
     }}>
       <CssBaseline />
       <Grid xs={12}>
+        { renderStatus(needsRender, renderedData, renderedErrorMessage) }
         <h3>Keyframes for parameter flow</h3>
         <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
             <TextField
@@ -701,8 +704,6 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       </Grid>
       <Grid xs={12}>
         <h3>Visualised parameter flow</h3>
-        { renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></> }
-        { needsRender ? <Alert severity="info">Keyframes, prompts, or options have changed. Please hit render to update the output.</Alert> : <Alert severity="success">Output is up-to-date.</Alert>}
         <FormControlLabel control={
                 <Checkbox defaultChecked={true}
                   id={"graph_as_percent"}
@@ -748,8 +749,8 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           </Sparklines>           */}
          </Grid>
       )}
-      <Grid xs={12}></Grid>
-      <Grid xs={8}>
+      <Grid xs={12}> {/* Ensures there's always a row break below sparklines. */} </Grid>
+      <Grid xs={show_options ? 8 : 12}>
         <h3>Prompts</h3>
         <FormControl fullWidth>
             <TextField
@@ -777,59 +778,62 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
               variant="standard" />
         </FormControl>
       </Grid>
-      <Grid xs={4}>
-        <h3>Options</h3>
-        <FormGroup>
-          <Tooltip2 title="Input FPS: if input is a video, drop or duplicate frames from the input to process frames at this rate (leave blank to use all frames from the input exactly once).">
-            <TextField
-              id={"options_input_fps"}
-              label={"Input FPS"}
-              defaultValue={options['input_fps']}
-              onChange={handleChangeOption}
-              style={{ marginTop: '10px', marginRight: '10px' }}
-              InputProps={{ style: { fontSize: '0.75em' } }}
-              size="small"
-              variant="standard" />
-          </Tooltip2>
-        </FormGroup>
-        <br />
-        <FormGroup>
-          <Tooltip2 title="Color-correction window width: How many frames to average over when computing the target color histogram. -1 means grow the window frames a processed, always starting at frame 0 and ending at the processed frame if slide rate is 1.">
-            <TextField
-              id={"options_cc_window_width"}
-              label={"CC window width"}
-              defaultValue={options['cc_window_width']}
-              onChange={handleChangeOption}
-              style={{ marginTop: '10px', marginRight: '10px' }}
-              InputProps={{ style: { fontSize: '0.75em' } }}
-              size="small"
-              variant="standard" />
-          </Tooltip2>
-          <Tooltip2 title="Color-correction window slide rate: How fast to move the end of the window relative to the frame generation. For example, if the loopback is 80 frames long, a slide rate of 0.5 means that on the last generated frame, the window ends on frame 40.">
-            <TextField
-              id={"options_cc_window_slide_rate"}
-              label={"CC window slide rate"}
-              defaultValue={options['cc_window_slide_rate']}
-              onChange={handleChangeOption}
-              style={{ marginTop: '10px', marginRight: '10px' }}
-              InputProps={{ style: { fontSize: '0.75em' } }}
-              size="small"
-              variant="standard" />
-          </Tooltip2>
-          <Tooltip2 title="Whether to always include the original input image or video first frame of the color-correction targer window. Set this to true and 'CC window width' to 0 to lock all generated frames to the input histogram.">
-              <FormControlLabel control={
-                <Checkbox defaultChecked={options['cc_use_input']}
-                  id={"options_cc_use_input"}
-                  onChange={handleChangeOption}
-                 />}
-                label="Always use input for CC" />
-          </Tooltip2>
-        </FormGroup>        
-      </Grid>
-      <Grid xs={6}>
+      { !show_options ?
+        <></> :
+        <Grid xs={4}>
+          <h3>Options</h3>
+          <FormGroup>
+            <Tooltip2 title="Input FPS: if input is a video, drop or duplicate frames from the input to process frames at this rate (leave blank to use all frames from the input exactly once).">
+              <TextField
+                id={"options_input_fps"}
+                label={"Input FPS"}
+                defaultValue={options['input_fps']}
+                onChange={handleChangeOption}
+                style={{ marginTop: '10px', marginRight: '10px' }}
+                InputProps={{ style: { fontSize: '0.75em' } }}
+                size="small"
+                variant="standard" />
+            </Tooltip2>
+          </FormGroup>
+          <br />
+          <FormGroup>
+            <Tooltip2 title="Color-correction window width: How many frames to average over when computing the target color histogram. -1 means grow the window frames a processed, always starting at frame 0 and ending at the processed frame if slide rate is 1.">
+              <TextField
+                id={"options_cc_window_width"}
+                label={"CC window width"}
+                defaultValue={options['cc_window_width']}
+                onChange={handleChangeOption}
+                style={{ marginTop: '10px', marginRight: '10px' }}
+                InputProps={{ style: { fontSize: '0.75em' } }}
+                size="small"
+                variant="standard" />
+            </Tooltip2>
+            <Tooltip2 title="Color-correction window slide rate: How fast to move the end of the window relative to the frame generation. For example, if the loopback is 80 frames long, a slide rate of 0.5 means that on the last generated frame, the window ends on frame 40.">
+              <TextField
+                id={"options_cc_window_slide_rate"}
+                label={"CC window slide rate"}
+                defaultValue={options['cc_window_slide_rate']}
+                onChange={handleChangeOption}
+                style={{ marginTop: '10px', marginRight: '10px' }}
+                InputProps={{ style: { fontSize: '0.75em' } }}
+                size="small"
+                variant="standard" />
+            </Tooltip2>
+            <Tooltip2 title="Whether to always include the original input image or video first frame of the color-correction targer window. Set this to true and 'CC window width' to 0 to lock all generated frames to the input histogram.">
+                <FormControlLabel control={
+                  <Checkbox defaultChecked={options['cc_use_input']}
+                    id={"options_cc_use_input"}
+                    onChange={handleChangeOption}
+                  />}
+                  label="Always use input for CC" />
+            </Tooltip2>
+          </FormGroup>
+        </Grid>
+      }
+      <Grid xs={8}>
         <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
         <Button variant="contained" onClick={render}>Render</Button>
-        { needsRender ? <Alert severity="info">Keyframes, prompts, or options have changed. Please hit render to update the output.</Alert> : <Alert severity="success">Output is up-to-date.</Alert>}
+        { renderStatus(needsRender, renderedData, renderedErrorMessage) }
         <TextField
           style={{ width: '100%' }}
           id="filled-multiline-static"
@@ -841,12 +845,29 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           variant="filled"
         />
       </Grid>
-      <Grid xs={6}>
-        { renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <Alert severity="success">Rendered OK.</Alert> }
-        <p><a href="">Link to this page, including values for prompts, options, keyframes</a></p>
+      <Grid xs={4}>
+        <p><a href="">Link to this page, including values for prompts, options, keyframes (bookmark to save).</a></p>
       </Grid>
     </Grid>
   );
 };
 
 export default ParseqUI;
+
+function renderStatus(needsRender, renderedData, renderedErrorMessage) {
+  let errorMessage = renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></>
+  let statusMessage = (renderedErrorMessage || needsRender) ? 
+  <Alert severity="info">Keyframes, prompts, or options have changed. Please hit render to update the output.</Alert>
+  :
+  <Alert severity="success">Output is up-to-date.
+    <CopyToClipboard text={JSON.stringify(renderedData, null, 4)}>
+      <Button disabled={needsRender} style={{ marginLeft: '1em' }} variant="outlined">Copy to clipboard</Button>
+    </CopyToClipboard>
+  </Alert>;
+  
+
+  return <div>
+    {errorMessage}
+    {statusMessage}
+  </div>  
+}

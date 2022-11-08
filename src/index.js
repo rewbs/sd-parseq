@@ -11,6 +11,7 @@ import './index.css';
 import App from './App';
 import Interpreter from './Interpreter';
 import Deforum from './Deforum';
+import { Editable } from './Editable';
 import reportWebVitals from './reportWebVitals';
 
 const router = createBrowserRouter([
@@ -25,6 +26,10 @@ const router = createBrowserRouter([
   {
     path: "/deforum",
     element: <Deforum/>,
+  },
+  {
+    path: "/editable",
+    element: <Editable/>,
   },
 ]);
 

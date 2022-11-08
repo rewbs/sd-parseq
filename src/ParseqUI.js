@@ -23,6 +23,8 @@ import AddIcon from '@mui/icons-material/Add';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import {CopyToClipboard} from 'react-copy-to-clipboard';
 
+import { Editable } from './Editable';
+
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
@@ -149,8 +151,9 @@ const ParseqUI = (props) => {
       }
     ])
   ]);
-  const [renderedData, setRenderedData] = useState([]);
+  const [renderedData, setRenderedData] = useState({});
   const [graphableData, setGraphableData] = useState([]);  
+  //const [graphableDataEditable, setGraphableDataEditable] = useState({});  
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
 
   const [frameToAdd, setFrameToAdd] = useState();
@@ -355,7 +358,7 @@ const ParseqUI = (props) => {
   function setQueryParamState() {
     const url = new URL(window.location);
     let qp = getPersistableState();
-    url.searchParams.delete('parsec');
+url.searchParams.delete('parsec');
     url.searchParams.set('parseq', JSON.stringify(qp));
     window.history.replaceState({}, '', url);
   }
@@ -532,26 +535,39 @@ const ParseqUI = (props) => {
     var graphable_data = []
     interpolatable_fields.forEach((field) => {
       var maxValue = Math.max(...rendered_frames.map( rf => Math.abs(rf[field])))
-      var maxValue_cum = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_cum'])))
-      var maxValue_delta = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_delta'])))
+      // var maxValue_cum = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_cum'])))
+      // var maxValue_delta = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_delta'])))
       var minValue = Math.min(...rendered_frames.map(rf => rf[field]))
       all_frame_numbers.forEach((frame) => {
         graphable_data[frame] = {
           ...graphable_data[frame] || {},
           "frame": frame,
           [field]: rendered_frames[frame][field],
-          [field+"_cum"]: rendered_frames[frame][field+'_cum'],
+          // [field+"_cum"]: rendered_frames[frame][field+'_cum'],
           [field+"_delta"]: rendered_frames[frame][field+'_delta'],
           [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field],
-          [field+"_cum_pc"]: (maxValue_cum !== 0) ? rendered_frames[frame][field+'_cum']/maxValue_cum*100 : rendered_frames[frame][field+'_cum'],
-          [field+"_delta_pc"]: (maxValue_delta !== 0) ? rendered_frames[frame][field+'_delta']/maxValue_delta*100 : rendered_frames[frame][field+'_delta'],
+          // [field+"_cum_pc"]: (maxValue_cum !== 0) ? rendered_frames[frame][field+'_cum']/maxValue_cum*100 : rendered_frames[frame][field+'_cum'],
+          // [field+"_delta_pc"]: (maxValue_delta !== 0) ? rendered_frames[frame][field+'_delta']/maxValue_delta*100 : rendered_frames[frame][field+'_delta'],
           [field+"_isFlat"] : minValue === maxValue
         }
       });
     });
+    
+    let graphable_data_editable={
+      labels: all_frame_numbers,
+      datasets: displayFields.map((field) => {
+        return {
+          label: field,
+          data: graphable_data.map((frame) => frame[field + (graphAsPercentages?'_pc':'')]),
+          borderColor: stc(field),
+          backgroundColor: stc(field),
+        };
+      }),
+    }; 
 
     setRenderedData(data);
-    setGraphableData(graphable_data);    
+    setGraphableData(graphable_data);
+//    setGraphableDataEditable(graphable_data_editable);    
     setNeedsRender(false);
     console.timeEnd('Render time');
 
@@ -701,6 +717,14 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
         <Button variant="contained" style={{ marginRight: 10}} onClick={render}>Render (ctrl-r)</Button>
         {addRowDialog}
         {deleteRowDialog}
+      </Grid>
+      <Grid xs={12}>
+        <Editable 
+          renderedData={renderedData}
+          displayFields={displayFields}
+          as_percents={graphAsPercentages}
+          updatePoint= { (index,value) => console.log(index,value)}
+        />
       </Grid>
       <Grid xs={12}>
         <h3>Visualised parameter flow</h3>

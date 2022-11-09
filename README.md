@@ -20,9 +20,10 @@ Preferred approach. Use this if you like animating with Deforum and want to use 
 
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - Install the Deforum extension [from this branch](https://github.com/rewbs/deforum-for-automatic1111-webui). 
-- Relaunch Auto1111 – You should now see a `Parseq` tab under the `Deforum` extension:
+- Relaunch Auto1111 – You should now see a `Parseq` section right at the bottom for the `keyframes` tab under the `Deforum` extension (click to expand it):
 
-<img width="500" alt="image" src="https://i.imgur.com/oizeKMa.png">
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/200856608-d90762f4-b682-4b79-88ff-e8b3fa90813d.png">
+
 
 ### Option 2: Parseq script
 

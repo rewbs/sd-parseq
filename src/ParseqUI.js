@@ -1,6 +1,6 @@
 import { AgGridReact } from 'ag-grid-react';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Checkbox, FormControlLabel, FormGroup, Tooltip as Tooltip2 } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, FormGroup, keyframes, Tooltip as Tooltip2 } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -354,7 +354,7 @@ const ParseqUI = (props) => {
     }
 
   };  
-
+  
   function setQueryParamState() {
     const url = new URL(window.location);
     let qp = getPersistableState();
@@ -376,11 +376,7 @@ url.searchParams.delete('parsec');
   //////////////////////////////////////////
   // Main render action callback
   const render = useCallback((event) => {
-    if (!needsRender) {
-      console.log("Interrupted unnecessary render.")
-      return;
-    }
-    console.time('Render time');
+    console.time('Render');
 
     gridRef.current.api.onSortChanged();
     setRenderedErrorMessage("");
@@ -567,11 +563,9 @@ url.searchParams.delete('parsec');
 
     setRenderedData(data);
     setGraphableData(graphable_data);
-//    setGraphableDataEditable(graphable_data_editable);    
     setNeedsRender(false);
-    console.timeEnd('Render time');
-
-    console.log(graphable_data);
+    
+    console.timeEnd('Render')
   });
 
 
@@ -719,14 +713,6 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
         {deleteRowDialog}
       </Grid>
       <Grid xs={12}>
-        <Editable 
-          renderedData={renderedData}
-          displayFields={displayFields}
-          as_percents={graphAsPercentages}
-          updatePoint= { (index,value) => console.log(index,value)}
-        />
-      </Grid>
-      <Grid xs={12}>
         <h3>Visualised parameter flow</h3>
         <FormControlLabel control={
                 <Checkbox defaultChecked={true}
@@ -734,7 +720,24 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
                   onChange={handleChangeGraphType}
                  />}
                 label="Show as percentage of max" />
-        <ResponsiveContainer width="100%" height={300}>
+        <Editable 
+          renderedData={renderedData}
+          displayFields={displayFields}
+          as_percents={graphAsPercentages}
+          updatePoint={(field, index, value) => {
+            let rowId = frameIdMap.get(index);
+            gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
+            setQueryParamState();
+            render();
+          }}
+          addPoint={(index) => {
+            addRow(index);
+            setQueryParamState();
+            render();
+          }}
+        />
+
+        {/* <ResponsiveContainer width="100%" height={300}>
           <LineChart margin={{ top: 20, right: 30, left: 0, bottom: 0 }} data={ graphableData }>
             {displayFields.map((field) => <Line type="monotone" dataKey={ graphAsPercentages ? `${field}_pc` : field} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
             <Legend layout="horizontal" wrapperStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #d5d5d5', borderRadius: 3, lineHeight: '40px' }} />
@@ -751,7 +754,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
               contentStyle={{ fontSize: '0.8em', fontFamily: 'Monospace' }}
               />
           </LineChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer> */}
       </Grid>
       <Grid xs={12}>
         <h3>Sparklines</h3>

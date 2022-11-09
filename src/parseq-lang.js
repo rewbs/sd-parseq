@@ -1,12 +1,10 @@
+// Generated automatically by nearley, version 2.20.1
+// http://github.com/Hardmath123/nearley
 function id(x) { return x[0]; }
 
 const moo = require("moo");
 
 let comment, string_literal, number_literal, identifier, unit, ws;
-export default function getGrammar() {
-    return grammar;
-}  
-
 
 const lexer = moo.compile({
     ws: {match: /[ \t\r\n]+/, lineBreaks: true }, 
@@ -29,12 +27,8 @@ const lexer = moo.compile({
         match: /#[^\n]*/,
         value: s => s.substring(1)
     },
-    unit: {
-        match: /(?<=[0-9])[fsb]/
-    }, 
     number_literal: {
-        match: /[0-9]+(?:\.[0-9]+)?/,
-        value: s => Number(s)
+        match: /[0-9]+(?:\.[0-9]+)?[fsb]?/
     },    
     identifier: {
         match: /[a-zA-Z_][a-zA-Z_0-9]*/,
@@ -80,9 +74,8 @@ function convertTokenId(data) {
     return convertToken(data[0]);
 }
 
-const grammar = {
-    Lexer: lexer,
-    ParserRules: [
+let Lexer = lexer;
+let ParserRules = [
     {"name": "input", "symbols": ["_", "expression", "_"], "postprocess": d => [d[1]]},
     {"name": "parameter_list", "symbols": [], "postprocess": () => []},
     {"name": "parameter_list", "symbols": ["identifier"], "postprocess": d => [d[0]]},
@@ -207,8 +200,8 @@ const grammar = {
             end: d[4].end
         })
                 },
-    {"name": "negation", "symbols": ["number_with_unit"], "postprocess": id},
-    {"name": "negation", "symbols": [{"literal":"-"}, "number_with_unit"], "postprocess": 
+    {"name": "negation", "symbols": ["unary_expression"], "postprocess": id},
+    {"name": "negation", "symbols": [{"literal":"-"}, "unary_expression"], "postprocess": 
         d => ({
             type: "negation",
             value: d[1],
@@ -216,16 +209,6 @@ const grammar = {
             end: d[1].end
         })        
                 },
-    {"name": "number_with_unit", "symbols": ["number", "unit"], "postprocess": 
-        d => ({
-            type: "number_with_unit",
-            left: d[0],
-            right: d[1],
-            start: d[0].start,
-            end: d[1].end
-        })
-                },
-    {"name": "number_with_unit", "symbols": ["unary_expression"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["number"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["identifier"], "postprocess": 
         d => ({
@@ -257,9 +240,31 @@ const grammar = {
             end: tokenEnd(d[0])
         })
                 },
-    {"name": "line_comment", "symbols": [(lexer.has("comment") ? {type: "comment"} : comment )], "postprocess": convertTokenId},
+    {"name": "line_comment", "symbols": [(lexer.has("comment") ? {type: "comment"} : comment)], "postprocess": convertTokenId},
     {"name": "string_literal", "symbols": [(lexer.has("string_literal") ? {type: "string_literal"} : string_literal)], "postprocess": convertTokenId},
-    {"name": "number", "symbols": [(lexer.has("number_literal") ? {type: "number_literal"} : number_literal)], "postprocess": convertTokenId},
+    {"name": "number", "symbols": [(lexer.has("number_literal") ? {type: "number_literal"} : number_literal)], "postprocess": 
+        d => {
+            // Putting logic here is nasty, but is necessary to avoid
+            // a lookbehind regex in the lexer, which breaks Safari.
+            let [_, value, unit] = d[0].text.match(/(.*?)([fsb])?$/);
+            if (unit) {
+                return {
+                    type: "number_with_unit",
+                    value: Number(value),
+                    unit: unit,
+                    start: d[0].start,
+                    end: d[0].end
+                };
+            } else {
+                return {
+                    type: "number_literal",
+                    value: Number(value),
+                    start: d[0].start,
+                    end: d[0].end
+                };
+            }
+        }
+                },
     {"name": "identifier", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)], "postprocess": convertTokenId},
     {"name": "unit", "symbols": [(lexer.has("unit") ? {type: "unit"} : unit)], "postprocess": convertTokenId},
     {"name": "__$ebnf$1", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)]},
@@ -268,7 +273,6 @@ const grammar = {
     {"name": "_$ebnf$1", "symbols": []},
     {"name": "_$ebnf$1", "symbols": ["_$ebnf$1", (lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "_", "symbols": ["_$ebnf$1"]}
-]
-  , ParserStart: "input"
-}
-
+];
+let ParserStart = "input";
+export default { Lexer, ParserRules, ParserStart };

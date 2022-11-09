@@ -1,5 +1,5 @@
 import nearley from 'nearley';
-import getGrammar from './parseq-lang.js';
+import ParserRules from './parseq-lang.js';
 import { linear, polynomial, step } from 'everpolate';
 import Spline from 'cubic-spline';
 import BezierEasing from "bezier-easing";
@@ -38,7 +38,7 @@ export class InterpreterContext {
 }
 
 export function parse(input) {
-    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(getGrammar()));
+    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(ParserRules));
     const parsed = parser.feed(input);
     return parsed.results[0][0];
 }
@@ -46,7 +46,7 @@ export function parse(input) {
 // Evaluation of parseq lang
 // Returns: a function that takes a frame number and returns a float value
 export function interpret(ast, context) {
-  //console.log("Interpreting: ", ast, context);
+  //console.debug("Interpreting: ", ast, context);
 
   if (typeof ast === 'number') {
     // Node was interpreted down to a constant.
@@ -90,15 +90,15 @@ export function interpret(ast, context) {
           throw new Error(`Unrecognised variable ${ast.var_name.value} at ${ast.var_name.start.line}:${ast.var_name.start.col}`);
       }
     case 'number_with_unit':
-      switch (ast.right.value) {
+      switch (ast.unit) {
         case 'f':
-          return f => interpret(ast.left, context)(f);
+          return f => interpret(ast.value, context)(f);
         case 's':
-          return f => interpret(ast.left, context)(f) * context.FPS;
+          return f => interpret(ast.value, context)(f) * context.FPS;
         case 'b':
-          return f => interpret(ast.left, context)(f) * (context.FPS*60)/context.BPM
+          return f => interpret(ast.value, context)(f) * (context.FPS*60)/context.BPM
         default:
-          throw new Error(`Unrecognised conversion unit ${ast.right.value} at ${ast.right.start.line}:${ast.right.start.col}`);
+          throw new Error(`Unrecognised conversion unit ${ast.value} at ${ast.start.line}:${ast.start.col}`);
       }
     case 'negation':
       let term = interpret(ast.value, context)

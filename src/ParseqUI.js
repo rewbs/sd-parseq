@@ -554,8 +554,6 @@ const ParseqUI = (props) => {
     setGraphableData(graphable_data);    
     setNeedsRender(false);
     console.timeEnd('Render time');
-
-    console.log(graphable_data);
   });
 
 

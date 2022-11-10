@@ -150,7 +150,8 @@ const ParseqUI = (props) => {
     ])
   ]);
   const [renderedData, setRenderedData] = useState([]);
-  const [graphableData, setGraphableData] = useState([]);  
+  const [graphableData, setGraphableData] = useState([]);
+  const [animatedFields, setAnimatedFields] = useState([]);
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
 
   const [frameToAdd, setFrameToAdd] = useState();
@@ -498,19 +499,17 @@ const ParseqUI = (props) => {
       }
     });
 
-    // Calculate delta and commulative variants
+    // Calculate delta variants
     all_frame_numbers.forEach((frame) => {
       interpolatable_fields.forEach((field) => {
         if (frame == 0) {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
-            [field + '_cum' ]: rendered_frames[0][field],
             [field + '_delta' ]: rendered_frames[0][field]
           }
         } else {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
-            [field + '_cum' ]: rendered_frames[frame-1][field+ '_cum'] + rendered_frames[frame][field],
             [field + '_delta' ]: rendered_frames[frame][field] - rendered_frames[frame-1][field] + rendered_frames[0][field]
           }
         }
@@ -530,27 +529,27 @@ const ParseqUI = (props) => {
     }
 
     var graphable_data = []
+    var animated_fields = []
     interpolatable_fields.forEach((field) => {
       var maxValue = Math.max(...rendered_frames.map( rf => Math.abs(rf[field])))
-      var maxValue_cum = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_cum'])))
-      var maxValue_delta = Math.max(...rendered_frames.map( rf => Math.abs(rf[field+'_delta'])))
       var minValue = Math.min(...rendered_frames.map(rf => rf[field]))
+      if (maxValue !== minValue) {
+        // There's some movement on this field.
+        animated_fields.push(field);
+      }
       all_frame_numbers.forEach((frame) => {
         graphable_data[frame] = {
           ...graphable_data[frame] || {},
           "frame": frame,
           [field]: rendered_frames[frame][field],
-          [field+"_cum"]: rendered_frames[frame][field+'_cum'],
           [field+"_delta"]: rendered_frames[frame][field+'_delta'],
           [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field],
-          [field+"_cum_pc"]: (maxValue_cum !== 0) ? rendered_frames[frame][field+'_cum']/maxValue_cum*100 : rendered_frames[frame][field+'_cum'],
-          [field+"_delta_pc"]: (maxValue_delta !== 0) ? rendered_frames[frame][field+'_delta']/maxValue_delta*100 : rendered_frames[frame][field+'_delta'],
-          [field+"_isFlat"] : minValue === maxValue
         }
       });
     });
 
     setRenderedData(data);
+    setAnimatedFields(animated_fields);
     setGraphableData(graphable_data);    
     setNeedsRender(false);
     console.timeEnd('Render time');
@@ -608,6 +607,38 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
 </Dialog>
 
 
+  function renderStatus(needsRender, renderedData, renderedErrorMessage, animated_fields) {
+    let uses2d = props.settings_2d_only.filter((field) => animated_fields.includes(field)); 
+    let uses3d = props.settings_3d_only.filter((field) => animated_fields.includes(field)); 
+    let message = '';
+    if (uses2d.length > 0 && uses3d.length > 0) {
+      message = `Note: you're animating with both 2D and 3D settings (2D:${uses2d}; 3D:${uses3d}). Some settings will have no effect depending on which Deforum animation mode you choose.`;
+    } else if (uses2d.length > 0) {
+      message = `Note: you're animating with 2D or pseudo-3D settings. Make sure you choose the 2D animation mode in Deforum.`;
+    } else if (uses3d.length > 0) {
+      message = `Note: you're 3D settings. Make sure you choose the 3D animation mode in Deforum.`;      
+    }
+
+    let errorMessage = renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></>
+    let statusMessage = (renderedErrorMessage || needsRender) ? 
+    <Alert severity="info">Keyframes, prompts, or options have changed. Please render to update the output.
+      <Button variant="contained" style={{ marginLeft: '1em' }}  onClick={render}>Render</Button>
+    </Alert>
+    :
+    <Alert severity="success">Output is up-to-date.
+      <CopyToClipboard text={JSON.stringify(renderedData, null, 4)}>
+        <Button disabled={needsRender} style={{ marginLeft: '1em' }} variant="outlined">Copy to clipboard</Button>
+      </CopyToClipboard>
+      <p>{ message }</p>
+    </Alert>;
+
+    return <div>
+      {errorMessage}
+      {statusMessage}
+    </div>  
+  }
+
+
   //////////////////////////////////////////
   // Page
   return (
@@ -625,7 +656,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
     }}>
       <CssBaseline />
       <Grid xs={12}>
-        { renderStatus(needsRender, renderedData, renderedErrorMessage) }
+        { renderStatus(needsRender, renderedData, renderedErrorMessage, animatedFields) }
         <h3>Keyframes for parameter flow</h3>
         <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
             <TextField
@@ -729,11 +760,15 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       </Grid>
       <Grid xs={12}>
         <h3>Sparklines</h3>
-        Hiding the following because they are flat: {graphableData[0] && interpolatable_fields.filter((field) => graphableData[0][field+'_isFlat']).join(", ")}
+        Hiding the following because they are flat: { interpolatable_fields.filter((field) => !animatedFields.includes(field)).join(", ") }
       </Grid>
-      {graphableData[0] && interpolatable_fields.filter((field) => !graphableData[0][field+'_isFlat']).map((field) => 
+      {interpolatable_fields.filter((field) => animatedFields.includes(field)).map((field) => 
         <Grid xs={2}>
-          <p margin-left={1} margin-right={1} ><small><small><strong>{field}:</strong></small></small></p>
+
+          <span margin-left={1} margin-right={1} ><small><small><strong>{field}</strong>
+            {props.settings_2d_only.includes(field) ? <Chip size="small" label="2D" variant="outlined" /> : <></> }
+            {props.settings_3d_only.includes(field) ? <Chip size="small"  color="primary" label="3D" variant="outlined" /> : <></> }
+            </small></small></span>
           <Sparklines data={graphableData.map(gf => gf[field].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
           </Sparklines>
@@ -741,10 +776,6 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           <Sparklines data={graphableData.map(gf => gf[field+'_delta'].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
           </Sparklines>                    
-          {/* <p margin-left={1} margin-right={1} ><small><small><small>cumulative:</small></small></small></p>
-          <Sparklines data={graphableData.map(gf => gf[field+'_cum'].toFixed(5))} margin={1}  padding={1}>
-            <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
-          </Sparklines>           */}
          </Grid>
       )}
       <Grid xs={12}> {/* Ensures there's always a row break below sparklines. */} </Grid>
@@ -831,7 +862,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       <Grid xs={8}>
         <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
         <Button variant="contained" onClick={render}>Render</Button>
-        { renderStatus(needsRender, renderedData, renderedErrorMessage) }
+        { renderStatus(needsRender, renderedData, renderedErrorMessage, animatedFields) }
         <TextField
           style={{ width: '100%' }}
           id="filled-multiline-static"
@@ -852,20 +883,3 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
 
 export default ParseqUI;
 
-function renderStatus(needsRender, renderedData, renderedErrorMessage) {
-  let errorMessage = renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></>
-  let statusMessage = (renderedErrorMessage || needsRender) ? 
-  <Alert severity="info">Keyframes, prompts, or options have changed. Please hit render to update the output.</Alert>
-  :
-  <Alert severity="success">Output is up-to-date.
-    <CopyToClipboard text={JSON.stringify(renderedData, null, 4)}>
-      <Button disabled={needsRender} style={{ marginLeft: '1em' }} variant="outlined">Copy to clipboard</Button>
-    </CopyToClipboard>
-  </Alert>;
-  
-
-  return <div>
-    {errorMessage}
-    {statusMessage}
-  </div>  
-}

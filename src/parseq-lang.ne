@@ -1,5 +1,8 @@
+@preprocessor esmodule
 @{%
 const moo = require("moo");
+
+let comment, string_literal, number_literal, identifier, unit, ws;
 
 const lexer = moo.compile({
     ws: {match: /[ \t\r\n]+/, lineBreaks: true }, 
@@ -22,12 +25,8 @@ const lexer = moo.compile({
         match: /#[^\n]*/,
         value: s => s.substring(1)
     },
-    unit: {
-        match: /(?<=[0-9])[fsb]/
-    }, 
     number_literal: {
-        match: /[0-9]+(?:\.[0-9]+)?/,
-        value: s => Number(s)
+        match: /[0-9]+(?:\.[0-9]+)?[fsb]?/
     },    
     identifier: {
         match: /[a-zA-Z_][a-zA-Z_0-9]*/,
@@ -243,8 +242,8 @@ multiplicative_expression
         %}
 
 negation
-    -> number_with_unit     {% id %}
-    | "-" number_with_unit
+    -> unary_expression     {% id %}
+    | "-" unary_expression
         {%
             d => ({
                 type: "negation",
@@ -253,19 +252,6 @@ negation
                 end: d[1].end
             })        
         %}    
-
-number_with_unit
-     -> number unit
-        {%
-            d => ({
-                type: "number_with_unit",
-                left: d[0],
-                right: d[1],
-                start: d[0].start,
-                end: d[1].end
-            })
-        %} 
-    | unary_expression      {% id %}
 
 unary_expression
     -> number               {% id %}
@@ -310,7 +296,30 @@ line_comment -> %comment {% convertTokenId %}
 
 string_literal -> %string_literal {% convertTokenId %}
 
-number -> %number_literal {% convertTokenId %}
+number -> %number_literal
+        {%
+            d => {
+                // Putting logic here is nasty, but is necessary to avoid
+                // a lookbehind regex in the lexer, which breaks Safari.
+                let [_, value, unit] = d[0].text.match(/(.*?)([fsb])?$/);
+                if (unit) {
+                    return {
+                        type: "number_with_unit",
+                        value: Number(value),
+                        unit: unit,
+                        start: d[0].start,
+                        end: d[0].end
+                    };
+                } else {
+                    return {
+                        type: "number_literal",
+                        value: Number(value),
+                        start: d[0].start,
+                        end: d[0].end
+                    };
+                }
+            }
+        %}
 
 identifier -> %identifier {% convertTokenId %}
 

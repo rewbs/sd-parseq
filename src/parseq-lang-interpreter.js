@@ -1,5 +1,5 @@
 import nearley from 'nearley';
-import getGrammar from './parseq-lang.js';
+import ParserRules from './parseq-lang.js';
 import { linear, polynomial, step } from 'everpolate';
 import Spline from 'cubic-spline';
 import BezierEasing from "bezier-easing";
@@ -38,7 +38,7 @@ export class InterpreterContext {
 }
 
 export function parse(input) {
-    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(getGrammar()));
+    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(ParserRules));
     const parsed = parser.feed(input);
     return parsed.results[0][0];
 }
@@ -46,7 +46,7 @@ export function parse(input) {
 // Evaluation of parseq lang
 // Returns: a function that takes a frame number and returns a float value
 export function interpret(ast, context) {
-  //console.log("Interpreting: ", ast, context);
+  //console.debug("Interpreting: ", ast, context);
 
   if (typeof ast === 'number') {
     // Node was interpreted down to a constant.
@@ -90,15 +90,15 @@ export function interpret(ast, context) {
           throw new Error(`Unrecognised variable ${ast.var_name.value} at ${ast.var_name.start.line}:${ast.var_name.start.col}`);
       }
     case 'number_with_unit':
-      switch (ast.right.value) {
+      switch (ast.unit) {
         case 'f':
-          return f => interpret(ast.left, context)(f);
+          return f => interpret(ast.value, context)(f);
         case 's':
-          return f => interpret(ast.left, context)(f) * context.FPS;
+          return f => interpret(ast.value, context)(f) * context.FPS;
         case 'b':
-          return f => interpret(ast.left, context)(f) * (context.FPS*60)/context.BPM
+          return f => interpret(ast.value, context)(f) * (context.FPS*60)/context.BPM
         default:
-          throw new Error(`Unrecognised conversion unit ${ast.right.value} at ${ast.right.start.line}:${ast.right.start.col}`);
+          throw new Error(`Unrecognised conversion unit ${ast.value} at ${ast.start.line}:${ast.start.col}`);
       }
     case 'negation':
       let term = interpret(ast.value, context)
@@ -126,10 +126,10 @@ export function interpret(ast, context) {
         case 'abs':  
           let va = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);          
           return f => Math.abs(va(f))
-        // case 'round':  
-        //   let vr1 = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
-        //   let vr2 = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], null), context);
-          // return f => vr1(f).toFixed(vr2(f));
+        case 'round':  
+          let vr1 = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
+          let vr2 = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], 0), context);
+          return f => vr1(f).toFixed(vr2(f));
         default:
           throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
@@ -148,8 +148,9 @@ export function interpret(ast, context) {
             return f => Math.max(interpret(ast.arguments[0], context)(f), interpret(ast.arguments[1], context)(f));
           case 'abs':
             return f => Math.abs(interpret(ast.arguments[0], context)(f));
-          // case 'round':
-          //     return f => interpret(ast.arguments[0], context)(f).toFixed(interpret(ast.arguments[1], context)(f));
+          case 'round':
+            let [v, p = _ => 0] = ast.arguments.map(arg => interpret(arg, context))  
+            return f => v(f).toFixed(p(f));
           case 'bez':
             let [x1 = _ => 0.5, y1 = _ => 0, x2 = _ => 0.5, y2 = _ => 1] = ast.arguments.map(arg => interpret(arg, context))
             return f => bezier(f, x1(f), y1(f), x2(f), y2(f), context);

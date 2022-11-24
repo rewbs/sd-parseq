@@ -25,9 +25,10 @@ const analytics = getAnalytics(app);
 // Config
 const interpolatable_fields = [
   'seed',
+  'scale',
   'noise',
   'strength',
-  'scale',  
+  'contrast',
   'prompt_weight_1',
   'prompt_weight_2',
   'prompt_weight_3',
@@ -38,21 +39,40 @@ const interpolatable_fields = [
   'prompt_weight_8',
   'angle',
   'zoom',
+  'perspective_flip_theta',
+  'perspective_flip_phi',
+  'perspective_flip_gamma',
+  'perspective_flip_fv',
   'translation_x',
   'translation_y',
   'translation_z',
   'rotation_3d_x',
   'rotation_3d_y',
   'rotation_3d_z',
-  'perspective_flip_theta',
-  'perspective_flip_phi',
-  'perspective_flip_gamma',
-  'perspective_flip_fv',
-  'contrast',
   'fov',
   'near',
   'far',
 ];
+
+const settings_3d_only = [
+  'translation_z',
+  'rotation_3d_x',
+  'rotation_3d_y',
+  'rotation_3d_z',
+  'fov',
+  'near',
+  'far',  
+]
+
+const settings_2d_only = [
+  'angle',
+  'zoom',
+  'perspective_flip_theta',
+  'perspective_flip_phi',
+  'perspective_flip_gamma',
+  'perspective_flip_fv',  
+]
+
 const default_keyframes = [
   {
       "frame": 0,
@@ -141,6 +161,8 @@ const Deforum = () => {
         default_keyframes={ default_keyframes }
         default_visible={ ['seed', 'noise', 'strength', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'angle', 'zoom'] }
         show_options = { false }
+        settings_3d_only = { settings_3d_only }
+        settings_2d_only = { settings_2d_only }
       />
      </div>
   );

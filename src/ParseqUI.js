@@ -162,7 +162,7 @@ const ParseqUI = (props) => {
   
   const [displayFields, setDisplayFields] = useState(default_visible);
   const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
-  const [graphAsPercentages, setGraphAsPercentages] = useState(true);
+  const [graphAsPercentages, setGraphAsPercentages] = useState(false);
   const [frameIdMap, setFrameIdMap] = useState(new Map());
 
   // DefaultColDef sets props common to all Columns
@@ -742,7 +742,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       <Grid xs={12} >
         <h3>Visualised parameter flow</h3>
         <FormControlLabel control={
-                <Checkbox defaultChecked={true}
+                <Checkbox defaultChecked={false}
                   id={"graph_as_percent"}
                   onChange={handleChangeGraphType}
                  />}

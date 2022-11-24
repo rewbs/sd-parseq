@@ -508,7 +508,7 @@ const ParseqUI = (props) => {
         } else {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
-            [field + '_delta' ]: rendered_frames[frame][field] - rendered_frames[frame-1][field] + rendered_frames[0][field]
+            [field + '_delta' ]: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame-1][field] : rendered_frames[frame][field] - rendered_frames[frame-1][field],
           }
         }
         });

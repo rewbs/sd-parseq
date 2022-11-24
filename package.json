@@ -1,6 +1,6 @@
 {
   "name": "sd-parseq",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "dependencies": {
     "@ahooksjs/use-url-state": "^3.5.0",

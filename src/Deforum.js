@@ -166,6 +166,7 @@ const Deforum = () => {
       <Grid container paddingLeft={5} >
         <Grid xs="12">
           <h2>Parseq Deforum mode v{packageJson.version} <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>
+          <h3 style={{color:'red'}}>Editable node dev branch, expect bugs.</h3>
        </Grid>
       </Grid>
       <ParseqUI

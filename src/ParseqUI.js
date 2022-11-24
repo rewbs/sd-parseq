@@ -486,16 +486,14 @@ const ParseqUI = (props) => {
     });
 
     // Calculate subseed & subseed strength based on fractional part of seed.
-    // Not sure if this is correct interpretation of subseed.
     all_frame_numbers.forEach((frame) => {
       let subseed = Math.ceil(rendered_frames[frame]['seed'])
       let subseed_strength = rendered_frames[frame]['seed'] % 1
-      let desined_subseed_strength = subseed_strength + (0.1 * Math.sin(subseed_strength * 2 * Math.PI))
 
       rendered_frames[frame] = {
         ...rendered_frames[frame] || {},
         subseed: subseed,
-        subseed_strength: desined_subseed_strength
+        subseed_strength: subseed_strength
       }
     });
 

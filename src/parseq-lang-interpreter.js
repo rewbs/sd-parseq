@@ -126,10 +126,10 @@ export function interpret(ast, context) {
         case 'abs':  
           let va = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);          
           return f => Math.abs(va(f))
-        // case 'round':  
-        //   let vr1 = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
-        //   let vr2 = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], null), context);
-          // return f => vr1(f).toFixed(vr2(f));
+        case 'round':  
+          let vr1 = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
+          let vr2 = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], 0), context);
+          return f => vr1(f).toFixed(vr2(f));
         default:
           throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
@@ -148,8 +148,9 @@ export function interpret(ast, context) {
             return f => Math.max(interpret(ast.arguments[0], context)(f), interpret(ast.arguments[1], context)(f));
           case 'abs':
             return f => Math.abs(interpret(ast.arguments[0], context)(f));
-          // case 'round':
-          //     return f => interpret(ast.arguments[0], context)(f).toFixed(interpret(ast.arguments[1], context)(f));
+          case 'round':
+            let [v, p = _ => 0] = ast.arguments.map(arg => interpret(arg, context))  
+            return f => v(f).toFixed(p(f));
           case 'bez':
             let [x1 = _ => 0.5, y1 = _ => 0, x2 = _ => 0.5, y2 = _ => 1] = ast.arguments.map(arg => interpret(arg, context))
             return f => bezier(f, x1(f), y1(f), x2(f), y2(f), context);

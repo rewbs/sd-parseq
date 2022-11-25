@@ -152,7 +152,6 @@ const ParseqUI = (props) => {
     ])
   ]);
   const [renderedData, setRenderedData] = useState([]);
-  const [graphableData, setGraphableData] = useState([]);
   const [animatedFields, setAnimatedFields] = useState([]);
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
 
@@ -198,7 +197,7 @@ const ParseqUI = (props) => {
     frameIdMap.set(frame, res.add[0].id);
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
-    setQueryParamState();
+    pushState();
   }, []);
 
   const deleteRow = useCallback((frame) => {
@@ -224,12 +223,12 @@ const ParseqUI = (props) => {
     });
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
-    setQueryParamState();
+    pushState();
   }, []);
 
   const onCellValueChanged = useCallback((event) => {
     gridRef.current.api.onSortChanged();
-    setQueryParamState();
+    pushState();
   });
 
   const onGridReady = params => {
@@ -267,6 +266,21 @@ const ParseqUI = (props) => {
     return Array.from(Array(maxFrame - minFrame + 1).keys()).map((i) => i + minFrame);
   }
 
+  // TODO: invert source of truth - maintain a keyframes model datastructure
+  // of which the grid is a view (and a controller)
+  // Controllers:
+  // - Grid
+  // - Editable graph
+  // - Prompts
+  // - Some options (bpm)
+  // - Render button?
+  // Views:
+  // - Grid
+  // - Editable graph
+  // - Sparklines
+  // - Persisted data
+  // - Rendered data (delayed view)
+  // (But how does this play with react rendering?)
   function getKeyframes() {
     let keyframes_local = [];
     if (!gridRef || !gridRef.current || !gridRef.current.api) {
@@ -281,7 +295,6 @@ const ParseqUI = (props) => {
     });
     return keyframes_local;
   }
-
 
   //////////////////////////////////////////
   // Other component event callbacks  
@@ -307,7 +320,7 @@ const ParseqUI = (props) => {
     let [pos_or_neg, _] = id.split(/_/);
     prompts[pos_or_neg] = value;
     setPrompts(prompts);
-    setQueryParamState();
+    pushState();
     setNeedsRender(true);
   }, []);
 
@@ -318,7 +331,7 @@ const ParseqUI = (props) => {
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
     options[optionId] = value;
     setOptions(options);
-    setQueryParamState();
+    pushState();
     setNeedsRender(true);
   }, []);
 
@@ -355,7 +368,8 @@ const ParseqUI = (props) => {
 
   };  
   
-  function setQueryParamState() {
+  // Must be called whevenever persistable state is changed.
+  function pushState() {
     // const url = new URL(window.location);
     // let qp = getPersistableState();
     // url.searchParams.delete('parsec');
@@ -495,18 +509,28 @@ const ParseqUI = (props) => {
       }
     });
 
+    var animated_fields = []
+
     // Calculate delta variants
     all_frame_numbers.forEach((frame) => {
       interpolatable_fields.forEach((field) => {
+        var maxValue = Math.max(...rendered_frames.map( rf => Math.abs(rf[field])))
+        var minValue = Math.min(...rendered_frames.map(rf => rf[field]))
+        if (maxValue !== minValue) {
+          // There's some movement on this field.
+          animated_fields.push(field);
+        }        
         if (frame == 0) {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
-            [field + '_delta' ]: rendered_frames[0][field]
+            [field + '_delta' ]: rendered_frames[0][field],
+            [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field],            
           }
         } else {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
             [field + '_delta' ]: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame-1][field] : rendered_frames[frame][field] - rendered_frames[frame-1][field],
+            [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field],
           }
         }
         });
@@ -524,41 +548,8 @@ const ParseqUI = (props) => {
       "rendered_frames": rendered_frames
     }
 
-    var graphable_data = []
-    var animated_fields = []
-    interpolatable_fields.forEach((field) => {
-      var maxValue = Math.max(...rendered_frames.map( rf => Math.abs(rf[field])))
-      var minValue = Math.min(...rendered_frames.map(rf => rf[field]))
-      if (maxValue !== minValue) {
-        // There's some movement on this field.
-        animated_fields.push(field);
-      }
-      all_frame_numbers.forEach((frame) => {
-        graphable_data[frame] = {
-          ...graphable_data[frame] || {},
-          "frame": frame,
-          [field]: rendered_frames[frame][field],
-          [field+"_delta"]: rendered_frames[frame][field+'_delta'],
-          [field+"_pc"]: (maxValue !== 0) ? rendered_frames[frame][field]/maxValue*100 : rendered_frames[frame][field],
-        }
-      });
-    });
-    
-    let graphable_data_editable={
-      labels: all_frame_numbers,
-      datasets: displayFields.map((field) => {
-        return {
-          label: field,
-          data: graphable_data.map((frame) => frame[field + (graphAsPercentages?'_pc':'')]),
-          borderColor: stc(field),
-          backgroundColor: stc(field),
-        };
-      }),
-    }; 
-
     setRenderedData(data);
     setAnimatedFields(animated_fields);
-    setGraphableData(graphable_data);
     setNeedsRender(false);    
     console.timeEnd('Render')
   });
@@ -741,6 +732,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       </Grid>
       <Grid xs={12} >
         <h3>Visualised parameter flow</h3>
+        <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
         <FormControlLabel control={
                 <Checkbox defaultChecked={false}
                   id={"graph_as_percent"}
@@ -751,40 +743,31 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           renderedData={renderedData}
           displayFields={displayFields}
           as_percents={graphAsPercentages}
-          updatePoint={(field, index, value) => {
+          updateKeyframe={(field, index, value) => {
             let rowId = frameIdMap.get(index);
             gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
-            setQueryParamState();
+            pushState();
             render();
           }}
-          addPoint={(index) => {
-            // If this isn't already a keyframe, add a keyframe.
+          addKeyframe={(index) => {
+            // If this isn't already a keyframe, add a keyframe
             if (frameIdMap.get(index) == undefined) {
               addRow(index);
-              setQueryParamState();
+              pushState();
+              render();
+            }
+          }}
+          clearKeyframe={(field, index) => {
+            // If this is a keyframe, clear it
+            if (frameIdMap.get(index) !== undefined) {
+              let rowId = frameIdMap.get(index);
+              gridRef.current.api.getRowNode(rowId).setDataValue(field, "");
+              gridRef.current.api.getRowNode(rowId).setDataValue(field+'_i', "");
+              pushState();
               render();
             }
           }}
         />
-
-        {/* <ResponsiveContainer width="100%" height={300}>
-          <LineChart margin={{ top: 20, right: 30, left: 0, bottom: 0 }} data={ graphableData }>
-            {displayFields.map((field) => <Line type="monotone" dataKey={ graphAsPercentages ? `${field}_pc` : field} dot={'{ stroke:' + stc(field) + '}'} stroke={stc(field)} activeDot={{ r: 8 }} />)}
-            <Legend layout="horizontal" wrapperStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #d5d5d5', borderRadius: 3, lineHeight: '40px' }} />
-            <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
-            {getKeyframes().map((keyframe) => <ReferenceLine x={keyframe.frame} stroke="green" strokeDasharray="2 2" />)}
-            <ReferenceLine y={0} stroke="black" />
-            <XAxis dataKey="frame" />
-            <YAxis />
-            <Tooltip
-              formatter = {(value, name, props) => {
-                let fieldName = name.replace(/_pc$/, '');
-                return [`${props.payload[fieldName].toFixed(3)} (${props.payload[fieldName+'_pc'].toFixed(3)}% of max used)`, fieldName];
-              }}
-              contentStyle={{ fontSize: '0.8em', fontFamily: 'Monospace' }}
-              />
-          </LineChart>
-        </ResponsiveContainer> */}
       </Grid>
       <Grid xs={12}>
         <h3>Sparklines</h3>
@@ -792,16 +775,15 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       </Grid>
       {interpolatable_fields.filter((field) => animatedFields.includes(field)).map((field) => 
         <Grid xs={2}>
-
           <span margin-left={1} margin-right={1} ><small><small><strong>{field}</strong>
             {props.settings_2d_only.includes(field) ? <Chip size="small" label="2D" variant="outlined" /> : <></> }
             {props.settings_3d_only.includes(field) ? <Chip size="small"  color="primary" label="3D" variant="outlined" /> : <></> }
             </small></small></span>
-          <Sparklines data={graphableData.map(gf => gf[field].toFixed(5))} margin={1}  padding={1}>
+          <Sparklines data={renderedData.rendered_frames.map(gf => gf[field].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
           </Sparklines>
           <p margin-left={1} margin-right={1} ><small><small><small>delta:</small></small></small></p>
-          <Sparklines data={graphableData.map(gf => gf[field+'_delta'].toFixed(5))} margin={1}  padding={1}>
+          <Sparklines data={renderedData.rendered_frames.map(gf => gf[field+'_delta'].toFixed(5))} margin={1}  padding={1}>
             <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
           </Sparklines>                    
          </Grid>

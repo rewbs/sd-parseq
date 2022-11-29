@@ -15,15 +15,15 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
-import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import stc from 'string-to-color';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import {CopyToClipboard} from 'react-copy-to-clipboard';
-
+import { DocManagerUI, saveVersion } from './DocManager';
 import { Editable } from './Editable';
+import packageJson from '../package.json';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -50,7 +50,7 @@ const analytics = getAnalytics(app);
 
 //////////////////////////////////////////
 // Config
-const version = "0.02"
+const version = packageJson.version;
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
 const MenuProps = {
@@ -76,14 +76,18 @@ const default_options = {
   cc_use_input: false
 }
 
-function loadFromQueryString(key) {
-  console.log(`Reloading from query string: ${key}`)
+function loadFromQueryStringParseqObject(key) {
   let qps = new URLSearchParams(window.location.search);
   let loadedStateStr = qps.get("parseq") || qps.get("parsec");
   if (loadedStateStr) {
     let loadedState = JSON.parse(loadedStateStr);
     return loadedState[key];
   }
+}
+
+function loadFromQueryString(key) {
+  let qps = new URLSearchParams(window.location.search);
+  return qps.get(key);
 }
 
 const GridTooltip = (props) => {
@@ -108,7 +112,6 @@ const ParseqUI = (props) => {
   //////////////////////////////////////////
   // App State
   //////////////////////////////////////////
-  const [options, setOptions] = useState(/*loadFromQueryString('options') ||*/ default_options)
   const [columnDefs, setColumnDefs] = useState([
     {
       headerName: 'Frame #',
@@ -151,18 +154,25 @@ const ParseqUI = (props) => {
       }
     ])
   ]);
+
+  console.log("Re-initializing ParseqUI....", Date.now());
   const [renderedData, setRenderedData] = useState([]);
   const [animatedFields, setAnimatedFields] = useState([]);
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
 
   const [frameToAdd, setFrameToAdd] = useState();
   const [frameToDelete, setFrameToDelete] = useState();
-  const [needsRender, setNeedsRender] = useState(true);
+  const [graphAsPercentages, setGraphAsPercentages] = useState(false);
   
   const [displayFields, setDisplayFields] = useState(default_visible);
-  const [prompts, setPrompts] = useState(loadFromQueryString('prompts') || default_prompts);
-  const [graphAsPercentages, setGraphAsPercentages] = useState(false);
+  const [options, setOptions] = useState(loadFromQueryStringParseqObject('options') || default_options)
+  const [prompts, setPrompts] = useState(loadFromQueryStringParseqObject('prompts') || default_prompts);
+  //const [activeDocId, setActiveDocId] = useState(loadFromQueryString('docId'));
+
+  let activeDocId = loadFromQueryString('docId');
+  
   const [frameIdMap, setFrameIdMap] = useState(new Map());
+  const [needsRender, setNeedsRender] = useState(true);
 
   // DefaultColDef sets props common to all Columns
   const defaultColDef = useMemo(() => ({
@@ -301,11 +311,9 @@ const ParseqUI = (props) => {
   const handleChangeDisplayFields = useCallback((e) => {
     let selectedToShow = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value
     setDisplayFields(selectedToShow);
-
+    
     let columnsToShow = selectedToShow.flatMap(c => [c, c + '_i']);
-
     let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
-
     gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
     gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
     gridRef.current.columnApi.setColumnsVisible(['frame'], true);
@@ -314,23 +322,27 @@ const ParseqUI = (props) => {
 
   }, []);
 
+  // Two problems here - very slow typing and excessive saves
+  // even when the value hasn't changed.
   const handleChangePrompts = useCallback((e) => {
     const value = e.target.value;
     const id = e.target.id;
     let [pos_or_neg, _] = id.split(/_/);
-    prompts[pos_or_neg] = value;
-    setPrompts(prompts);
-    pushState();
-    setNeedsRender(true);
-  }, []);
+    if (prompts[pos_or_neg] !==  value) {
+      // Must be a new object that is passed to setPrompts, else React doesn't see the change.
+      setPrompts({ ...prompts, [pos_or_neg]: value });
+      pushState();
+      setNeedsRender(true);
+    }
+    return true;
+  });
 
   const handleChangeOption = useCallback((e) => {
     const id = e.target.id;
     let [_, optionId] = id.split(/options_/);
     
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
-    options[optionId] = value;
-    setOptions(options);
+    setOptions({...options, [optionId]: value } );
     pushState();
     setNeedsRender(true);
   }, []);
@@ -368,24 +380,21 @@ const ParseqUI = (props) => {
 
   };  
   
-  // Must be called whevenever persistable state is changed.
-  function pushState() {
-    // const url = new URL(window.location);
-    // let qp = getPersistableState();
-    // url.searchParams.delete('parsec');
-    // url.searchParams.set('parseq', JSON.stringify(qp));
-    // window.history.replaceState({}, '', url);
-  }
-
   function getPersistableState() {
     return {
       "meta": { "version": version },
       prompts: prompts,
       options: options,
+      display_fields: displayFields,
       keyframes: getKeyframes(),
     };
   }
   
+  // Must be called whevenever persistable state is changed.
+  function pushState() {
+    saveVersion(activeDocId, getPersistableState());
+  }
+
 
   //////////////////////////////////////////
   // Main render action callback
@@ -654,8 +663,29 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       },
     }}>
       <CssBaseline />
-      <Grid xs={12}>
+      <Grid xs={6}>
         { renderStatus(needsRender, renderedData, renderedErrorMessage, animatedFields) }
+      </Grid>
+      <Grid xs={6}>
+        <DocManagerUI
+          docId={activeDocId}
+          onLoadNewDoc={(doc, latestVersion) => {
+            console.log("loading doc", doc);
+            activeDocId = doc.id;
+            const url = new URL(window.location);
+            url.searchParams.set('docId', doc.docId);
+            window.history.replaceState({}, '', url);
+            if (latestVersion) {
+              setOptions(latestVersion.options);
+              setPrompts(latestVersion.prompts);
+              //setKeyframes(latestVersion.keyframes);
+              setDisplayFields(latestVersion.display_fields || default_visible);
+              render();
+            }
+          }}
+         />
+      </Grid>
+      <Grid xs={12}>
         <h3>Keyframes for parameter flow</h3>
         <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
             <TextField
@@ -710,7 +740,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
         <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
           <AgGridReact
             ref={gridRef}
-            rowData={loadFromQueryString('keyframes') || default_keyframes}
+            rowData={loadFromQueryStringParseqObject('keyframes') || default_keyframes}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             animateRows={true}
@@ -797,10 +827,11 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
               label={"Positive prompt"}
               multiline
               rows={4}
-              defaultValue={prompts.positive}
+              value={prompts.positive}
               style={{marginRight: '10px' }}
               InputProps={{ style: { fontSize: '0.75em' } }}
               onChange={handleChangePrompts}
+              //onBlur={handleChangePrompts}
               size="small"
               variant="standard" />
             <TextField
@@ -809,10 +840,11 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
               label={"Negative prompt"}
               multiline
               rows={4}
-              defaultValue={prompts.negative}
+              value={prompts.negative}
               style={{marginTop: '10px', marginRight: '10px' }}
               InputProps={{ style: { fontSize: '0.75em' } }}
               onChange={handleChangePrompts}
+              //onBlur={handleChangePrompts}
               size="small"
               variant="standard" />
         </FormControl>
@@ -871,7 +903,7 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
       }
       <Grid xs={8}>
         <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
-        <Button variant="contained" onClick={render}>Render</Button>
+        <Button variant="contained" onClick={render} >Render</Button>
         { renderStatus(needsRender, renderedData, renderedErrorMessage, animatedFields) }
         <TextField
           style={{ width: '100%' }}
@@ -883,9 +915,6 @@ let deleteRowDialog = <Dialog open={openDeleteRowDialog} onClose={handleCloseDel
           value={JSON.stringify(renderedData, null, 4)}
           variant="filled"
         />
-      </Grid>
-      <Grid xs={4}>
-        <p><a href="">Link to this page, including values for prompts, options, keyframes (bookmark to save).</a></p>
       </Grid>
     </Grid>
   );

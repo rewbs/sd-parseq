@@ -13,6 +13,10 @@ import Interpreter from './Interpreter';
 import Deforum from './Deforum';
 import { Editable } from './Editable';
 import reportWebVitals from './reportWebVitals';
+import TimeAgo from 'javascript-time-ago'
+import en from 'javascript-time-ago/locale/en.json'
+
+TimeAgo.addDefaultLocale(en)
 
 const router = createBrowserRouter([
   {

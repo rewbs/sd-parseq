@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
-import FormControl from '@mui/material/FormControl';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Select from '@mui/material/Select';
@@ -21,12 +20,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import { Roarr as log } from 'roarr';
-import stc from 'string-to-color';
 import useDebouncedEffect from 'use-debounced-effect';
 import packageJson from '../package.json';
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
+import {fieldNametoRGBa} from './utils';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -844,31 +843,37 @@ const ParseqUI = (props) => {
     ))}
   </Select>, [displayFields])
 
-  const promptsUI = useMemo(() => prompts && <FormControl fullWidth>
-    <TextField
-      id={"positive_prompt"}
-      label={"Positive prompt"}
-      multiline
-      rows={4}
-      value={prompts.positive}
-      style={{ marginRight: '10px' }}
-      InputProps={{ style: { fontSize: '0.75em' } }}
-      onChange={(e) => setPrompts({ ...prompts, positive: e.target.value })}
-      size="small"
-      variant="standard" />
-    <TextField
-      hiddenLabel
-      id={"negative_prompt"}
-      label={"Negative prompt"}
-      multiline
-      rows={4}
-      value={prompts.negative}
-      style={{ marginTop: '10px', marginRight: '10px' }}
-      InputProps={{ style: { fontSize: '0.75em' } }}
-      onChange={(e) => setPrompts({ ...prompts, negative: e.target.value })}
-      size="small"
-      variant="standard" />
-  </FormControl>, [prompts]);
+  const promptsUI = useMemo(() => prompts && <>
+    <Grid xs={12} container>
+      <Grid xs={6}>
+          <TextField
+          fullWidth={true}
+          id={"positive_prompt"}
+          label={"Positive prompt"}
+          multiline
+          rows={4}
+          value={prompts.positive}
+          InputProps={{ style: { fontSize: '0.75em', color: 'DarkGreen' } }}
+          onChange={(e) => setPrompts({ ...prompts, positive: e.target.value })}
+          size="small"
+          variant="standard" />
+      </Grid>
+      <Grid xs={6}>
+        <TextField
+          fullWidth={true}
+          id={"negative_prompt"}
+          label={"Negative prompt"}
+          multiline
+          rows={4}
+          value={prompts.negative}
+          InputProps={{ style: { fontSize: '0.75em', color: 'Firebrick' } }}
+          onChange={(e) => setPrompts({ ...prompts, negative: e.target.value })}
+          size="small"
+          variant="standard" />
+      </Grid>
+    </Grid>
+  
+  </>, [prompts]);
 
   const editableGraph = useMemo(() => renderedData && <div>
     <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
@@ -913,17 +918,17 @@ const ParseqUI = (props) => {
       </Grid>
       {
         interpolatable_fields.filter((field) => getAnimatedFields(renderedData).includes(field)).map((field) =>
-          <Grid xs={2}>
-            <span margin-left={1} margin-right={1} ><small><small><strong>{field}</strong>
+          <Grid xs={1} style={{ textOverflow: "ellipsis" } }>
+            <span style={{ textOverflow: "ellipsis" } }><small><small><strong>{field}</strong>
               {props.settings_2d_only.includes(field) ? <Chip size="small" label="2D" variant="outlined" /> : <></>}
               {props.settings_3d_only.includes(field) ? <Chip size="small" color="primary" label="3D" variant="outlined" /> : <></>}
             </small></small></span>
             <Sparklines data={renderedData.rendered_frames.map(gf => gf[field].toFixed(5))} margin={1} padding={1}>
-              <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
+              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
             </Sparklines>
-            <p margin-left={1} margin-right={1} ><small><small><small>delta:</small></small></small></p>
+            <small><small><small>delta:</small></small></small>
             <Sparklines data={renderedData.rendered_frames.map(gf => gf[field + '_delta'].toFixed(5))} margin={1} padding={1}>
-              <SparklinesLine style={{ stroke: stc(field), fill: "none" }} />
+              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
             </Sparklines>
           </Grid>
         )
@@ -969,6 +974,10 @@ const ParseqUI = (props) => {
         {docManager}
       </Grid>
       <Grid xs={12}>
+        <h3>Prompts</h3>
+        {promptsUI}
+      </Grid>
+      <Grid xs={12}>
         <h3>Keyframes for parameter flow</h3>
         {optionsUI}
         <small>Show fields:</small>
@@ -991,11 +1000,7 @@ const ParseqUI = (props) => {
       <Grid xs={12}>
         {/* Ensures there's always a row break below sparklines. */}
       </Grid>
-      <Grid xs={show_options ? 8 : 12}>
-        <h3>Prompts</h3>
-        {promptsUI}
-      </Grid>
-      <Grid xs={8}>
+      <Grid xs={12}>
         <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
         {renderStatus(needsRender, renderedData, renderedErrorMessage)}
         {renderedOutput}

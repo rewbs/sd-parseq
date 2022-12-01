@@ -1,4 +1,5 @@
 declare module 'uuid4';
+declare module 'lodash.debounce';
 
 type ParseqMetadata = {
     generated_by: string;
@@ -17,7 +18,7 @@ type ParseqDoc = {
 type ParseqPersistableState = {
     meta: ParseqMetadata;
     options: ParseqOptions;
-    display_fields: string[];
+    displayFields: string[];
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
 }

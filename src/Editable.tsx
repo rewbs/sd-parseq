@@ -100,7 +100,7 @@ export class Editable extends React.Component<{
 
         let options : ChartOptions<'line'> = {
             animation: {
-                duration: 200,
+                duration: 175,
                 delay: 0
             },
             normalised: true,

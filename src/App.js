@@ -69,7 +69,7 @@ const App = () => {
       <ParseqUI
         interpolatable_fields={ interpolatable_fields }
         default_keyframes={ default_keyframes }
-        default_visible={ ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4'] }
+        default_displayFields={ ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4'] }
         show_options = { true } 
         settings_2d_only = {[]}
         settings_3d_only = {[]}

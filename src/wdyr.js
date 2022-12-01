@@ -5,6 +5,7 @@ if (process.env.NODE_ENV === 'development') {
   whyDidYouRender(React, {
     trackAllPureComponents: false,
     //include: [/Editable/, /ParseqUI/]
+    //include: [/AgGridReact/]
     include: []
   });
 }

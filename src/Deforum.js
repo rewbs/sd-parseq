@@ -172,7 +172,7 @@ const Deforum = () => {
       <ParseqUI
         interpolatable_fields={ interpolatable_fields }
         default_keyframes={ default_keyframes }
-        default_visible={ ['noise', 'strength', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4', 'zoom'] }
+        default_displayFields={ ['noise', 'strength', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4', 'zoom'] }
         show_options = { false }
         settings_3d_only = { settings_3d_only }
         settings_2d_only = { settings_2d_only }

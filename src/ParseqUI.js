@@ -221,6 +221,7 @@ const ParseqUI = (props) => {
   }, 200, [enqueuedRender]);
 
   // Run on first load, once all react components are ready and Grid is ready.
+  let runOnceTimeout = 0;
   useEffect(() => {
  
     function runOnce() {
@@ -229,9 +230,11 @@ const ParseqUI = (props) => {
       if (qsContent) {
         // Attempt to load content from querystring 
         // This is to support *LEGACY* parsrq URLs. Doesn't in all browsers with large data.
-        qps.delete("parsec");
-        qps.delete("parseq");
         freshLoadContentOfContentToState(JSON.parse(qsContent));
+        const url = new URL(window.location);
+        url.searchParams.delete('parsec');
+        url.searchParams.delete('parseq');
+        window.history.replaceState({}, '', url);
         setAutoSaveEnabled(true);
         setEnqueuedRender(true);
       } else {
@@ -243,10 +246,12 @@ const ParseqUI = (props) => {
       }
     }
     if (gridRef.current.api) {
+      clearTimeout(runOnceTimeout);
       runOnce();
     } else {
       log.debug("Couldn't do init, try again in 100ms.");
-      setTimeout(runOnce, 100);
+      clearTimeout(runOnceTimeout);
+      runOnceTimeout = setTimeout(runOnce, 100);
     }
   }, []);
 

@@ -346,7 +346,10 @@ const shareDialog = <Dialog open={openShareDialog} onClose={handleCloseShareDial
             value={activeDoc?.name}
             InputProps={{ style: { fontSize: '0.75em' } }}
             size="small"
-            onChange={debounce((e: any) => (db.parseqDocs.put({ name: e.target.value, docId: docId }, docId)), 200)}
+            onChange={(e: any) => {
+                debounce(db.parseqDocs.put({ name: e.target.value, docId: docId }, docId), 200)
+                activeDoc.name = e.target.value;
+            }}
         />
         <small><small>Last saved: {lastModified ? <ReactTimeAgo date={lastModified} locale="en-US" /> : "never"} </small></small>
         </Grid>

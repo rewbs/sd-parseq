@@ -1,7 +1,11 @@
 declare module 'uuid4';
 declare module 'lodash.debounce';
+declare module 'chartjs-plugin-crosshair';
+declare module 'react-copy-to-clipboard';
+
 
 type ParseqMetadata = {
+    docName?: string;
     generated_by: string;
     version: string;
     generated_at: string;
@@ -18,7 +22,7 @@ type ParseqDoc = {
 type ParseqPersistableState = {
     meta: ParseqMetadata;
     options: ParseqOptions;
-    displayFields: string[];
+    displayFields?: string[];
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
 }

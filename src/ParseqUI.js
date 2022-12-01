@@ -1,6 +1,4 @@
-import { AgGridReact } from 'ag-grid-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Checkbox, FormControlLabel, FormGroup, keyframes, Tooltip as Tooltip2 } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, Tooltip as Tooltip2 } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -15,20 +13,20 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
-import stc from 'string-to-color';
-import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import { Sparklines, SparklinesLine } from 'react-sparklines';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
-import { DocManagerUI, saveVersion, loadVersion, makeDocId } from './DocManager';
-import { Editable } from './Editable';
-import packageJson from '../package.json';
-import useDebouncedEffect from 'use-debounced-effect';
-import { Roarr as log } from 'roarr';
+import { AgGridReact } from 'ag-grid-react';
 import equal from 'fast-deep-equal';
 import clonedeep from 'lodash.clonedeep';
 import debounce from 'lodash.debounce';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { Sparklines, SparklinesLine } from 'react-sparklines';
+import { Roarr as log } from 'roarr';
+import stc from 'string-to-color';
+import useDebouncedEffect from 'use-debounced-effect';
+import packageJson from '../package.json';
+import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
+import { Editable } from './Editable';
+import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -59,8 +57,6 @@ const version = packageJson.version;
 log.write = (message) => {
   console.log(message);
 };
-
-
 
 // eslint-disable-next-line
 const default_prompts = {
@@ -149,7 +145,8 @@ const ParseqUI = (props) => {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [enqueuedRender, setEnqueuedRender] = useState(false);
   
-  const columnDefs = useMemo(() => ([
+  const columnDefs = useMemo(() => {
+    return [
     {
       headerName: 'Frame #',
       field: 'frame',
@@ -159,21 +156,17 @@ const ParseqUI = (props) => {
         var newValue = parseInt(params.newValue);
         params.data.frame = newValue;
       },
-      tooltipField: 'frame',
-      tooltipComponent: GridTooltip,
-      tooltipComponentParams: { getBpm: _ => options.bpm, getFps: _ => options.output_fps },
+      pinned: 'left',
     },
     ...interpolatable_fields.flatMap(field => [
       {
         field: field,
-        tooltipComponent: GridTooltip,
         valueSetter: (params) => {
           params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
         }
       },
       {
         headerName: '➟' + field,
-        tooltipComponent: GridTooltip,
         field: field + '_i',
         cellEditor: 'agLargeTextCellEditor',
         cellEditorPopup: true,
@@ -187,11 +180,14 @@ const ParseqUI = (props) => {
         },
       }
     ])
-  ]), [options]);
+  ]}, [options]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
     resizable: true,
+    tooltipField: 'frame',
+    tooltipComponent: GridTooltip,
+    tooltipComponentParams: { getBpm: _ => options.bpm, getFps: _ => options.output_fps },
     suppressKeyboardEvent: (params) => {
       return params.event.ctrlKey && (
         params.event.key === 'a'
@@ -200,7 +196,7 @@ const ParseqUI = (props) => {
       );
     },
     tooltipComponent: GridTooltip,
-  }), []);
+  }), [options]);
 
   // Ensures that whenever any data that might affect the output changes,
   // we save the doc and notify the user that a render is required.
@@ -234,8 +230,8 @@ const ParseqUI = (props) => {
         // Attempt to load content from querystring 
         // This is to support *LEGACY* parsrq URLs. Doesn't in all browsers with large data.
         qps.delete("parsec");
-        qps.delete("parseq");        
-        freshLoadContentOfContentToState(qsContent);
+        qps.delete("parseq");
+        freshLoadContentOfContentToState(JSON.parse(qsContent));
         setAutoSaveEnabled(true);
         setEnqueuedRender(true);
       } else {
@@ -302,6 +298,8 @@ const ParseqUI = (props) => {
   const onCellValueChanged = useCallback((event) => {
     gridRef.current.api.onSortChanged();
     refreshKeyframesFromGrid();
+    
+    // TODO - only do this if autorender is enabled.
     setEnqueuedRender(true);
   }, [gridRef]);
 
@@ -385,6 +383,9 @@ const ParseqUI = (props) => {
 
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
     setOptions({ ...options, [optionId]: value });
+
+    //TODO - only do this if autorender is enabled.
+    setEnqueuedRender(true);
   }, []);
 
   const handleChangeGraphType = useCallback((e) => {
@@ -403,7 +404,7 @@ const ParseqUI = (props) => {
     }
   };
   const addRowDialog = useMemo(() => <Dialog open={openAddRowDialog} onClose={handleCloseAddRowDialog}>
-  <DialogTitle><AddIcon />Add a keyframe</DialogTitle>
+  <DialogTitle>➕ Add keyframe</DialogTitle>
   <DialogContent>
     <DialogContentText>
       Add a keyframe at the following position:
@@ -422,8 +423,8 @@ const ParseqUI = (props) => {
     </DialogContentText>
   </DialogContent>
   <DialogActions>
-    <Button id="cancel_add" onClick={handleCloseAddRowDialog}>Cancel</Button>
-    <Button variant="contained" id="add" onClick={handleCloseAddRowDialog}>Add</Button>
+    <Button size="small" id="cancel_add" onClick={handleCloseAddRowDialog}>Cancel</Button>
+    <Button size="small" variant="contained" id="add" onClick={handleCloseAddRowDialog}>Add</Button>
   </DialogActions>
 </Dialog>, [openAddRowDialog,frameToAdd]);
 
@@ -436,16 +437,15 @@ const ParseqUI = (props) => {
   const handleCloseDeleteRowDialog = (e) => {
     setOpenDeleteRowDialog(false);
     if (e.target.id === "delete") {
-      console.log(`deleting ${frameToDelete}`)
       deleteRow(parseInt(frameToDelete));
     }
   };
 
   const deleteRowDialog = useMemo(() => <Dialog open={openDeleteRowDialog} onClose={handleCloseDeleteRowDialog}>
-  <DialogTitle><DeleteIcon />Delete a keyframe</DialogTitle>
+  <DialogTitle>❌ Delete keyframe</DialogTitle>
   <DialogContent>
     <DialogContentText>
-      Delete a keyframe at the following position. NB: this cannot be undone!:
+      Delete a keyframe at the following position.
     </DialogContentText>
     <TextField
       autoFocus
@@ -512,8 +512,7 @@ const ParseqUI = (props) => {
 
     // Validation
     if (!keyframes) {
-      console.log("render called before initialisation complete.")
-      console.trace();
+      log.debug("render called before initialisation complete.")
       console.timeEnd('Render');
       return;
     }
@@ -683,7 +682,7 @@ const ParseqUI = (props) => {
   }, 200), [keyframes, prompts, options]);
 
   const renderButton = useMemo(() =>
-  <Button variant="contained" onClick={render}>{needsRender ? 'Render' : 'Force re-render'}</Button>,
+  <Button size="small" variant="contained" onClick={render}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
   [prompts, needsRender, displayFields, keyframes, options]);
 
 
@@ -705,7 +704,7 @@ const ParseqUI = (props) => {
       tooltipShowDelay={0}
     />
     </div>
-  </>, []);
+  </>, [options]);
 
   const getAnimatedFields = (renderedData) => {
     if (renderedData && renderedData.rendered_frames_meta) {
@@ -741,8 +740,8 @@ const ParseqUI = (props) => {
       <Alert severity="success">
         Output is up-to-date.
         <span style={{float: 'right'}}>
-          <CopyToClipboard text={JSON.stringify(renderedData, null, 4)}>
-            <Button disabled={needsRender} style={{ marginLeft: '1em' }} variant="outlined">Copy to clipboard</Button>
+          <CopyToClipboard text={renderedDataJsonString}>
+            <Button size="small" disabled={needsRender} style={{ marginLeft: '1em' }} variant="outlined">📋 Copy</Button>
           </CopyToClipboard>
         </span>
         <p><small>{message}</small></p>        
@@ -802,19 +801,21 @@ const ParseqUI = (props) => {
     </Tooltip2>
   </div>, [options])
 
+  const renderedDataJsonString = useMemo(() => renderedData && JSON.stringify(renderedData, null, 4), [renderedData]);
+
   const fieldSelector = useMemo(() => displayFields && <Select
     id="select-display-fields"
     label={"Show columns"}
     multiple
     value={displayFields}
     onChange={handleChangeDisplayFields}
+    style={{ marginBottom: '10px', marginLeft: '10px' }}
     input={<OutlinedInput id="select-display-fields" label="Chip" />}
-    
     size="small"
     renderValue={(selected) => (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.1 }}>
         {selected.map((value) => (
-          <Chip key={value} label={value} />
+          <Chip sx={{fontSize:"0.75em"}} key={value} label={value} />
         ))}
       </Box>
     )}
@@ -822,7 +823,8 @@ const ParseqUI = (props) => {
       PaperProps: {
         style: {
           maxHeight: 48 * 10 + 8, //item high * 4.5 + padding
-          width: 250
+          width: 250,
+          fontSize:"0.75em"
         }
       }
     }}
@@ -931,8 +933,9 @@ const ParseqUI = (props) => {
       label="Rendered output"
       multiline
       rows={20}
+      onFocus={event => event.target.select()}
       InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-      value={JSON.stringify(renderedData, null, 4)}
+      value={renderedDataJsonString}
       variant="filled"
     />
     {renderButton}
@@ -963,12 +966,12 @@ const ParseqUI = (props) => {
       <Grid xs={12}>
         <h3>Keyframes for parameter flow</h3>
         {optionsUI}
-        Show fields:
+        <small>Show fields:</small>
         {fieldSelector}
         {grid}
-        <Button variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>Add keyframe (ctrl-a)</Button>
-        <Button variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>Delete keyframe (ctrl-d)</Button>
-          {renderButton}        
+        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
+        <Button size="small"variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
+        {renderButton}        
         {addRowDialog}
         {deleteRowDialog}        
       </Grid>      

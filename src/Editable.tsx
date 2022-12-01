@@ -1,17 +1,13 @@
-import React, { useState } from 'react';
+import type { ChartData, ChartOptions, ScriptableContext } from 'chart.js';
 import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
+    CategoryScale, Chart as ChartJS, Interaction, Legend, LinearScale, LineElement, PointElement, Title,
+    Tooltip
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import type { ChartData, ChartOptions, ScriptableContext, ChartType } from 'chart.js';
+import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
+import React from 'react';
+import { Line } from 'react-chartjs-2';
+import { Roarr as log } from 'roarr';
 
 const ChartJSAddPointPlugin = {
     id: 'click',
@@ -32,13 +28,18 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend,
-    ChartJSAddPointPlugin
+    ChartJSAddPointPlugin,
+    CrosshairPlugin
+    
 );
+
+//@ts-ignore
+Interaction.modes.interpolate = Interpolate
 
 // TODO - move to config when interpolatable fields are first class
 // enums.
-const toRGBa = (str:string, alpha:number):string => {
-    switch(str) {
+const toRGBa = (str: string, alpha: number): string => {
+    switch (str) {
         case 'seed': return `rgba(128,0,0,${alpha})`;
         case 'scale': return `rgba(255,140,0,${alpha})`;
         case 'noise': return `rgba(189,183,107,${alpha})`;
@@ -66,10 +67,10 @@ const toRGBa = (str:string, alpha:number):string => {
         case 'rotation_3d_z': return `rgba(25,25,112,${alpha})`;
         case 'fov': return `rgba(255,0,0,${alpha})`;
         case 'near': return `rgba(0,255,0,${alpha})`;
-        case 'far': return `rgba(0,0,255,${alpha})`;   
-        default: return `rgba(0,0,0,${alpha})`;              
+        case 'far': return `rgba(0,0,255,${alpha})`;
+        default: return `rgba(0,0,0,${alpha})`;
     }
-}    
+}
 
 export class Editable extends React.Component<{
     renderedData: RenderedData,
@@ -94,11 +95,11 @@ export class Editable extends React.Component<{
 
     render() {
         if ((!this.props.renderedData.rendered_frames)) {
-            console.log("Editable input not set.")
+            log.debug("Editable input not set.")
             return <></>;
         }
 
-        let options : ChartOptions<'line'> = {
+        let options: ChartOptions<'line'> = {
             animation: {
                 duration: 175,
                 delay: 0
@@ -106,14 +107,14 @@ export class Editable extends React.Component<{
             normalised: true,
             responsive: true,
             aspectRatio: 4,
-            onClick: (event:any, elements:any, chart:any) => {
+            onClick: (event: any, elements: any, chart: any) => {
                 if (elements[0] && event.native.shiftKey) {
-                   const datasetIndex = elements[0].datasetIndex;
-                   const field = chart.data.datasets[datasetIndex].label;
-                   const index = chart.scales.x.getValueForPixel(event.x);
-                   this.props.clearKeyframe(field, index);
+                    const datasetIndex = elements[0].datasetIndex;
+                    const field = chart.data.datasets[datasetIndex].label;
+                    const index = chart.scales.x.getValueForPixel(event.x);
+                    this.props.clearKeyframe(field, index);
                 }
-              },
+            },
             plugins: {
                 legend: {
                     position: 'bottom' as const,
@@ -122,21 +123,38 @@ export class Editable extends React.Component<{
                     }
                 },
                 //@ts-ignore - additional plugin config data is not declated in type.
+                crosshair: {
+                    line: {
+                      color: '#F66',  // crosshair line color
+                      width: 1        // crosshair line width
+                    },
+                    sync: {
+                      enabled: false,            // enable trace line syncing with other charts
+                    },
+                    zoom: {
+                      enabled: true,                                      // enable zooming
+                      zoomboxBackgroundColor: 'rgba(66,133,244,0.2)',     // background color of zoom box 
+                      zoomboxBorderColor: '#48F',                         // border color of zoom box
+                      zoomButtonText: 'Reset Zoom',                       // reset zoom button text
+                      zoomButtonClass: 'reset-zoom',                      // reset zoom button class
+                    },
+                    
+                  },
+                //@ts-ignore - additional plugin config data is not declated in type.
                 dragData: {
                     round: 4,
                     showTooltip: true,
                     onDragStart: (e: MouseEvent, element: any) => {
-                        // console.log(`drag start`, e, element);
                     },
                     onDrag: (e: MouseEvent, datasetIndex: number, index: number, value: number) => {
                         return this.isKeyframe(index);
                     },
-                    onDragEnd: (e: MouseEvent, datasetIndex: number, index: number, value: number)  => {
+                    onDragEnd: (e: MouseEvent, datasetIndex: number, index: number, value: number) => {
                         if (!this.isKeyframe(index)) {
                             return;
                         }
                         let field = this.props.displayFields[datasetIndex];
-                        if (this.props.as_percents) {                   
+                        if (this.props.as_percents) {
                             // TODO: pass through the max for each field from the UI so we're not recalculating it here.
                             const maxValue = Math.max(...this.props.renderedData.rendered_frames.map((frame) => frame[field] || 0))
                             value = value * maxValue / 100;
@@ -166,13 +184,13 @@ export class Editable extends React.Component<{
                 ...this.props.displayFields.map((field) => {
                     return {
                         label: field,
-                        data: this.props.renderedData.rendered_frames.map((frame) => this.props.as_percents ? ( frame[field+'_pc']) : frame[field] || 0),
-                        borderColor: toRGBa(field,255),
+                        data: this.props.renderedData.rendered_frames.map((frame) => this.props.as_percents ? (frame[field + '_pc']) : frame[field] || 0),
+                        borderColor: toRGBa(field, 255),
                         borderWidth: 0.25,
                         pointRadius: (ctx: ScriptableContext<'line'>) => this.isKeyframe(ctx.dataIndex) ? 6 : 2,
-                        pointBackgroundColor: (ctx: ScriptableContext<'line'>) => this.isKeyframeWithFieldValue(field, ctx.dataIndex) ? toRGBa(field,1) : toRGBa(field,0.2),
-                        backgroundColor: toRGBa(field,255),
-                        pointStyle: (ctx: ScriptableContext<'line'>) => this.isKeyframe(ctx.dataIndex ) ? 'circle' : 'cross',
+                        pointBackgroundColor: (ctx: ScriptableContext<'line'>) => this.isKeyframeWithFieldValue(field, ctx.dataIndex) ? toRGBa(field, 1) : toRGBa(field, 0.2),
+                        backgroundColor: toRGBa(field, 255),
+                        pointStyle: (ctx: ScriptableContext<'line'>) => this.isKeyframe(ctx.dataIndex) ? 'circle' : 'cross',
                     }
                 })
             ]

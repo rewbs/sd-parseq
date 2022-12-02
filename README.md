@@ -168,41 +168,125 @@ Units can be used to modify numbers representing frame ranges to match second of
 
 #### Other operators and expressions:
 
-
-
 | if expression  	|  description 	| example  	|
 |---	    |---	|---	|
-| `if <cond> <consequent> else <alt>`   	| 	|   	|
+| `if <cond> <consequent> else <alt>` | if `cond` evaluates to any value other than 0, return `consequent`, else return `alt`. `cond`, `consequent` and `alt` are all arbitrary expressions. | Use a square wave which alternates between 1 and -1 with a period of 10 frames to alternatively render the step and cubic spline interpolations: <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205402345-88cfea53-382e-463d-a3a4-38d4b332f5f3.png"> |
 
 | operator  	|  description 	| example  	|
-|---	    |---	|---	|
-| `+`   	| 	|   	|
-| `-` 	  | |   	|
-| `*`  	|   	|   	|
-| `/`  	|   	|   	|
-| `%`  	|   	|   	|
-| `!=`  	|   	|   	|
-| `==`  	|   	|   	|
-| `<`  	|   	|   	|
-| `<=`  	|   	|   	|
-| `>=`  	|   	|   	|
-| `>`  	|   	|   	|
-| `and`  	|   	|   	|
-| `or`  	|   	|   	|
+|---	   |---	|---	|
+| `<expr1> + <expr2>`   	| Add two expressions. 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
+| `<expr1> - <expr2>` 	| Subtract two expressions |   	|
+| `<expr1> * <expr2>`  	| Multiply two expressions |   	|
+| `<expr1> / <expr2>`  	| Divide two expressions  	|   	|
+| `<expr1> % <expr2>`  	| Modulus  |  Reset the seed every 4 beats: <img width="802" alt="image" src="https://user-images.githubusercontent.com/74455/205402901-52f78382-b36a-403a-a6d9-6277af0c758f.png"> |
+| `<expr1> != <expr2>`  	| 1 if expressions are not equal, 0 otherwise.       	      |   	|
+| `<expr1> == <expr2>`  	| 1 if expressions are equal, 0 otherwise.   	            |   	|
+| `<expr1> < <expr2>`  	   | 1 if <expr1> less than <expr2>, 0 otherwise.   	         |   	|
+| `<expr1> <= <expr2>`  	| 1 if <expr1> less than or equals <expr2>, 0 otherwise.    |    	|
+| `<expr1> >= <expr2>`  	| 1 if <expr1> greater than <expr2>, 0 otherwise.  	      |   	|
+| `<expr1> < <expr2>`  	   | 1 if <expr1> greater than or equals <expr2>, 0 otherwise. |   	|
+| `<expr1> and <expr2>`  	| 1 if <expr1> and <expr2> are non-zero, 0 otherwise.  	   |   	|
+| `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
 
 
 ## Deforum integration features
 
-TODO: list & describe keyframable parameters.
-TODO: describe purpose of Delta values
+Parseq can be used with all Deforum animation modes.
 
+### Keyframable parameters
+
+Here are the parameters that Parseq controls. Any values you set in the A1111 UI for Deforum will be overridden.
+   
+Stable diffusion generation parameters:
+
+* seed
+* scale
+* noise: additional noise to add during generation, can help
+* strength: how much the last generated image should influence the current generation
+
+2D animation parameters :
+
+* angle (ignored in 3D animation mode, use rotation 3D z axis)
+* zoom (ignored in 3D animation mode, use rotation translation z)
+* translation x axis
+* translation y axis
+   
+Pseudo-3D animation parameters (ignored in 3D animation mode):
+   
+* perspective theta angle
+* perspective phi angle
+* perspective gamma angle
+* perspective field of view
+
+3D animation parameters (all ignored in 2D animation mode):   
+
+* translation z axis
+* rotation 3d x axis
+* rotation_3d y axis
+* rotation_3d z axis
+* field of view
+* near point
+* far point
+
+Other parameters:
+   
+* contrast: factor by which to adjust the previous last generated image's contrast before feeding to the current generation. 1 is no change, <1 lowers contrast, >1 increases contract.   
+   
+### Prompt interpolation
+
+Parseq provides a further 8 keyframable parameters (`prompt_weight_1` to 'prompt_weight_8') that you can reference in your prompts, and can therefore be used as prompts weights. For example, here's a positive prompt that uses Composable Diffusion to interpolate between faces:
+```
+Jennifer Aniston, centered, high detail studio photo portrait :${prompt_weight_1} AND
+Brad Pitt, centered, high detail studio photo portrait :${prompt_weight_2} AND
+Ben Affleck, centered, high detail studio photo portrait :${prompt_weight_3} AND
+Gwyneth Paltrow, centered, high detail studio photo portrait :${prompt_weight_4} AND
+Zac Efron, centered, high detail :${prompt_weight_5} AND
+Clint Eastwood, centered, high detail studio photo portrait :${prompt_weight_6} AND
+Jennifer Lawrence, centered, high detail studio photo portrait :${prompt_weight_7} AND
+Jude Law, centered, high detail studio photo portrait :${prompt_weight_8}
+```
+
+A corresponding parameter flow could look like this:
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205405460-2f9ed10c-0df4-4e4e-8c4f-d68c1c6ceccf.png">
+   
+### Subseed control for seed travelling
+
+For a great description of seed travelling, see [Yownas' script](https://github.com/yownas/seed_travel). In summary, you can interpolate between the latent noise generated by 2 seeds by setting the first as the (main) seed, the second as the subseed, and fluctuating the subseed strength. A subseed strength of 0 will just use the main seed, and 1 will just use the subseed as the seed. Any value in between will interpolate between the two noise patterns using spherical linear interpolation (SLERP).
+   
+Parseq does not currently expose the subseed and subseed strength parameters explicitly. Instead, it takes fractional seed values and uses them to control the subseed and subseed strength values. For example, if on a given frame your seed value is `10.5`, Parseq will send `10` as the seed, `11` as the subseed, and `0.5` as the subseed strength.
+   
+The downside is you can only interpolate between adjacent seeds. The benefit is seed travelling is very intuitive. If you'd like to have full control over the subseed and subseed strength, feel free to raise a feature request!
+
+Note that the results of seed travelling are best seen with no input image (Interpolation animation mode) or with a very low strength. Else, the low input variations will likely result in artifacts / deep-frying.
+   
+Otherwise it's best to change the seed by at least 1 on each frame (you can also experiment with seed oscillation, for less variation).
+
+
+### Delta values
+
+**Parseq aims to let you set absolute values for all parameters.**   So if you want to progressively rotate 180 degrees over 4 frames, you specify the following values for each frame: 45, 90, 135, 180.
+
+However, because Stable Diffusion animations are made by feeding the last generated frame into the current generation step, **some** animation parameters become relative if there is enough loopback strength. So if you want to rotate 180 degrees over 4 frames, the animation engine expects the values 45, 45, 45, 45.
+
+This is not the case for all parameters: for example, the seed value and field-of-view settings have no dependency on prior frames, so the animation engine expects absolute values.
+   
+To reconcile this, Parseq supplies _delta values_ to Deforum for certain parameters. This is enabled by default, but you can toggle if off in the A111 Deforum extension UI if you want to see the difference.
+   
+For most parameters the delta value for a given field is simply the difference between the current and previous frame's value for that field. However, a few parameters such as 2D zoom (which is actually a scale factor) are multiplicative, so the delta is the ratio between the previous and current value.
 
 
 ## Development
 
-- To run the Parseq UI locally in dev mode, `npm install && npm start`.
+Parseq is currently a front-end only React app. It is part way through a conversion from Javascript to Typescript. There is currently no back-end: persistence is entirely in browser indexdb storage via [Dexie.js](https://dexie.org/). You'll need `node` and `npm` on your system before you get started.
 
+There is a severe lack of tests, which I will remedy one day. :)
 
+If you want to dive in:
+   - Run `npm install` to pull dependencies.
+   - Run `npm start` to run the Parseq UI locally in dev mode on port 3000. You can now access the UI on `localhost:3000`. Code changes should be hot-reloaded.
+
+Hosting & deployment is done using Firebase. There's no automated deployment pipeline at the moment.
+   
 ## Credits
 
 This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of inspiration:

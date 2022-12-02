@@ -89,13 +89,13 @@ https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91
 
 ## UI Features
 
-### Intro to scriptable / keyframable parameter values
+### Keyframed parameter values with scriptable interpolation
 
-Parseq's main feature is advanced control over parameter values, using keyframing with interesting interpolation features.
+Parseq's main feature is advanced control over parameter values, using keyframing with interesting interpolation mechanisms.
 
-The keyframe grid is the central concept in Parseq. Each row in the grid represents a keyframe. Each controllable parameter has a pair of columns: the first takes an explicit value for that field, and the second takes an _interpolation formula_, which defines how the value will "travel" to the next keyframe's value. If no interpolation formula is specified on a given keyframe, the same formula continues to be used.
+The keyframe grid is the central UI concept in Parseq. Each row in the grid represents a keyframe. Each parameter has a pair of columns: the first takes an explicit value for that field, and the second takes an _interpolation formula_, which defines how the value will "travel" to the next keyframe's value. If no interpolation formula is specified on a given keyframe, the formula from the previous keyframe continues to be used. The default interpolation algorithm is linear interpolation.
 
-A graph allows you to see the result of the interpolation (and edit keyframe values!):
+Below the grid, a graph allows you to see the result of the interpolation (and edit keyframe values by dragging nodes):
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205216163-dd622849-a2ac-4991-8f74-7271c1ed5a5b.png">
 
@@ -104,19 +104,16 @@ The interpolation formula can be an arbitrarily complex mathematical expression,
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205217130-74e8e5b0-f432-4dc7-a190-d6f0eacb3844.png">
 
 
-
 ### Beat and time sync'ing
 
 Parseq allows you to specify Frames per second (FPS) and beats per minute (BPM) which are used to map frame numbers to time and beat offsets. For example, if you set FPS to 10 and BPM to 120, a tooltip when you hover over frame 40 (in the grid or the graph) will show that this frame will occur 4 seconds or 8 beats into the video.
 
-Furthermore, your interpolation formulae can reference beats and seconds by using the `b` and `s` suffixes on numbers. For example, here we define a sine oscillator of a period of 1 beat, and a pulse oscillator with a period of 5s and a pulse width of 0.5s:
+Furthermore, your interpolation formulae can reference beats and seconds by using the `b` and `s` suffixes on numbers. For example, here we define a sine oscillator of a period of 1 beat (in green), and a pulse oscillator with a period of 5s and a pulse width of 0.5s (in grey):
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205224573-9f89518b-a4a8-4a71-86f9-388d0f65c2db.png">
 
 
 ### Interpolation modifiers
-
-**TODO: descriptions and examples.**
 
 #### Values
 
@@ -134,7 +131,9 @@ Furthermore, your interpolation formulae can reference beats and seconds by usin
 
 #### Functions
 
-All functions can be called either with unnamed args (e.g. `sin(10)`) or named args (e.g. `sin(period=10, amplitude=2)`). Most arguments have long and short names. In the examples below, note how the oscillators are taking the linearly interpolated value of the field (`L`) as the amplitude, hence the decreasing amplitude over time.
+All functions can be called either with unnamed args (e.g. `sin(10,2)`) or named args (e.g. `sin(period=10, amplitude=2)`). Most arguments have long and short names (e.g. `sin(p=10, a=2)`).
+
+In the examples below, note how the oscillators' amplitude is set to the linearly interpolated value of the field (`L`), from its initial value of `1` on frame 0, to value `0` on frame 120. This is why the amplitude of the oscillator decreases over time.
 
 | function  	|  description 	| example  	|
 |---	         |---	            |---        |

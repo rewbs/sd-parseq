@@ -2,21 +2,28 @@
 
 ## What is this?
 
-For context: [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool and [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a web ui for that tool.
+For context: 
 
-Parseq is a _parameter sequencer_ for [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui). You can use it to generate videos with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, denoising strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
+* [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool.
+* [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a UI for that tool.
+* The [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui) is an extention for that UI, for creating AI animations.
+
+Parseq is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199899245-46643e77-bb10-4367-b6bd-b2a699fb612c.png">
 
-It can be used in 2 ways: with a custom script for Automatic1111, or with the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). 
-
 You can jump straight into the UI here: https://sd-parseq.web.app/ .
 
+## What's new?
+
+### Version 0.1.0
+
+* Parseq script mode is now deprecated, and Deforum integration mode is the default. I will no longer develop the Parseq script for a1111, focussing instead on making Parseq play well with the Deforum extension for a1111. The Parseq script was destined to only ever be an inferior version of the Deforum extension.
+* New document management, peristed to local storage, with options to revert, share & import. Keyframe data is no longer stored in the URL (this caused issues on some browsers). 
+* New editable graph! You can add and update keyframes directly on the graph.
+
+
 ## Installation
-
-### Option 1: Deforum integration 
-
-Preferred approach. Use this if you like animating with Deforum and want to use Parseq as an alternative to math keyframing. To get started:
 
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - Install the Deforum extension [from this branch](https://github.com/rewbs/deforum-for-automatic1111-webui/tree/parseq-integration). 
@@ -25,9 +32,9 @@ Preferred approach. Use this if you like animating with Deforum and want to use 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/200856608-d90762f4-b682-4b79-88ff-e8b3fa90813d.png">
 
 
-### Option 2: Parseq script
+### Parseq Script installation (deprecated)
 
-This is mostly a legacy approach: Deforum is by far a more powerful animation back-end. Use this approach if you don't want to use Deforum for some reason, and would prefer to use Parseq's own back-end integration with A1111. 
+This is a legacy approach: Deforum is by far a more powerful animation back-end. Use this approach if you don't want to use Deforum for some reason, and would prefer to use Parseq's own back-end integration with A1111. 
 
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - [Install ffmpeg](https://ffmpeg.org/download.html)
@@ -63,33 +70,19 @@ https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91
 
 ### Step 1: Create your parameter manifest
 
-* Go to https://sd-parseq.web.app/ or https://sd-parseq.web.app/deforum (or run the UI yourself from this repo with `npm start`)
+* Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
 * Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
 * Hit `Render` to generate the JSON config for every frame.
 * Copy the contents of the textbox at the bottom
 
 ### Step 2: Generate the video
 
-* Head to the SD web UI, go to the img2img tab and select the SD Parseq script OR the Deforum tab and then the Parseq tab.
-* Paste in the JSON blob you copied in step 1.
+* Head to the SD web UI go to the Deforum tab and then the Keyframes tab.
+* Paste the JSON you copied in step 1 into the Parseq section at the bottom of the page.
 * Fiddle with any other settings you want to tweak.
 * Click generate.
 
 <img width="1911" alt="image" src="https://user-images.githubusercontent.com/74455/196210360-7f2f6879-52d5-4537-86a0-71faafd515b9.png">
-
-## Limitations & Caveats
-
-### UI
-- UI can get sluggish with 1000s of frames. Lots of room for optimisation.
-
-### Parseq backend script
-
-- The script deliberately overrides/ignores various settings that are defined outside of the script's parameters, including: seed, denoise strength, denoise strength scale factor, color correction, output path, etc... This is intentional but may be a source of confusion.
-- Does not yet support batches. Only 1 output is ever generated per run. Batch size and batch count are ignored.
-- Does not yet add noise in the blank areas created when zooming out or rotating.
-- Chokes on .mov inputs because of a failure to get the total frame count. Seems to work with mp4 (so you just need to preprocess with ffmpeg).
-- Rotation and zoom params have a very different impact on loopback. For example, if you linearly interpolate z-rotation from 0 to 360 over 36 frames, with vid2vid you'll get a single full rotation (10deg per frame), whereas with loopback you'll get an accelarating rotation because each looped-back input frame is already rotated.
-- A seed value of -1 will be re-evaluated as a random value on every frame. If you want a fixed random seed on all frames, pick a number and lock it in over all your frames in Parseq.
 
 ## UI Features
 
@@ -131,6 +124,11 @@ Parseq also supports simple expressions so you can combine oscillators and even 
 <img width="1066" alt="image" src="https://user-images.githubusercontent.com/74455/196236628-e9786d42-52fb-458a-b39c-3f173c43818f.png">
 
 
+### Beat and time sync'ing
+
+**TODO: description of BPM & s.**
+
+
 ### Interpolation modifiers
 
 **TODO: descriptions and examples.**
@@ -164,6 +162,7 @@ All functions can be called either with unnamed args (e.g. `sin(10)`) or named a
 | `min()`  	| Return the minimum of 2 argument  	|   	|
 | `max()`  	| Return the maximum of 2 argument  	|   	|
 | `abs()`  	| Return the asolute value of the argument |   	|
+| `round()`  	| Return the rounded value of the argument |   	|
 
 #### Units
 
@@ -207,62 +206,10 @@ TODO: describe purpose of Delta values
 
 
 
-## Parseq backend features 
-
-Only relevant if you are not using Deforum. I recommend using Deforum. :)
-
-### Input types: video & loopback 
-
-* To process an input video, simply specify the path of the input video in the SD UI before hitting generate.
-* To loopback over the input image loaded into SD's img2img UI, leave the input video field blank.
-* You can approximate do txt2vid by pinning the denoise strength param to 1, which means input images will be ignored entirely. It's not really the same as txt2vid though (frames are not identical to what you'd get with txt2img).
-
-### Keyframable parameters
-
-You can control the value of the following SD parameters:
-
-* Seed: you can even decimal seed values, which will translate to an adjacent subseed with subseed strength proportional to the decimal part.
-* Prompt weights: you can specify up to 4 prompts, and control the weight of each one, allowing you to morph between them.
-* Scale
-* Denoising strength
-
-Values specified in the main SD GUI for the above parameters will be ignored in favour of those submitted through Parseq.
-
-### Keyframable image processing parameters
-
-In addition to SD parameters, Parseq also allows you to control the following pre-processing steps on each input:
-
-* Pan & Zoom
-* pseudo-3d rotation (on x, y and z axes)
-* Historical frame blending: choose how many previously generated frames should be blended into the input, and with what decay.
-
-### Colour correction
-
-You can specify color correction window size and slide rate as specified in https://github.com/rewbs/stable-diffusion-loopback-color-correction-script, and optionally force the input frame to always be included in the target histogram. Only recommended for loopback. Set window size to 0 for vid2vid (this is the default).
-
-### Dry-run mode & parameter text overlay 
-
- Dump a video without applying Stable Diffusion. This is very valuable to debug and to confirm your param sequence is synchronised in the way you want. You can also overlay text to see the parameter values at each frame (see examples above for what that looks like )
-
-### Processing pipeline
-
-The script applies processing in the following order:
-- Retrieve frame from video or from previous iteration if doing loopback.
-- Resize the input frame to match the desired output.
-- Blend in historical frames.
-- Apply zoom, pan & 3d rotation.
-- Apply color correction.
-- Feed into SD.
-- Save video frame and optionally the standalone image.
-
-## Colab
-
-Coming soon?
-
 ## Development
 
-- To run the Parseq UI locally, `npm start`.
-- To develop the python script independently of Stable Diffusion, take a look at `parseq_test.py`. 
+- To run the Parseq UI locally in dev mode, `npm install && npm start`.
+
 
 ## Credits
 
@@ -274,4 +221,3 @@ This script includes ideas and code sourced from many other scripts. Thanks in p
 * Yownas for their seed travelling script: https://github.com/yownas/seed_travel . sd-parsec can only travel between consecutive seeds so only offers a fraction of the possible seed variations that Yownas's script does.
 * feffy380 for the prompt-morph script https://github.com/feffy380/prompt-morph
 * eborboihuc for the clear implementation of 3d rotations using `cv2.warpPerspective()`:  https://github.com/eborboihuc/rotate_3d/blob/master/image_transformer.py
-

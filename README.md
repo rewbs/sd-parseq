@@ -107,7 +107,11 @@ The interpolation formula can be an arbitrarily complex mathematical expression,
 
 ### Beat and time sync'ing
 
-**TODO: description of BPM & s.**
+Parseq allows you to specify Frames per second (FPS) and beats per minute (BPM) which are used to map frame numbers to time and beat offsets. For example, if you set FPS to 10 and BPM to 120, a tooltip when you hover over frame 40 (in the grid or the graph) will show that this frame will occur 4 seconds or 8 beats into the video.
+
+Furthermore, your interpolation formulae can reference beats and seconds by using the `b` and `s` suffixes on numbers. For example, here we define a sine oscillator of a period of 1 beat, and a pulse oscillator with a period of 5s and a pulse width of 0.5s:
+
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205224573-9f89518b-a4a8-4a71-86f9-388d0f65c2db.png">
 
 
 ### Interpolation modifiers

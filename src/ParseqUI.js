@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, FormControlLabel, Tooltip as Tooltip2 } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -25,7 +25,7 @@ import packageJson from '../package.json';
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
-import {fieldNametoRGBa} from './utils';
+import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -89,8 +89,8 @@ const GridTooltip = (props) => {
   return (
     <div style={{ backgroundColor: '#d0ecd0' }}>
       <div>Frame: {data.frame}</div>
-      <div>Seconds: {(data.frame / props.getFps()).toFixed(3)}</div>
-      <div>Beat:  {(data.frame / props.getFps() / 60 * props.getBpm()).toFixed(3)}</div>
+      <div>Seconds: {frameToSeconds(data.frame, props.getFps()).toFixed(3)}</div>
+      <div>Beat:  {frameToBeats(data.frame, props.getFps(), props.getBpm()).toFixed(3)}</div>
     </div>
   );
 };
@@ -143,6 +143,7 @@ const ParseqUI = (props) => {
   const [prompts, setPrompts] = useState();
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [enqueuedRender, setEnqueuedRender] = useState(false);
+  const [autoRender, setAutoRender] = useState(true);
   
   const columnDefs = useMemo(() => {
     return [
@@ -303,9 +304,10 @@ const ParseqUI = (props) => {
     gridRef.current.api.onSortChanged();
     refreshKeyframesFromGrid();
     
-    // TODO - only do this if autorender is enabled.
-    setEnqueuedRender(true);
-  }, [gridRef]);
+    if (autoRender) {
+      setEnqueuedRender(true);
+    }
+  }, [gridRef, autoRender]);
 
   const onGridReady = useCallback((params) => {
     refreshKeyframesFromGrid();
@@ -388,13 +390,10 @@ const ParseqUI = (props) => {
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
     setOptions({ ...options, [optionId]: value });
 
-    //TODO - only do this if autorender is enabled.
-    setEnqueuedRender(true);
-  }, []);
-
-  const handleChangeGraphType = useCallback((e) => {
-    setGraphAsPercentages(e.target.checked);
-  }, []);
+    if (autoRender) {
+      setEnqueuedRender(true);
+    }
+  }, [autoRender, options]);
 
   const [frameToAdd, setFrameToAdd] = useState();
   const [openAddRowDialog, setOpenAddRowDialog] = useState(false);
@@ -686,8 +685,8 @@ const ParseqUI = (props) => {
   }, 200), [keyframes, prompts, options]);
 
   const renderButton = useMemo(() =>
-  <Button size="small" variant="contained" onClick={render}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
-  [prompts, needsRender, displayFields, keyframes, options]);
+    <Button size="small" disabled={enqueuedRender} variant="contained" onClick={render}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
+    [prompts, needsRender, displayFields, keyframes, options, enqueuedRender]);
 
 
   const grid = useMemo(() => <>
@@ -708,7 +707,7 @@ const ParseqUI = (props) => {
       tooltipShowDelay={0}
     />
     </div>
-  </>, [options]);
+  </>, [options, autoRender]);
 
   const getAnimatedFields = (renderedData) => {
     if (renderedData && renderedData.rendered_frames_meta) {
@@ -718,7 +717,17 @@ const ParseqUI = (props) => {
     return [];
   }
 
-  const renderStatus = useCallback((needsRender, renderedData, renderedErrorMessage) => {
+  useEffect(() => {
+    if (enqueuedRender) {
+      console.time('enqueuedRender');
+    } else {
+      console.timeEnd('enqueuedRender');
+    }    
+}, [enqueuedRender]);
+
+  const renderedDataJsonString = useMemo(() => renderedData && JSON.stringify(renderedData, null, 4), [renderedData]);
+
+  const renderStatus = useMemo(() => {
     let animated_fields = getAnimatedFields(renderedData);
     let uses2d = props.settings_2d_only.filter((field) => animated_fields.includes(field));
     let uses3d = props.settings_3d_only.filter((field) => animated_fields.includes(field));
@@ -732,16 +741,22 @@ const ParseqUI = (props) => {
     }
 
     let errorMessage = renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></>
-    let statusMessage = (renderedErrorMessage || needsRender) ?
-      <Alert severity="info">
+
+    let statusMessage = <></>;
+    if (enqueuedRender) {
+      statusMessage = <Alert severity="warning">
+      Render in progres...
+    </Alert>
+    } else if (renderedErrorMessage || needsRender) {
+      statusMessage = <Alert severity="info">
         Please render to update the output.
         <span style={{float: 'right'}}>
           {renderButton}
         </span>
         <p><small>{message}</small></p>
       </Alert>
-      :
-      <Alert severity="success">
+    } else {
+      statusMessage = <Alert severity="success">
         Output is up-to-date.
         <span style={{float: 'right'}}>
           <CopyToClipboard text={renderedDataJsonString}>
@@ -749,13 +764,13 @@ const ParseqUI = (props) => {
           </CopyToClipboard>
         </span>
         <p><small>{message}</small></p>        
-      </Alert>;
-
+      </Alert>;      
+    }
     return <div>
       {errorMessage}
       {statusMessage}
     </div>
-  });
+  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender]);
 
   const docManager = useMemo(() => <DocManagerUI
     docId={activeDocId}
@@ -798,18 +813,16 @@ const ParseqUI = (props) => {
         label={"BPM"}
         defaultValue={options['bpm']}
         onChange={handleChangeOption}
-        style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px' }}
+        style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px', marginRight: '30px' }}
         InputProps={{ style: { fontSize: '0.75em' } }}
         size="small"
         variant="standard" />
     </Tooltip2>
-  </div>, [options])
-
-  const renderedDataJsonString = useMemo(() => renderedData && JSON.stringify(renderedData, null, 4), [renderedData]);
+  </div>, [options, autoRender])
 
   const fieldSelector = useMemo(() => displayFields && <Select
     id="select-display-fields"
-    label={"Show columns"}
+    label="Show fields"
     multiple
     value={displayFields}
     onChange={handleChangeDisplayFields}
@@ -853,6 +866,7 @@ const ParseqUI = (props) => {
           multiline
           rows={4}
           value={prompts.positive}
+          onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
           InputProps={{ style: { fontSize: '0.75em', color: 'DarkGreen' } }}
           onChange={(e) => setPrompts({ ...prompts, positive: e.target.value })}
           size="small"
@@ -865,6 +879,7 @@ const ParseqUI = (props) => {
           label={"Negative prompt"}
           multiline
           rows={4}
+          onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
           value={prompts.negative}
           InputProps={{ style: { fontSize: '0.75em', color: 'Firebrick' } }}
           onChange={(e) => setPrompts({ ...prompts, negative: e.target.value })}
@@ -873,16 +888,16 @@ const ParseqUI = (props) => {
       </Grid>
     </Grid>
   
-  </>, [prompts]);
+  </>, [prompts, autoRender, needsRender]);
 
   const editableGraph = useMemo(() => renderedData && <div>
     <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
     <FormControlLabel control={
       <Checkbox defaultChecked={false}
         id={"graph_as_percent"}
-        onChange={handleChangeGraphType}
+        onChange={(e) => setGraphAsPercentages(e.target.checked)}
       />}
-      label="Show as percentage of max" />
+      label={<Box component="div" fontSize="0.75em">Show as % of max</Box>} />
 
     <Editable
       renderedData={renderedData}
@@ -910,29 +925,33 @@ const ParseqUI = (props) => {
         }
       }}
     />
-  </div>, [renderedData, displayFields, graphAsPercentages]);
+  </div>, [renderedData, displayFields, graphAsPercentages, options]);
 
-  const renderSparklines =  useCallback(() => renderedData && <>
-      <Grid xs={12}>
-      Hiding the following because they are flat: {interpolatable_fields.filter((field) => !getAnimatedFields(renderedData).includes(field)).join(", ")}
-      </Grid>
+  const renderSparklines = useCallback(() => renderedData && <>
+      <Grid container>
       {
         interpolatable_fields.filter((field) => getAnimatedFields(renderedData).includes(field)).map((field) =>
-          <Grid xs={1} style={{ textOverflow: "ellipsis" } }>
-            <span style={{ textOverflow: "ellipsis" } }><small><small><strong>{field}</strong>
-              {props.settings_2d_only.includes(field) ? <Chip size="small" label="2D" variant="outlined" /> : <></>}
-              {props.settings_3d_only.includes(field) ? <Chip size="small" color="primary" label="3D" variant="outlined" /> : <></>}
-            </small></small></span>
-            <Sparklines data={renderedData.rendered_frames.map(gf => gf[field].toFixed(5))} margin={1} padding={1}>
-              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
-            </Sparklines>
-            <small><small><small>delta:</small></small></small>
-            <Sparklines data={renderedData.rendered_frames.map(gf => gf[field + '_delta'].toFixed(5))} margin={1} padding={1}>
-              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
-            </Sparklines>
-          </Grid>
+          <Grid xs={1} sx={{border: '1px solid', borderColor: 'divider'}}>
+            <Typography style={{ fontSize: "0.6em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >{field}</Typography> 
+            {props.settings_2d_only.includes(field) ? 
+              <Typography style={{ color:'SeaGreen', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[2D]</Typography>  :
+                props.settings_3d_only.includes(field) ? 
+                  <Typography style={{ color:'SteelBlue', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[3D]</Typography>  :
+                  <Typography style={{ color:'grey', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[2D+3D]</Typography>}
+          <Sparklines data={renderedData.rendered_frames.map(gf => gf[field].toFixed(5))} margin={1} padding={1}>
+            <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
+          </Sparklines>
+          <small><small><small>delta:</small></small></small>
+          <Sparklines data={renderedData.rendered_frames.map(gf => gf[field + '_delta'].toFixed(5))} margin={1} padding={1}>
+            <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
+          </Sparklines>
+          </Grid >
         )
       }
+      </Grid >
+  <Grid xs={12}>
+    <small>Hiding these <strong>flat</strong> sparklines: <code>{interpolatable_fields.filter((field) => !getAnimatedFields(renderedData).includes(field)).join(', ')}</code>.</small>
+  </Grid>      
     </>
     , [renderedData]);
 
@@ -951,6 +970,8 @@ const ParseqUI = (props) => {
     {renderButton}
   </div>, [renderedData, needsRender]);
 
+  
+  
   //////////////////////////////////////////
   // Page
   return (
@@ -968,7 +989,7 @@ const ParseqUI = (props) => {
     }}>
       <CssBaseline />
       <Grid xs={6}>
-        {renderStatus(needsRender, renderedData, renderedErrorMessage)}
+        {renderStatus}
       </Grid>
       <Grid xs={6}>
         {docManager}
@@ -985,7 +1006,15 @@ const ParseqUI = (props) => {
         {grid}
         <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
         <Button size="small"variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
-        {renderButton}        
+        {renderButton}
+        <FormControlLabel control={
+          <Checkbox defaultChecked={false}
+            id={"auto_render"}
+            onChange={(e) => setAutoRender(e.target.checked)}
+          />}
+          style={{ marginLeft: '0.75em' }}
+          label={<Box component="div" fontSize="0.75em">Render on every edit</Box>}
+          />
         {addRowDialog}
         {deleteRowDialog}        
       </Grid>      
@@ -995,14 +1024,11 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12}>
         <h3>Sparklines</h3>
-      </Grid>        
-      {renderSparklines()}
-      <Grid xs={12}>
-        {/* Ensures there's always a row break below sparklines. */}
+        {renderSparklines()}
       </Grid>
       <Grid xs={12}>
         <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
-        {renderStatus(needsRender, renderedData, renderedErrorMessage)}
+        {renderStatus}
         {renderedOutput}
       </Grid>
     </Grid>

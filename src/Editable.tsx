@@ -8,7 +8,7 @@ import 'chartjs-plugin-dragdata';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import { Roarr as log } from 'roarr';
-import {fieldNametoRGBa} from './utils'
+import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
 
 const ChartJSAddPointPlugin = {
     id: 'click',
@@ -64,6 +64,8 @@ export class Editable extends React.Component<{
             return <></>;
         }
 
+        const capturedThis = this;
+
         let options: ChartOptions<'line'> = {
             animation: {
                 duration: 175,
@@ -86,6 +88,23 @@ export class Editable extends React.Component<{
                     labels: {
                         usePointStyle: true
                     }
+                },
+                tooltip: {
+                    position: 'nearest',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let label = `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`;
+                            return label;
+                        },
+                        title: function(items) {
+                            const frame = items[0].parsed.x;
+                            const fps = capturedThis.props.renderedData.options.output_fps;
+                            const bpm = capturedThis.props.renderedData.options.bpm;
+                            return `Frame ${frame.toString()} [beat ${frameToBeats(frame, fps, bpm).toFixed(2)}; ${frameToSeconds(frame, fps).toFixed(2)}s]`
+                        }
+                    }
+
                 },
                 //@ts-ignore - additional plugin config data is not declated in type.
                 crosshair: {
@@ -120,8 +139,8 @@ export class Editable extends React.Component<{
                         }
                         let field = this.props.displayFields[datasetIndex];
                         if (this.props.as_percents) {
-                            // TODO: pass through the max for each field from the UI so we're not recalculating it here.
-                            const maxValue = Math.max(...this.props.renderedData.rendered_frames.map((frame) => frame[field] || 0))
+                            //@ts-ignore
+                            const maxValue = this.props.renderedData.rendered_frames_meta[field].max;
                             value = value * maxValue / 100;
                         }
                         this.props.updateKeyframe(field, index, value);

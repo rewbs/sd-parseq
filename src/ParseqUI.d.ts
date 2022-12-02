@@ -62,7 +62,11 @@ type ParseqRenderedFrames = [{
 // Min, max, isAnimated... for each field.
 type ParseqRenderedFramesMeta = [{
     // TODO: make this stricter 
-    [key: string]: number | boolean;
+    [key: string]: {
+        min: number;
+        max: number;
+        isFlat: boolean;
+    };
 }];
 
 type RenderedData = ParseqPersistableState & {

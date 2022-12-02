@@ -1,3 +1,4 @@
+
 export const fieldNametoRGBa = (str: string, alpha: number): string => {
     switch (str) {
         case 'seed': return `rgba(128,0,0,${alpha})`;
@@ -31,3 +32,12 @@ export const fieldNametoRGBa = (str: string, alpha: number): string => {
         default: return `rgba(0,0,0,${alpha})`;
     }
 }
+
+export function frameToBeats(frame : number, fps : number, bpm : number) : number {
+    return frame / fps / 60 * bpm;
+  }
+  
+export function frameToSeconds(frame : number, fps : number) : number {
+    return frame / fps
+  }
+  

@@ -21,7 +21,7 @@ TimeAgo.addDefaultLocale(en)
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App/>,
+    element: <Deforum/>,
   },
   {
     path: "/interpreter",
@@ -32,8 +32,8 @@ const router = createBrowserRouter([
     element: <Deforum/>,
   },
   {
-    path: "/editable",
-    element: <Editable/>,
+    path: "/legacy",
+    element: <App/>,
   },
 ]);
 

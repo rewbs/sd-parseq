@@ -298,7 +298,7 @@ const ParseqUI = (props) => {
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
     refreshKeyframesFromGrid();
-  }, []);
+  }, [keyframes]);
 
   const onCellValueChanged = useCallback((event) => {
     gridRef.current.api.onSortChanged();

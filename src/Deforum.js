@@ -169,7 +169,7 @@ const Deforum = () => {
     <div>
       <Grid container paddingLeft={5} paddingRight={5}>
         <Grid xs={8}>
-          <h2>Parseq for Deforum v{packageJson.version}</h2>
+          <h2>Parseq v{packageJson.version} for Deforum</h2>
         </Grid>
         <Grid xs={4} display='flex' justifyContent="space-around" alignItems='center' >
           <Chip size="small" variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />

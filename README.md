@@ -12,14 +12,15 @@ Parseq is a _parameter sequencer_ for the [Deforum extension for Automatic1111](
 
 <img  width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213244-b768437a-a260-4448-b8c1-3a832091241b.png">
 
+You can jump straight into the UI here: https://sd-parseq.web.app/ . 
 
-You can jump straight into the UI here: https://sd-parseq.web.app/ .
+For now Parseq is fully front-end and stores all state in browser local storage (there is no backend).
 
 ## What's new?
 
 ### Version 0.1.0
 
-* Parseq script mode is now deprecated, and Deforum integration mode is the default. I will no longer develop the Parseq script for a1111, focussing instead on making Parseq play well with the Deforum extension for a1111. The Parseq script was destined to only ever be an inferior version of the Deforum extension.
+* Parseq script mode is now deprecated, and Deforum integration mode is the default. I will no longer develop the Parseq script for a1111, focussing instead on making Parseq play well with the Deforum extension for a1111. The Parseq script was destined to only ever be an inferior version of the Deforum extension. If you need to work with the legacy parseq script variables, you can try here: https://sd-parseq.web.app/legacy .
 * New document management, peristed to local storage, with options to revert, share & import. Keyframe data is no longer stored in the URL (this caused issues on some browsers). 
 * New editable graph! You can add and update keyframes directly on the graph.
 

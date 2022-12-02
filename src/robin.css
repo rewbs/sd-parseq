@@ -7,4 +7,12 @@
     --ag-header-column-separator-height: 100%;
     --ag-font-family: monospace;
   }
+h3 {
+    margin-block-start: 0.5em;
+    margin-block-end: 0.5em;
+}
 
+p {
+  margin-block-start: 0.5em;
+  margin-block-end: 0.5em;
+}

@@ -63,12 +63,13 @@ const App = () => {
         <Grid xs="12">
           <h2>Parseq v{packageJson.version} <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>
           <Alert severity="info">Using Deforum? You probably want  <a href="/deforum">this page</a>.</Alert>
+          <h3 style={{color:'red'}}>Editable node dev branch, expect bugs.</h3>
         </Grid>
       </Grid>
       <ParseqUI
         interpolatable_fields={ interpolatable_fields }
         default_keyframes={ default_keyframes }
-        default_visible={ ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4'] }
+        default_displayFields={ ['seed', 'denoise', 'prompt_weight_1', 'prompt_weight_2', 'prompt_weight_3', 'prompt_weight_4'] }
         show_options = { true } 
         settings_2d_only = {[]}
         settings_3d_only = {[]}

@@ -274,7 +274,11 @@ const ParseqUI = (props) => {
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
     refreshKeyframesFromGrid();
-  }, []);
+
+    if (autoRender) {
+      setEnqueuedRender(true);
+    }    
+  }, [autoRender]);
 
   const deleteRow = useCallback((frame) => {
     if (isNaN(frame)) {
@@ -298,7 +302,10 @@ const ParseqUI = (props) => {
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
     refreshKeyframesFromGrid();
-  }, [keyframes]);
+    if (autoRender) {
+      setEnqueuedRender(true);
+    }
+  }, [keyframes, autoRender]);
 
   const onCellValueChanged = useCallback((event) => {
     gridRef.current.api.onSortChanged();
@@ -326,7 +333,7 @@ const ParseqUI = (props) => {
         setEnqueuedRender(true);
       }
     }
-  }, [gridRef]);
+  }, [gridRef, addRow, deleteRow]);
 
 
   // Update displayed columns when displayFields changes.
@@ -429,7 +436,7 @@ const ParseqUI = (props) => {
     <Button size="small" id="cancel_add" onClick={handleCloseAddRowDialog}>Cancel</Button>
     <Button size="small" variant="contained" id="add" onClick={handleCloseAddRowDialog}>Add</Button>
   </DialogActions>
-</Dialog>, [openAddRowDialog,frameToAdd]);
+</Dialog>, [openAddRowDialog,frameToAdd, autoRender]);
 
 
   const [frameToDelete, setFrameToDelete] = useState();
@@ -467,7 +474,7 @@ const ParseqUI = (props) => {
     <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
     <Button variant="contained" id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
   </DialogActions>
-</Dialog>, [openDeleteRowDialog, frameToDelete]);
+</Dialog>, [openDeleteRowDialog, frameToDelete, autoRender, keyframes]);
  
 
   // TODO: switch to useMemo that updates when elements change?

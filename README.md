@@ -120,34 +120,50 @@ Furthermore, your interpolation formulae can reference beats and seconds by usin
 
 #### Values
 
-| value  	|  description 	| example  	| example output 	|
+| value  	|  description 	| examples  |
 |---	    |---	|---	|---	|
-| `S`   	| Step interpolation: use the last keyframed value 	|<img width="166" alt="image" src="https://user-images.githubusercontent.com/74455/199902063-da5c054c-9572-4f63-aa26-1b6853b89ac9.png">| <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199902277-2009c100-08b1-487d-84d8-d0d5194df302.png"> |
-| `L` 	  | (default) Linear interpolation betwen the last and next keyframed value |   	| |
-| `C`  	| Cubic spline interpolation betwen the last and next keyframed value  	| <img width="194" alt="image" src="https://user-images.githubusercontent.com/74455/199900924-7e709a58-fa6d-44cb-babe-acb3fe5e351e.png"> | <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199901099-7ee4a56a-9b56-4ce0-b403-6099c2d1f5c3.png"> |
-| `P`  	| Polinomial interpolation betwen the last and next keyframed value  	|   	| |
-| `f`  	| Frame number  	|   	| |
-| `prev_keyframe`  	| Previous keyframe number for this column 	|   	| |
-| `next_keyframe`  	| Next keyframe number for this column 	|   	| |
-| `prev_keyframe_value`  	| Previous keyframed value for this column 	|   	| |
-| `next_keyframe_value`  	| Next keyframed value for this column 	|   	| |
+| `S`   	| Step interpolation: use the last keyframed value 	| <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205225902-72d80405-855f-49ab-9d6b-38e940cf8332.png">
+ |
+| `L` 	  | (default) Linear interpolation betwen the last and next keyframed value | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205225983-72667c6b-3f15-4c19-b4b4-5567b9bc8022.png">
+ |
+| `C`  	| Cubic spline interpolation betwen the last and next keyframed value  	| <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226043-13796fa8-8b76-4360-841c-a7f25835d224.png">
+|
+| `P`  	| Polinomial interpolation betwen the last and next keyframed value. Very similar to Cubic spline. | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226091-09958f94-25fa-4646-944e-a3f07ad8d214.png">
+ |
+| `f`  	| The frame number. Not very useful alone, but can be used to reference the overall video position in your interpolation algoritm. For example, add it to your seed value to increment the seed on every frame. |  <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226179-ff524dfa-aa40-4491-b4c1-2be56f7dda5a.png"> |
+| `prev_keyframe`  	| Previous keyframe number for this column 	|    |
+| `next_keyframe`  	| Next keyframe number for this column 	|  |
+| `prev_keyframe_value`  	| Previous keyframed value for this column 	|  |
+| `next_keyframe_value`  	| Next keyframed value for this column 	|   |
 
 #### Functions
 
-All functions can be called either with unnamed args (e.g. `sin(10)`) or named args (e.g. `sin(period=10, amplitude=2)`). Most arguments have long and short names.
+All functions can be called either with unnamed args (e.g. `sin(10)`) or named args (e.g. `sin(period=10, amplitude=2)`). Most arguments have long and short names. In the examples below, note how the oscillators are taking the linearly interpolated value of the field (`L`) as the amplitude, hence the decreasing amplitude over time.
 
 | function  	|  description 	| example  	|
 |---	    |---	|---	|
-| `sin()`   	| Sine wave oscillator 	|   	|
-| `sq()` 	  | Square wave oscillator |   	|
-| `tri()`  	| Triangle wave oscillator  	|   	|
-| `saw()`  	| Sawtooth wave oscillator  	|   	|
-| `pulse()`  	| Pulse wave oscillator  	|   	|
-| `bez()`  	| Return a point on a Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`  	|   	|
+| `sin()`   	| Sine wave oscillator. See below for arguments (only period is required). 	| <img width="724" alt="image" src="https://user-images.githubusercontent.com/74455/205226860-26d6f424-db93-4b83-be69-5fa193a73d66.png">
+  	|
+| `sq()` 	  | Square wave oscillator | <img width="728" alt="image" src="https://user-images.githubusercontent.com/74455/205227751-b173dc97-f97d-44e2-a208-6e22a344b835.png">
+ | 
+| `tri()`  	| Triangle wave oscillator.  	| <img width="722" alt="image" src="https://user-images.githubusercontent.com/74455/205227903-2c7ebdda-981c-4a78-9a82-7b75ef014499.png"> |
+| `saw()`  	| Sawtooth wave oscillator.  	| <img width="722" alt="image" src="https://user-images.githubusercontent.com/74455/205227988-0c1e6fec-1a3d-438d-9f1a-a3cc685483bd.png"> |
+| `pulse()`  	| Pulse wave oscillator.  	| <img width="727" alt="image" src="https://user-images.githubusercontent.com/74455/205228355-863dcf8d-3d10-4d63-9c5f-32ce75e7b8b3.png">
+ |
+| `bez()`  	| Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`  	| <img width="724" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png">
+  	|
 | `min()`  	| Return the minimum of 2 argument  	|   	|
 | `max()`  	| Return the maximum of 2 argument  	|   	|
 | `abs()`  	| Return the asolute value of the argument |   	|
 | `round()`  	| Return the rounded value of the argument |   	|
+
+Oscillator arguments: 
+* Period `p` *required*:  The period of the oscillation. By default the unit is frames, but you can specify seconds or beats by appending the appropriate suffix (e.g. `sin(p=4b)` or `sin(p=5s)`).
+* Amplitude `a` (default: `1`): The amplitude of the oscillation. `sin(p=4b, a=2)` is equivalent to `sin(p=4b)*2`.
+* Phase shift `ps` (default: `0`): The x-axis offset of the oscillation.
+* Centre `c` (default: `0`): The y-axis offset of the oscillation. `sin(p=4b, c=2)` is equivalent to `sin(p=4b)+2`
+* Pulse width `pw` (default: `5`): *pulse() function only* The pulse width. 
+
 
 #### Units
 

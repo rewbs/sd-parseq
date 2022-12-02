@@ -10,7 +10,8 @@ For context:
 
 Parseq is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/199899245-46643e77-bb10-4367-b6bd-b2a699fb612c.png">
+<img  width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213244-b768437a-a260-4448-b8c1-3a832091241b.png">
+
 
 You can jump straight into the UI here: https://sd-parseq.web.app/ .
 
@@ -26,15 +27,17 @@ You can jump straight into the UI here: https://sd-parseq.web.app/ .
 ## Installation
 
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-- Install the Deforum extension [from this branch](https://github.com/rewbs/deforum-for-automatic1111-webui/tree/parseq-integration). 
+- Install the Deforum extension [from the parseq-integration branch of my fork of the Deforum integration](https://github.com/rewbs/deforum-for-automatic1111-webui/tree/parseq-integration). You might not be able to do it directly from the A1111 UI. Here's how to do it manually:
+   - `git clone https://github.com/rewbs/deforum-for-automatic1111-webui.git`
+   - `git checkout parseq-integration`
 - Relaunch Auto1111 – You should now see a `Parseq` section right at the bottom for the `keyframes` tab under the `Deforum` extension (click to expand it):
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/200856608-d90762f4-b682-4b79-88ff-e8b3fa90813d.png">
 
 
-### Parseq Script installation (deprecated)
+### Alternative: Parseq Script installation (deprecated)
 
-This is a legacy approach: Deforum is by far a more powerful animation back-end. Use this approach if you don't want to use Deforum for some reason, and would prefer to use Parseq's own back-end integration with A1111. 
+This is a legacy step: Deforum is by far a more powerful animation back-end. Use this approach if you don't want to use Deforum for some reason, and would prefer to use Parseq's own back-end integration with A1111. 
 
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - [Install ffmpeg](https://ffmpeg.org/download.html)
@@ -42,9 +45,7 @@ This is a legacy approach: Deforum is by far a more powerful animation back-end.
    - On Windows: edit `requirements_versions.txt` in the top level directory of A111, and add the line: `ffmpeg-python==0.2.0`.
    - On Mac/Linux: edit `requirements.txt` in the top level directory of A111, and add the line: `ffmpeg-python`.   
 - From this repository, copy `scripts/parseq_script.py` and `scripts/parseq_core.py` to the `/scripts` subdirectory in your SD webui installation.
-- Restart the webui (or do a full Gradio reload from the settings screen). You should now see `SD Parseq <version>` as a script available in the img2img section:
-
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/196208333-da171e3e-65a4-4afa-b3bb-9677fd5dae16.png">
+- Restart the webui (or do a full Gradio reload from the settings screen). You should now see `SD Parseq <version>` as a script available in the img2img section.
 
 
 ## Examples
@@ -79,49 +80,28 @@ https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91
 
 * Head to the SD web UI go to the Deforum tab and then the Keyframes tab.
 * Paste the JSON you copied in step 1 into the Parseq section at the bottom of the page.
-* Fiddle with any other settings you want to tweak.
+* Fiddle with any other Deforum / Stable Diffusion settings you want to tweak.
 * Click generate.
 
-<img width="1911" alt="image" src="https://user-images.githubusercontent.com/74455/196210360-7f2f6879-52d5-4537-86a0-71faafd515b9.png">
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
+
 
 ## UI Features
 
 ### Intro to scriptable / keyframable parameter values
 
-Parseq's main feature is advanced control over parameter values, with interesting interpolation features.
+Parseq's main feature is advanced control over parameter values, using keyframing with interesting interpolation features.
 
-This all happens in the grid. Start by selecting the values you want to work with in the "fields to display" drop-down on the right. In this example, we'll use `denoise`, `prompt_1_weight`, and `prompt_2_weight`:
+The keyframe grid is the central concept in Parseq. Each row in the grid represents a keyframe. Each controllable parameter has a pair of columns: the first takes an explicit value for that field, and the second takes an _interpolation formula_, which defines how the value will "travel" to the next keyframe's value. If no interpolation formula is specified on a given keyframe, the same formula continues to be used.
 
-<img width="1069" alt="image" src="https://user-images.githubusercontent.com/74455/196230780-83681a78-cb70-4553-8f02-5e11b85efc5d.png">
+A graph allows you to see the result of the interpolation (and edit keyframe values!):
 
-Next we'll set the number of frames we want to work with by setting the frame number of the last row. We'll set it to 101 frames. You can always change this later. Tip: if you want to match a frame count from an input video, you can count the video's frames quickly from the CLI with ffmpeg's `ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -print_format csv <input_video.mp4>`.
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205216163-dd622849-a2ac-4991-8f74-7271c1ed5a5b.png">
 
-<img width="1045" alt="image" src="https://user-images.githubusercontent.com/74455/196231818-3396eb25-d0f4-4e21-864a-464158d46f9f.png">
+The interpolation formula can be an arbitrarily complex mathematical expression, and can use a range of built-in functions and values, including oscillators and helpers to synchronise them to timestamps or beats:
 
-Now we'll add some keyframes. We'll set them at frames 25, 50 and 75. We can always change them later or add more.
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205217130-74e8e5b0-f432-4dc7-a190-d6f0eacb3844.png">
 
-<img width="858" alt="image" src="https://user-images.githubusercontent.com/74455/196232289-217093de-2bfa-4322-b218-73668af30074.png">
-
-(Note that the first and last frames MUST have values for all fields. Rendering will fail if you remove any because start and end values are required for interpolation.)
-
-In this video, we'd like prompt 1 to start off weak, become strong in the middle of the video, and then become weak again. Easy! Put in some values for prompt_1_weight and hit render. You'll see it interpolates linearly by default, and if a value is empty in a keyframe we interpolate straight through it.
-
-You might be wondering what the arrow (➟) columns are next to the value columns. These are the interpolation columns, and they let you specify how the value should "travel" from this point onwards. The default is linear interpolation, but you override this with `S` for Step, `C` for cubic, and `P` for Polinomial. Let's give it a go:
-
-<img width="1063" alt="image" src="https://user-images.githubusercontent.com/74455/196233767-bf10dfdf-78ed-4d1f-8974-1b99d12de49d.png">
-
-You can also switch interpolation part way through.
-
-
-But that's not all! Let's say you want to make something happen rhythmically, such as synchronising prompt strength to the beat of a song. Adding keyframe for each beat would be a pain the arse. Instead, you can use **oscillators**. Here, we enter `sin(0.5, 0, 50, 0.5)` to make prompt 2's weight oscillate along a sine wave with y offset 0.5 and 0 phase shift, with a period of 50 frames and an amplitude of 0.5: 
-
-<img width="867" alt="image" src="https://user-images.githubusercontent.com/74455/196235204-6c778985-ec1a-42a5-8470-cd0631d87fe8.png">
-
-You can experiment with other oscillators such as `tri` for a triangle wave, `sq` for a square wave, `saw` for a sawtooth wave and `pulse` for a pulsewave. See below for more information.
-
-Parseq also supports simple expressions so you can combine oscillators and even mix them with the interpolation values, as well as if/else statements:
-
-<img width="1066" alt="image" src="https://user-images.githubusercontent.com/74455/196236628-e9786d42-52fb-458a-b39c-3f173c43818f.png">
 
 
 ### Beat and time sync'ing

@@ -349,7 +349,7 @@ const ParseqUI = (props) => {
     } else {
       log.debug("Couldn't update columns, try again in 100ms.");
       setTimeout(() => {
-        setDisplayFields([...displayFields]);
+        setDisplayFields(Array.isArray(displayFields) ? [...displayFields] : []);
       }, 100);
     }
   }, [displayFields]);

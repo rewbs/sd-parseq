@@ -10,6 +10,8 @@
     "@fortawesome/free-solid-svg-icons": "^6.2.1",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@mui/material": "^5.10.8",
+    "@sentry/react": "^7.23.0",
+    "@sentry/tracing": "^7.23.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@types/chart.js": "^2.9.37",

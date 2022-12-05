@@ -692,7 +692,7 @@ const ParseqUI = (props) => {
   }, 200), [keyframes, prompts, options]);
 
   const renderButton = useMemo(() =>
-    <Button size="small" disabled={enqueuedRender} variant="contained" onClick={render}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
+    <Button size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true) }>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
     [prompts, needsRender, displayFields, keyframes, options, enqueuedRender]);
 
 
@@ -744,7 +744,7 @@ const ParseqUI = (props) => {
     } else if (uses2d.length > 0) {
       message = `Note: you're animating with 2D or pseudo-3D settings. Make sure you choose the 2D animation mode in Deforum.`;
     } else if (uses3d.length > 0) {
-      message = `Note: you're 3D settings. Make sure you choose the 3D animation mode in Deforum.`;
+      message = `Note: you're animating with 3D settings. Make sure you choose the 3D animation mode in Deforum.`;
     }
 
     let errorMessage = renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></>

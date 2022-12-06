@@ -695,7 +695,7 @@ const ParseqUI = (props) => {
 
 
   const grid = useMemo(() => <>
-  <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
+  <div className="ag-theme-alpine" style={{  width: '100%', height: 200 }}>
     <AgGridReact
       ref={gridRef}
       rowData={default_keyframes}
@@ -961,20 +961,9 @@ const ParseqUI = (props) => {
     </>
     , [renderedData]);
 
-  const renderedOutput = useMemo(() => <div>
-    <TextField
-      style={{ width: '100%' }}
-      id="filled-multiline-static"
-      label="Rendered output"
-      multiline
-      rows={20}
-      onFocus={event => event.target.select()}
-      InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-      value={renderedDataJsonString}
-      variant="filled"
-    />
-    {renderButton}
-  </div>, [renderedData, needsRender]);
+  const renderedOutput = useMemo(() => <div   style={{ fontSize:'0.75em', backgroundColor:'whitesmoke', height:'20em', overflow: 'scroll'}}>
+    <pre>{renderedDataJsonString}</pre>
+  </div>, [renderedDataJsonString, needsRender]);
 
   
   
@@ -1034,8 +1023,17 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12}>
         <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
-        {renderStatus}
-        {renderedOutput}
+        <Grid container>
+          <Grid xs={6}>
+            {renderStatus}
+          </Grid>  
+          <Grid xs={6}>
+          {renderButton}
+          </Grid>
+          <Grid xs={12}>
+            {renderedOutput}
+          </Grid>
+        </Grid> 
       </Grid>
     </Grid>
   );

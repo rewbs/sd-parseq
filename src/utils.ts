@@ -24,7 +24,7 @@ export const fieldNametoRGBa = (str: string, alpha: number): string => {
         case 'translation_y': return `rgba(255,140,0,${alpha})`;
         case 'translation_z': return `rgba(169,169,169,${alpha})`;
         case 'rotation_3d_x': return `rgba(178,34,34,${alpha})`;
-        case 'rotation_3d_y': return `rgba(173,255,47,${alpha})`;
+        case 'rotation_3d_y': return `rgba(50,200,50,${alpha})`;
         case 'rotation_3d_z': return `rgba(25,25,112,${alpha})`;
         case 'fov': return `rgba(255,0,0,${alpha})`;
         case 'near': return `rgba(0,255,0,${alpha})`;

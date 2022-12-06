@@ -19,7 +19,6 @@ import debounce from 'lodash.debounce';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
-import { Roarr as log } from 'roarr';
 import useDebouncedEffect from 'use-debounced-effect';
 import packageJson from '../package.json';
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
@@ -52,10 +51,6 @@ const analytics = getAnalytics(app);
 //////////////////////////////////////////
 // Config
 const version = packageJson.version;
-
-log.write = (message) => {
-  console.log(message);
-};
 
 // eslint-disable-next-line
 const default_prompts = {
@@ -96,14 +91,15 @@ const GridTooltip = (props) => {
 };
 
 const ParseqUI = (props) => {
-  log.debug(Date.now(), "Re-initializing ParseqUI....");
+  //log.debug(Date.now(), "Re-initializing ParseqUI....");
 
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef(); 
   const interpolatable_fields = props.interpolatable_fields;
   const default_keyframes = props.default_keyframes;
   const default_displayFields = props.default_displayFields || [];
-  const show_options = props.show_options;
+  let _frameToRowId_cache;
+
 
   function fillWithDefaults(possiblyIncompleteContent) {
     if (!possiblyIncompleteContent.prompts) {
@@ -249,7 +245,7 @@ const ParseqUI = (props) => {
       clearTimeout(runOnceTimeout);
       runOnce();
     } else {
-      log.debug("Couldn't do init, try again in 100ms.");
+      //log.debug("Couldn't do init, try again in 100ms.");
       clearTimeout(runOnceTimeout);
       runOnceTimeout = setTimeout(runOnce, 100);
     }
@@ -308,6 +304,8 @@ const ParseqUI = (props) => {
   }, [keyframes, autoRender]);
 
   const onCellValueChanged = useCallback((event) => {
+    _frameToRowId_cache = undefined;
+
     gridRef.current.api.onSortChanged();
     refreshKeyframesFromGrid();
     
@@ -347,7 +345,7 @@ const ParseqUI = (props) => {
       gridRef.current.api.onSortChanged();
       gridRef.current.api.sizeColumnsToFit();
     } else {
-      log.debug("Couldn't update columns, try again in 100ms.");
+      //log.debug("Couldn't update columns, try again in 100ms.");
       setTimeout(() => {
         setDisplayFields(Array.isArray(displayFields) ? [...displayFields] : []);
       }, 100);
@@ -522,7 +520,7 @@ const ParseqUI = (props) => {
 
     // Validation
     if (!keyframes) {
-      log.debug("render called before initialisation complete.")
+      //log.debug("render called before initialisation complete.")
       console.timeEnd('Render');
       return;
     }
@@ -791,15 +789,16 @@ const ParseqUI = (props) => {
   />, []);
 
   const frameToRowId = useCallback((frame) => {
-    let id = undefined;
-    gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
-      log.debug(rowNode);
-      if (rowNode.data && rowNode.data.frame === frame) {
-        id = rowNode.id;
-        return;
-      }
-    });
-    return id;
+    if (_frameToRowId_cache == undefined) {
+      // Refresh cache.
+      _frameToRowId_cache = new Map();
+      gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
+        if (rowNode.data) {
+          _frameToRowId_cache.set(rowNode.data.frame, rowNode.id)
+        }
+     });
+    }
+    return _frameToRowId_cache.get(frame);
   }, [keyframes]);
 
   const optionsUI = useMemo(() => options && <div>

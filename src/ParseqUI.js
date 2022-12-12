@@ -944,11 +944,11 @@ const ParseqUI = (props) => {
                 props.settings_3d_only.includes(field) ? 
                   <Typography style={{ color:'SteelBlue', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[3D]</Typography>  :
                   <Typography style={{ color:'grey', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[2D+3D]</Typography>}
-          <Sparklines data={renderedData.rendered_frames.map(gf => gf[field].toFixed(5))} margin={1} padding={1}>
+          <Sparklines data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
             <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
           </Sparklines>
           <small><small><small>delta:</small></small></small>
-          <Sparklines data={renderedData.rendered_frames.map(gf => gf[field + '_delta'].toFixed(5))} margin={1} padding={1}>
+          <Sparklines data={renderedData.rendered_frames.map(f => f[field + '_delta'])} margin={1} padding={1}>
             <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
           </Sparklines>
           </Grid >

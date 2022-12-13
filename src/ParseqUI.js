@@ -15,7 +15,6 @@ import Grid from '@mui/material/Unstable_Grid2';
 import { AgGridReact } from 'ag-grid-react';
 import equal from 'fast-deep-equal';
 import clonedeep from 'lodash.clonedeep';
-import debounce from 'lodash.debounce';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
@@ -46,14 +45,15 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+ // eslint-disable-next-line  no-unused-vars
 const analytics = getAnalytics(app);
 
 //////////////////////////////////////////
 // Config
 const version = packageJson.version;
 
-// eslint-disable-next-line
 const default_prompts = {
+  // eslint-disable-next-line no-template-curly-in-string
   positive: "Cat :${prompt_weight_1} AND duck :${prompt_weight_2} AND open mouth :${prompt_weight_3} AND centered, high detail",
   negative: "low quality, artefacts, watermark, logo, signature"
 }
@@ -97,11 +97,9 @@ const ParseqUI = (props) => {
   const gridRef = useRef(); 
   const interpolatable_fields = props.interpolatable_fields;
   const default_keyframes = props.default_keyframes;
-  const default_displayFields = props.default_displayFields || [];
-  let _frameToRowId_cache;
+  const default_displayFields = props.default_displayFields;
 
-
-  function fillWithDefaults(possiblyIncompleteContent) {
+  const fillWithDefaults = useCallback((possiblyIncompleteContent) => {
     if (!possiblyIncompleteContent.prompts) {
       possiblyIncompleteContent.prompts = default_prompts;
     }
@@ -115,16 +113,16 @@ const ParseqUI = (props) => {
     possiblyIncompleteContent.options = {...default_options, ...(possiblyIncompleteContent.options || {}) };
 
     return possiblyIncompleteContent;
-  } 
+  }, [default_displayFields, default_keyframes]);
 
-  function freshLoadContentOfContentToState(loadedContent) {
+  const freshLoadContentToState = useCallback((loadedContent) => {
     const filledContent = fillWithDefaults(loadedContent || {});
     setPrompts(filledContent.prompts);
     setOptions(filledContent.options);
     setDisplayFields(filledContent.displayFields);
     setKeyframes(filledContent.keyframes);
     refreshGridFromKeyframes(filledContent.keyframes);
-  }
+  }, [fillWithDefaults]);
 
   //////////////////////////////////////////
   // App State
@@ -140,6 +138,9 @@ const ParseqUI = (props) => {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [enqueuedRender, setEnqueuedRender] = useState(false);
   const [autoRender, setAutoRender] = useState(true);
+
+  const runOnceTimeout = useRef();
+  const _frameToRowId_cache = useRef();
   
   const columnDefs = useMemo(() => {
     return [
@@ -176,7 +177,7 @@ const ParseqUI = (props) => {
         },
       }
     ])
-  ]}, [options]);
+  ]}, [interpolatable_fields]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -190,8 +191,7 @@ const ParseqUI = (props) => {
         || params.event.key === 'd'
         || params.event.key === 'r'
       );
-    },
-    tooltipComponent: GridTooltip,
+    }
   }), [options]);
 
   // Ensures that whenever any data that might affect the output changes,
@@ -214,10 +214,10 @@ const ParseqUI = (props) => {
         setTimeout(render, 100);
       }
     }
-  }, 200, [enqueuedRender]);
+  }, 200, [enqueuedRender, prompts, options, displayFields, keyframes]);
 
   // Run on first load, once all react components are ready and Grid is ready.
-  let runOnceTimeout = 0;
+  runOnceTimeout.current = 0;
   useEffect(() => {
  
     function runOnce() {
@@ -226,7 +226,7 @@ const ParseqUI = (props) => {
       if (qsContent) {
         // Attempt to load content from querystring 
         // This is to support *LEGACY* parsrq URLs. Doesn't in all browsers with large data.
-        freshLoadContentOfContentToState(JSON.parse(qsContent));
+        freshLoadContentToState(JSON.parse(qsContent));
         const url = new URL(window.location);
         url.searchParams.delete('parsec');
         url.searchParams.delete('parseq');
@@ -235,26 +235,42 @@ const ParseqUI = (props) => {
         setEnqueuedRender(true);
       } else {
         loadVersion(activeDocId).then((loadedContent) => {
-          freshLoadContentOfContentToState(loadedContent);
+          freshLoadContentToState(loadedContent);
           setAutoSaveEnabled(true);
           setEnqueuedRender(true);
         });
       }
     }
     if (gridRef.current.api) {
-      clearTimeout(runOnceTimeout);
+      clearTimeout(runOnceTimeout.current);
       runOnce();
     } else {
       //log.debug("Couldn't do init, try again in 100ms.");
-      clearTimeout(runOnceTimeout);
-      runOnceTimeout = setTimeout(runOnce, 100);
+      clearTimeout(runOnceTimeout.current);
+      runOnceTimeout.current = setTimeout(runOnce, 100);
     }
+    // empty dependency array to force one off execution
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const frameToRowId = useCallback((frame) => {
+    if (_frameToRowId_cache.current === undefined) {
+      // Refresh cache.
+      _frameToRowId_cache.current = new Map();
+      gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
+        if (rowNode.data) {
+          _frameToRowId_cache.current.set(rowNode.data.frame, rowNode.id)
+        }
+     });
+    }
+    return _frameToRowId_cache.current.get(frame);
+  }, [_frameToRowId_cache]);
 
   //////////////////////////////////////////
   // Grid action callbacks 
   const addRow = useCallback((frame) => {
+    //console.log(_frameToRowId_cache);
+
     if (isNaN(frame)) {
       console.error(`Invalid keyframe: ${frame}`)
       return;
@@ -263,7 +279,7 @@ const ParseqUI = (props) => {
       // Add frame in closest next free slot.
       ++frame;
     }
-    const res = gridRef.current.api.applyTransaction({
+    gridRef.current.api.applyTransaction({
       add: [{ "frame": frame }],
       addIndex: frame,
     });
@@ -273,10 +289,12 @@ const ParseqUI = (props) => {
 
     if (autoRender) {
       setEnqueuedRender(true);
-    }    
-  }, [autoRender]);
+    }
+  }, [autoRender, frameToRowId]);
 
   const deleteRow = useCallback((frame) => {
+    //console.log(_frameToRowId_cache);
+
     if (isNaN(frame)) {
       console.error(`Invalid keyframe: ${frame}`)
       return;
@@ -301,11 +319,9 @@ const ParseqUI = (props) => {
     if (autoRender) {
       setEnqueuedRender(true);
     }
-  }, [keyframes, autoRender]);
+  }, [keyframes, autoRender, frameToRowId]);
 
   const onCellValueChanged = useCallback((event) => {
-    _frameToRowId_cache = undefined;
-
     gridRef.current.api.onSortChanged();
     refreshKeyframesFromGrid();
     
@@ -331,7 +347,7 @@ const ParseqUI = (props) => {
         setEnqueuedRender(true);
       }
     }
-  }, [gridRef, addRow, deleteRow]);
+  }, [addRow, deleteRow]);
 
 
   // Update displayed columns when displayFields changes.
@@ -359,6 +375,9 @@ const ParseqUI = (props) => {
   // Must be called whenever the grid data is changed, so that the updates
   // are reflected in other keyframe observers.
   function refreshKeyframesFromGrid() {
+    console.log("Resetting _frameToRowId_cache");
+    _frameToRowId_cache.current = undefined;
+
     console.log("Refreshing keyframes from grid...");
     let keyframes_local = [];
 
@@ -390,6 +409,7 @@ const ParseqUI = (props) => {
 
   const handleChangeOption = useCallback((e) => {
     const id = e.target.id;
+    // eslint-disable-next-line no-unused-vars
     let [_, optionId] = id.split(/options_/);
 
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
@@ -404,37 +424,39 @@ const ParseqUI = (props) => {
   const [openAddRowDialog, setOpenAddRowDialog] = useState(false);
   const handleClickOpenAddRowDialog = () => {
     setOpenAddRowDialog(true);
-  };
-  const handleCloseAddRowDialog = (e) => {
+  };  
+  const handleCloseAddRowDialog = useCallback((e) => {
     setOpenAddRowDialog(false);
     if (e.target.id === "add") {
       addRow(parseInt(frameToAdd));
     }
-  };
-  const addRowDialog = useMemo(() => <Dialog open={openAddRowDialog} onClose={handleCloseAddRowDialog}>
-  <DialogTitle>➕ Add keyframe</DialogTitle>
-  <DialogContent>
-    <DialogContentText>
-      Add a keyframe at the following position:
-    </DialogContentText>
-    <TextField
-      autoFocus
-      margin="dense"
-      id="add_keyframe_at"
-      label="Frame"
-      variant="standard"
-      defaultValue={frameToAdd}
-      onChange={(e) => setFrameToAdd(e.target.value)}
-    />
-    <DialogContentText>
-      <small><small>TODO: warning here if frame doesn't exist</small></small>
-    </DialogContentText>
-  </DialogContent>
-  <DialogActions>
-    <Button size="small" id="cancel_add" onClick={handleCloseAddRowDialog}>Cancel</Button>
-    <Button size="small" variant="contained" id="add" onClick={handleCloseAddRowDialog}>Add</Button>
-  </DialogActions>
-</Dialog>, [openAddRowDialog,frameToAdd, autoRender]);
+  }, [addRow, frameToAdd]);
+  const addRowDialog = useMemo(() =>
+    <Dialog open={openAddRowDialog} onClose={handleCloseAddRowDialog}>
+      <DialogTitle>➕ Add keyframe</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          Add a keyframe at the following position:
+        </DialogContentText>
+        <TextField
+          autoFocus
+          margin="dense"
+          id="add_keyframe_at"
+          label="Frame"
+          variant="standard"
+          defaultValue={frameToAdd}
+          onChange={(e) => setFrameToAdd(e.target.value)}
+        />
+        <DialogContentText>
+          <small><small>TODO: warning here if frame doesn't exist</small></small>
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button size="small" id="cancel_add" onClick={handleCloseAddRowDialog}>Cancel</Button>
+        <Button size="small" variant="contained" id="add" onClick={handleCloseAddRowDialog}>Add</Button>
+      </DialogActions>
+    </Dialog>
+    , [openAddRowDialog, frameToAdd, handleCloseAddRowDialog]);
 
 
   const [frameToDelete, setFrameToDelete] = useState();
@@ -442,12 +464,13 @@ const ParseqUI = (props) => {
   const handleClickOpenDeleteRowDialog = () => {
     setOpenDeleteRowDialog(true);
   };
-  const handleCloseDeleteRowDialog = (e) => {
+
+  const handleCloseDeleteRowDialog = useCallback((e) => {
     setOpenDeleteRowDialog(false);
     if (e.target.id === "delete") {
       deleteRow(parseInt(frameToDelete));
     }
-  };
+  }, [deleteRow, frameToDelete]);
 
   const deleteRowDialog = useMemo(() => <Dialog open={openDeleteRowDialog} onClose={handleCloseDeleteRowDialog}>
   <DialogTitle>❌ Delete keyframe</DialogTitle>
@@ -472,23 +495,20 @@ const ParseqUI = (props) => {
     <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
     <Button variant="contained" id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
   </DialogActions>
-</Dialog>, [openDeleteRowDialog, frameToDelete, autoRender, keyframes]);
+</Dialog>, [openDeleteRowDialog, frameToDelete, handleCloseDeleteRowDialog]);
  
-
   // TODO: switch to useMemo that updates when elements change?
-  function getPersistableState() {
-    return {
-      "meta": { 
-        "generated_by": "sd_parseq",
-        "version": version,
-        "generated_at": new Date().toUTCString(),
-      },
-      prompts: prompts,
-      options: options,
-      displayFields: displayFields,
-      keyframes: keyframes,
-    };
-  }
+  const getPersistableState = useCallback(() => ({
+    "meta": {
+      "generated_by": "sd_parseq",
+      "version": version,
+      "generated_at": new Date().toUTCString(),
+    },
+    prompts: prompts,
+    options: options,
+    displayFields: displayFields,
+    keyframes: keyframes,
+  }), [prompts, options, displayFields, keyframes]);
 
   const needsRender = useMemo( () => {
     return !lastRenderedState
@@ -496,7 +516,6 @@ const ParseqUI = (props) => {
       || !equal(lastRenderedState.options, options)
       || !equal(lastRenderedState.prompts, prompts)
   }, [lastRenderedState, keyframes, options, prompts]);
-
 
   //////////////////////////////////////////
   // Main render action callback
@@ -513,7 +532,7 @@ const ParseqUI = (props) => {
     return Array.from(Array(maxFrame - minFrame + 1).keys()).map((i) => i + minFrame);
   }
 
-  const render = useCallback(debounce(() => {
+  const render = useCallback(() => {
     console.time('Render');
     setRenderedErrorMessage("");
     setEnqueuedRender(false);
@@ -643,10 +662,10 @@ const ParseqUI = (props) => {
       let minValue = Math.min(...rendered_frames.map(rf => rf[field]))
       rendered_frames_meta = {
         ...rendered_frames_meta || {},
-        [field] : {
+        [field]: {
           'max': maxValue,
           'min': minValue,
-          'isFlat': minValue==maxValue,
+          'isFlat': minValue === maxValue,
         }
       }
     });
@@ -656,7 +675,7 @@ const ParseqUI = (props) => {
       interpolatable_fields.forEach((field) => {
         let maxValue = rendered_frames_meta[field].max;
 
-        if (frame == 0) {
+        if (frame === 0) {
           rendered_frames[frame] = {
             ...rendered_frames[frame] || {},
             [field + '_delta']: rendered_frames[0][field],
@@ -687,11 +706,11 @@ const ParseqUI = (props) => {
       prompts,
       options});
     console.timeEnd('Render')
-  }, 200), [keyframes, prompts, options]);
+  }, [keyframes, prompts, options, getPersistableState, interpolatable_fields, frameToRowId]);
 
   const renderButton = useMemo(() =>
     <Button size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true) }>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
-    [prompts, needsRender, displayFields, keyframes, options, enqueuedRender]);
+    [needsRender, enqueuedRender]);
 
 
   const grid = useMemo(() => <>
@@ -712,7 +731,7 @@ const ParseqUI = (props) => {
       tooltipShowDelay={0}
     />
     </div>
-  </>, [options, autoRender]);
+  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, default_keyframes]);
 
   const getAnimatedFields = (renderedData) => {
     if (renderedData && renderedData.rendered_frames_meta) {
@@ -775,31 +794,18 @@ const ParseqUI = (props) => {
       {errorMessage}
       {statusMessage}
     </div>
-  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender]);
+  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender, renderButton, renderedDataJsonString, props.settings_2d_only, props.settings_3d_only]);
 
   const docManager = useMemo(() => <DocManagerUI
     docId={activeDocId}
     onLoadContent={(content) => {
       console.log("Loading version", content);
       if (content) {
-        freshLoadContentOfContentToState(content);
+        freshLoadContentToState(content);
         setEnqueuedRender(true);
       }
     }}
-  />, []);
-
-  const frameToRowId = useCallback((frame) => {
-    if (_frameToRowId_cache == undefined) {
-      // Refresh cache.
-      _frameToRowId_cache = new Map();
-      gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
-        if (rowNode.data) {
-          _frameToRowId_cache.set(rowNode.data.frame, rowNode.id)
-        }
-     });
-    }
-    return _frameToRowId_cache.get(frame);
-  }, [keyframes]);
+  />, [activeDocId, freshLoadContentToState]);
 
   const optionsUI = useMemo(() => options && <div>
     <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
@@ -824,7 +830,7 @@ const ParseqUI = (props) => {
         size="small"
         variant="standard" />
     </Tooltip2>
-  </div>, [options, autoRender])
+  </div>, [options, handleChangeOption])
 
   const fieldSelector = useMemo(() => displayFields && <Select
     id="select-display-fields"
@@ -860,7 +866,7 @@ const ParseqUI = (props) => {
         {field}
       </MenuItem>
     ))}
-  </Select>, [displayFields])
+  </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields ])
 
   const promptsUI = useMemo(() => prompts && <>
     <Grid xs={12} container>
@@ -931,7 +937,7 @@ const ParseqUI = (props) => {
         }
       }}
     />
-  </div>, [renderedData, displayFields, graphAsPercentages, options]);
+  </div>, [renderedData, displayFields, graphAsPercentages, addRow, frameToRowId]);
 
   const renderSparklines = useCallback(() => renderedData && <>
       <Grid container>
@@ -959,11 +965,11 @@ const ParseqUI = (props) => {
     <small>Hiding these <strong>flat</strong> sparklines: <code>{interpolatable_fields.filter((field) => !getAnimatedFields(renderedData).includes(field)).join(', ')}</code>.</small>
   </Grid>      
     </>
-    , [renderedData]);
+    , [renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only]);
 
   const renderedOutput = useMemo(() => <div   style={{ fontSize:'0.75em', backgroundColor:'whitesmoke', height:'20em', overflow: 'scroll'}}>
     <pre>{renderedDataJsonString}</pre>
-  </div>, [renderedDataJsonString, needsRender]);
+  </div>, [renderedDataJsonString]);
 
   
   

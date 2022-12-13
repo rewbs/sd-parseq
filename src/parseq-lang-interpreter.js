@@ -23,6 +23,7 @@ function poly_interpolation(definedFrames, definedValues, frame) {
   return polynomial(frame, definedFrames, definedValues)[0];
 }
 
+ // eslint-disable-next-line  no-unused-vars
 function step_interpolation(definedFrames, definedValues, frame) {
   return step(frame, definedFrames, definedValues)[0];
 }
@@ -167,8 +168,8 @@ export function interpret(ast, context) {
         case '*': return f => left(f)*right(f);
         case '/': return f => left(f)/right(f);
         case '%': return f => left(f)%right(f);
-        case '!=': return f => left(f)!=right(f) ? 1 : 0;
-        case '==': return f => left(f)==right(f) ? 1 : 0;
+        case '!=': return f => left(f)!==right(f) ? 1 : 0;
+        case '==': return f => left(f)===right(f) ? 1 : 0;
         case '<': return f => left(f)<right(f) ? 1 : 0;
         case '<=': return f => left(f)<=right(f) ? 1 : 0;
         case '>=': return f => left(f)>=right(f) ? 1 : 0;
@@ -189,27 +190,23 @@ export function interpret(ast, context) {
 
 function getPreviousKeyframe(context, f) {
   let idx = context.definedFrames.findLastIndex(v => v <= f);
-  return idx != -1 ? context.definedFrames[idx] : context.definedFrames.at(0);
+  return idx !== -1 ? context.definedFrames[idx] : context.definedFrames.at(0);
 }
 
 function getNextKeyframe(context, f) {
   let idx = context.definedFrames.findIndex(v => v > f);
-  return idx != -1 ? context.definedFrames[idx] : context.definedFrames.at(-1);
+  return idx !== -1 ? context.definedFrames[idx] : context.definedFrames.at(-1);
 }
 
 function getPreviousKeyframeValue(context, f) {
   let idx = context.definedFrames.findLastIndex(v => v <= f);
-  return idx != -1 ? context.definedValues[idx] : context.definedValues.at(0);
+  return idx !== -1 ? context.definedValues[idx] : context.definedValues.at(0);
 }
 
 function getNextKeyframeValue(context, f) {
   let idx = context.definedFrames.findIndex(v => v > f);
-  return idx != -1 ? context.definedValues[idx] : context.definedValues.at(-1);
+  return idx !== -1 ? context.definedValues[idx] : context.definedValues.at(-1);
 }
-
-
-
-
 
 function oscillator(osc, period, pos, amp, centre, pulsewidth) {
   switch(osc) {

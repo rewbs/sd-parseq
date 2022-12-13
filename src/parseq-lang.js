@@ -246,6 +246,7 @@ let ParserRules = [
         d => {
             // Putting logic here is nasty, but is necessary to avoid
             // a lookbehind regex in the lexer, which breaks Safari.
+            // eslint-disable-next-line no-unused-vars
             let [_, value, unit] = d[0].text.match(/(.*?)([fsb])?$/);
             if (unit) {
                 return {
@@ -275,4 +276,5 @@ let ParserRules = [
     {"name": "_", "symbols": ["_$ebnf$1"]}
 ];
 let ParserStart = "input";
+// eslint-disable-next-line import/no-anonymous-default-export
 export default { Lexer, ParserRules, ParserStart };

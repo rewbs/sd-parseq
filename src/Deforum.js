@@ -2,7 +2,7 @@ import React from 'react';
 import Grid from '@mui/material/Unstable_Grid2';
 import ParseqUI from './ParseqUI';
 import packageJson from '../package.json';
-import { Box, Chip } from '@mui/material';
+import { Chip } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
 import { faGithub } from '@fortawesome/free-brands-svg-icons'
@@ -23,6 +23,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+// eslint-disable-next-line no-unused-vars
 const analytics = getAnalytics(app);
 
 //////////////////////////////////////////

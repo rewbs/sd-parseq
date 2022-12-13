@@ -7,7 +7,6 @@ import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
-import { Roarr as log } from 'roarr';
 import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
 
 const ChartJSAddPointPlugin = {

@@ -1,17 +1,15 @@
-import './wdyr'; 
+import './wdyr';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import {
   createBrowserRouter,
   RouterProvider,
-  Route,
 } from "react-router-dom";
 import './index.css';
 import App from './App';
 import Interpreter from './Interpreter';
 import Deforum from './Deforum';
-import { Editable } from './Editable';
 import reportWebVitals from './reportWebVitals';
 import TimeAgo from 'javascript-time-ago'
 import en from 'javascript-time-ago/locale/en.json'
@@ -28,25 +26,24 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-
 TimeAgo.addDefaultLocale(en)
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Deforum/>,
+    element: <Deforum />,
   },
   {
     path: "/interpreter",
-    element: <Interpreter/>,
+    element: <Interpreter />,
   },
   {
     path: "/deforum",
-    element: <Deforum/>,
+    element: <Deforum />,
   },
   {
     path: "/legacy",
-    element: <App/>,
+    element: <App />,
   },
 ]);
 

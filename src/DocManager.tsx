@@ -8,7 +8,6 @@ import debounce from 'lodash.debounce';
 import React, { useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import ReactTimeAgo from 'react-time-ago';
-import { Roarr as log } from 'roarr';
 import { v4 as uuidv4 } from 'uuid';
 import { generateDocName } from './doc-name-generator';
 
@@ -25,8 +24,6 @@ export class ParseqDexie extends Dexie {
     }
 }
 export const db = new ParseqDexie();
-const MAX_DOCS = 100; // Number of docs to store
-const MAX_VERSIONS = 25; // Number of historical versions of doc to store
 
 export const makeDocId = (): DocId => "doc-" + uuidv4() as DocId
 const makeVersionId = (): VersionId => "version-" + uuidv4() as VersionId
@@ -87,6 +84,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
     const [activeDoc, setActiveDoc] = useState({docId : docId, name: "loading"} as ParseqDoc);
     const [exportableDoc, setExportableDoc] = useState("");
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const activeDocSetter = useLiveQuery(
         async () => {
             const doc = await db.parseqDocs.get(docId)

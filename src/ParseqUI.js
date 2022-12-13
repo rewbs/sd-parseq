@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, FormLabel, FormControlLabel, Tooltip as Tooltip2, Typography, TextareaAutosize } from '@mui/material';
+import { Alert, Button, Checkbox, FormLabel, FormControlLabel, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -807,7 +807,7 @@ const ParseqUI = (props) => {
     }}
   />, [activeDocId, freshLoadContentToState]);
 
-  const optionsUI = useMemo(() => options && <span>
+  const optionsUI = useMemo(() => options && <div>
     <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
       <TextField
         id={"options_output_fps"}
@@ -830,7 +830,7 @@ const ParseqUI = (props) => {
         size="small"
         variant="standard" />
     </Tooltip2>
-  </span>, [options, handleChangeOption])
+  </div>, [options, handleChangeOption])
 
   const fieldSelector = useMemo(() => displayFields && <Select
     id="select-display-fields"
@@ -870,32 +870,30 @@ const ParseqUI = (props) => {
 
   const promptsUI = useMemo(() => prompts && <>
     <Grid xs={12} container style={{margin: 0, padding: 0}}>
-      <Grid xs={6} style={{marginTop: 0, paddingTop: 0}}>
-        <FormLabel>Positive</FormLabel>
-        <TextareaAutosize
-          style={{ width: '100%', fontFamily:'sans-serif', fontSize: '0.75em', color: 'DarkGreen' }}
+    <Grid xs={6}>
+          <TextField
+          fullWidth={true}
           id={"positive_prompt"}
           label={"Positive prompt"}
-          placeholder="Positive prompt"
-          minRows={2}
           multiline
+          rows={4}
           value={prompts.positive}
-          onBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
+          onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
+          InputProps={{ style: { fontSize: '0.75em', color: 'DarkGreen' } }}
           onChange={(e) => setPrompts({ ...prompts, positive: e.target.value })}
           size="small"
           variant="standard" />
       </Grid>
-      <Grid xs={6}  style={{marginTop: 0, paddingTop: 0}}>
-        <FormLabel>Negative</FormLabel>
-        <TextareaAutosize
-          style={{ width: '100%', fontFamily:'sans-serif', font:'serif', fontSize: '0.75em', color: 'Firebrick' }}
+      <Grid xs={6}>
+        <TextField
+          fullWidth={true}
           id={"negative_prompt"}
           label={"Negative prompt"}
-          placeholder="Negative prompt"
-          minRows={2}
           multiline
-          onBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
+          rows={4}
+          onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
           value={prompts.negative}
+          InputProps={{ style: { fontSize: '0.75em', color: 'Firebrick' } }}
           onChange={(e) => setPrompts({ ...prompts, negative: e.target.value })}
           size="small"
           variant="standard" />

@@ -7,10 +7,11 @@ jobs:
   release_and_deploy_to_staging:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2    
       - name: NPM-Version
         uses: Reedyuk/NPM-Version@1.1.1    
       - name: Build
-        uses: actions/checkout@v2
         run: npm ci && npm run build
       - name: Firebase deploy to staging
         uses: FirebaseExtended/action-hosting-deploy@v0

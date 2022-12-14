@@ -22,6 +22,7 @@ const firebaseConfig = {
 
 const gitInfo = GitInfo();
 window.GIT_BRANCH = gitInfo.branch;
+window.GIT_COMMIT_HASH = gitInfo.commit.hash;
 window.GIT_COMMIT_SHORTHASH = gitInfo.commit.shortHash;
 window.GIT_COMMIT_DATE = gitInfo.commit.date;
 

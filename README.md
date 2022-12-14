@@ -287,7 +287,22 @@ If you want to dive in:
    - Run `npm install` to pull dependencies.
    - Run `npm start` to run the Parseq UI locally in dev mode on port 3000. You can now access the UI on `localhost:3000`. Code changes should be hot-reloaded.
 
-Hosting & deployment is done using Firebase. There's no automated deployment pipeline at the moment.
+### Deployment
+
+Hosting & deployment is done using Firebase. Merges to master are automatically deployed to the staging channel. PRs are automatically deployed to the dev channel. There is currently no automated post-deployment verification or promotion to prod.
+
+Assuming you have the right permissions, you can view active deployements with:
+
+```
+firebase hosting:channel:list
+```
+
+And promote from staging to prod with:
+
+```
+firebase hosting:clone sd-parseq:staging sd-parseq:live
+```
+
    
 ## Credits
 

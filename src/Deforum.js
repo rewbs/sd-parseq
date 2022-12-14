@@ -2,7 +2,7 @@ import React from 'react';
 import Grid from '@mui/material/Unstable_Grid2';
 import ParseqUI from './ParseqUI';
 import packageJson from '../package.json';
-import { Chip } from '@mui/material';
+import { Chip, Typography } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
 import { faGithub } from '@fortawesome/free-brands-svg-icons'
@@ -164,17 +164,26 @@ const default_keyframes = [
 ];
 
 const Deforum = () => {
+  const displayDate = window.GIT_COMMIT_DATE;
+  const displayBranch = window.GIT_BRANCH === 'master' ? '' : `Branch: ${window.GIT_BRANCH};`;
+  const commitURL = "https://github.com/rewbs/sd-parseq/commits/"+window.GIT_COMMIT_SHORTHASH;
+  const commitLink = <a href={commitURL}>{window.GIT_COMMIT_SHORTHASH}</a>
+
   return (
     <div>
       <Grid container paddingLeft={5} paddingRight={5}>
         <Grid xs={8}>
-          <h2>Parseq v{packageJson.version} for Deforum</h2>
+          <h2>Parseq v{packageJson.version} for Deforum
+          <Typography fontSize='0.4em'>
+            {displayBranch} Built {displayDate} ({commitLink})
+          </Typography>
+          </h2>
         </Grid>
         <Grid xs={4} display='flex' justifyContent="space-around" alignItems='center' >
-          <Chip size="small" variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />
-          <Chip size="small" variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon icon={faBug} />} label="Bugs" />
-          <Chip size="small" variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon icon={faGithub} />} label="Code" />
-          <Chip size="small" variant="outlined" component="a" href="https://www.buymeacoffee.com/rewbs" clickable icon={<FontAwesomeIcon icon={faCoffee} />} label="Coffee" />
+          <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />
+          <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon icon={faBug} />} label="Bugs" />
+          <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon icon={faGithub} />} label="Code" />
+          <Chip variant="outlined" component="a" href="https://www.buymeacoffee.com/rewbs" clickable icon={<FontAwesomeIcon icon={faCoffee} />} label="Coffee" />
         </Grid>
       </Grid>
       <ParseqUI

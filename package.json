@@ -84,6 +84,7 @@
   "devDependencies": {
     "@types/uuid": "^8.3.4",
     "@welldone-software/why-did-you-render": "^7.0.1",
-    "eslint-config-react-app": "^7.0.1"
+    "eslint-config-react-app": "^7.0.1",
+    "react-git-info": "^2.0.1"
   }
 }

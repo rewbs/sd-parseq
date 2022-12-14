@@ -8,6 +8,7 @@ import './robin.css';
 // Import the functions you need from the SDKs you need
 import { getAnalytics } from "firebase/analytics";
 import { initializeApp } from "firebase/app";
+import GitInfo from 'react-git-info/macro';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
@@ -18,6 +19,11 @@ const firebaseConfig = {
   appId: "1:830535540412:web:858dde0a82381e6f32bab9",
   measurementId: "G-TPY8W4RQ83"
 };
+
+const gitInfo = GitInfo();
+window.GIT_BRANCH = gitInfo.branch;
+window.GIT_COMMIT_SHORTHASH = gitInfo.commit.shortHash;
+window.GIT_COMMIT_DATE = gitInfo.commit.date;
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

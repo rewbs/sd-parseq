@@ -1010,7 +1010,7 @@ const ParseqUI = (props) => {
         <Button size="small"variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
         {renderButton}
         <FormControlLabel control={
-          <Checkbox defaultChecked={autoRender}
+          <Checkbox defaultChecked={true}
             id={"auto_render"}
             onChange={(e) => setAutoRender(e.target.checked)}
           />}

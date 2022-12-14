@@ -5,10 +5,11 @@
 For context: 
 
 * [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool.
-* [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a UI for that tool.
-* The [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui) is an extention for that UI, for creating AI animations.
+* [Deforum](https://github.com/deforum-art/deforum-stable-diffusion) is a notebook-based UI for Stable Diffusion that is optimised to create videos.
+* [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a Web UI for Stable Diffusion (but not for Deforum).
+* The [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui) is an extention to the Automatic1111 Web UI that integrates the functionality of the Deforum notebook.
 
-Parseq is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
+With all that defined, Parseq (this tool) is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
 <img  width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213244-b768437a-a260-4448-b8c1-3a832091241b.png">
 
@@ -17,6 +18,8 @@ You can jump straight into the UI here: https://sd-parseq.web.app/ .
 For now Parseq is fully front-end and stores all state in browser local storage (there is no backend).
 
 ## What's new?
+
+* 🎉 You no longer need to use a branch of the A1111 Deforum extension. Parseq integration is now avialable in the official release. 🎉* 
 
 ### Version 0.1.0
 
@@ -28,10 +31,9 @@ For now Parseq is fully front-end and stores all state in browser local storage 
 ## Installation
 
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-- Install the Deforum extension [from the parseq-integration branch of my fork of the Deforum integration](https://github.com/rewbs/deforum-for-automatic1111-webui/tree/parseq-integration). You might not be able to do it directly from the A1111 UI. Here's how to do it manually:
-   - `git clone https://github.com/rewbs/deforum-for-automatic1111-webui.git`
-   - `git checkout parseq-integration`
-- Relaunch Auto1111 – You should now see a `Parseq` section right at the bottom for the `keyframes` tab under the `Deforum` extension (click to expand it):
+- Install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
+- Relaunch the Automatic1111 UI.
+– You should now see a `Parseq` section right at the bottom for the `keyframes` tab under the `Deforum` extension (click to expand it):
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/200856608-d90762f4-b682-4b79-88ff-e8b3fa90813d.png">
 

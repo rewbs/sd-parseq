@@ -5,7 +5,7 @@ import packageJson from '../package.json';
 import { Chip, Typography } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
-import { faGithub } from '@fortawesome/free-brands-svg-icons'
+import { faGithub,faDiscord } from '@fortawesome/free-brands-svg-icons'
 import './robin.css';
 
 // Import the functions you need from the SDKs you need
@@ -180,10 +180,11 @@ const Deforum = () => {
           </Typography>
           </h2>
         </Grid>
-        <Grid xs={4} display='flex' justifyContent="space-around" alignItems='center' >
+        <Grid xs={4} display='flex' justifyContent="right" gap={1} alignItems='center'>
           <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />
           <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon icon={faBug} />} label="Bugs" />
           <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon icon={faGithub} />} label="Code" />
+          <Chip variant="outlined" component="a" href="https://discord.gg/deforum" clickable icon={<FontAwesomeIcon icon={faDiscord} />} label="Chat" />
           <Chip variant="outlined" component="a" href="https://www.buymeacoffee.com/rewbs" clickable icon={<FontAwesomeIcon icon={faCoffee} />} label="Coffee" />
         </Grid>
       </Grid>

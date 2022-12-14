@@ -951,7 +951,7 @@ const ParseqUI = (props) => {
         setDisplayFields([...displayFields, field]);
       }
     }
-  }, [displayFields]);
+  }, [interpolatable_fields, displayFields]);
 
   const renderSparklines = useCallback(() => renderedData && <>
     <FormControlLabel control={

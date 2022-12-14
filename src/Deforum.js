@@ -165,10 +165,9 @@ const default_keyframes = [
 
 const Deforum = () => {
   const displayDate = window.GIT_COMMIT_DATE;
-  const displayBranch = window.GIT_BRANCH === 'master' ? '' : `Branch: ${window.GIT_BRANCH};`;
+  const displayBranch = (!window.GIT_BRANCH || window.GIT_BRANCH === 'master') ? '' : `Branch: ${window.GIT_BRANCH};`;
   const commitLink = <a href={"https://github.com/rewbs/sd-parseq/commit/"+window.GIT_COMMIT_HASH}>{window.GIT_COMMIT_SHORTHASH}</a>
-  const changeLogLink = <a href={"https://github.com/rewbs/sd-parseq/commits/"+window.GIT_BRANCH}>all changes</a>
-  
+  const changeLogLink = <a href={"https://github.com/rewbs/sd-parseq/commits/"+(window.GIT_BRANCH ?? '')}>all changes</a>
 
   return (
     <div>

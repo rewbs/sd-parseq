@@ -1,5 +1,15 @@
 # Stable Diffusion Parseq
 
+  * [What is this?](#what-is-this)
+  * [What's new?](#whats-new)
+  * [Installation](#installation)
+  * [Examples](#examples)
+  * [Usage](#usage)
+  * [UI Features](#ui-features)
+  * [Deforum integration features](#deforum-integration-features)
+  * [Development](#development)
+  * [Credits](#credits)
+
 ## What is this?
 
 For context: 

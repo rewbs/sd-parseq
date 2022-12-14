@@ -807,7 +807,7 @@ const ParseqUI = (props) => {
     }}
   />, [activeDocId, freshLoadContentToState]);
 
-  const optionsUI = useMemo(() => options && <div>
+  const optionsUI = useMemo(() => options && <span>
     <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
       <TextField
         id={"options_output_fps"}
@@ -830,11 +830,10 @@ const ParseqUI = (props) => {
         size="small"
         variant="standard" />
     </Tooltip2>
-  </div>, [options, handleChangeOption])
+  </span>, [options, handleChangeOption])
 
   const fieldSelector = useMemo(() => displayFields && <Select
     id="select-display-fields"
-    label="Show fields"
     multiple
     value={displayFields}
     onChange={handleChangeDisplayFields}
@@ -870,13 +869,14 @@ const ParseqUI = (props) => {
 
   const promptsUI = useMemo(() => prompts && <>
     <Grid xs={12} container style={{margin: 0, padding: 0}}>
-    <Grid xs={6}>
+    <Grid xs={6} style={{marginTop: 0, paddingTop: 0}}>
           <TextField
           fullWidth={true}
           id={"positive_prompt"}
           label={"Positive prompt"}
           multiline
-          rows={4}
+          minRows={2}
+          maxRows={16}
           value={prompts.positive}
           onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
           InputProps={{ style: { fontSize: '0.75em', color: 'DarkGreen' } }}
@@ -884,13 +884,14 @@ const ParseqUI = (props) => {
           size="small"
           variant="standard" />
       </Grid>
-      <Grid xs={6}>
+      <Grid xs={6} style={{marginTop: 0, paddingTop: 0}}>
         <TextField
           fullWidth={true}
           id={"negative_prompt"}
           label={"Negative prompt"}
           multiline
-          rows={4}
+          minRows={2}
+          maxRows={16}
           onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
           value={prompts.negative}
           InputProps={{ style: { fontSize: '0.75em', color: 'Firebrick' } }}
@@ -967,7 +968,7 @@ const ParseqUI = (props) => {
     </>
     , [renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only]);
 
-  const renderedOutput = useMemo(() => <div   style={{ fontSize:'0.75em', backgroundColor:'whitesmoke', height:'20em', overflow: 'scroll'}}>
+  const renderedOutput = useMemo(() => <div style={{ fontSize:'0.75em', backgroundColor:'whitesmoke', height:'20em', overflow: 'scroll'}}>
     <pre>{renderedDataJsonString}</pre>
   </div>, [renderedDataJsonString]);
 

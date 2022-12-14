@@ -981,7 +981,7 @@ const ParseqUI = (props) => {
         )
       }
     </Grid>
-  </>, [showFlatSparklines, renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only, handleClickedSparkline]);
+  </>, [displayFields, showFlatSparklines, renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only, handleClickedSparkline]);
 
   const renderedOutput = useMemo(() => <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
     <pre>{renderedDataJsonString}</pre>

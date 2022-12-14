@@ -1,3 +1,5 @@
+![example workflow](https://github.com/rewbs/sd-parseq/actions/workflows/firebase-hosting-merge.yml/badge.svg)
+
 # Stable Diffusion Parseq
 
   * [What is this?](#what-is-this)

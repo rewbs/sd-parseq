@@ -5,7 +5,7 @@
 For context: 
 
 * [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool.
-* [Deforum](https://github.com/deforum-art/deforum-stable-diffusion) is a notebook-based UI for Stable Diffusion that is optimised to create videos.
+* [Deforum](https://github.com/deforum-art/deforum-stable-diffusion) is a notebook-based UI for Stable Diffusion that is geared towards creating videos.
 * [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a Web UI for Stable Diffusion (but not for Deforum).
 * The [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui) is an extention to the Automatic1111 Web UI that integrates the functionality of the Deforum notebook.
 

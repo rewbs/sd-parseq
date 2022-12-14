@@ -1,6 +1,6 @@
 {
   "name": "sd-parseq",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.10.4",
@@ -68,7 +68,7 @@
   },
   "pre-commit": [
     "lint"
-  ],  
+  ],
   "browserslist": {
     "production": [
       ">0.2%",

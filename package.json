@@ -36,6 +36,7 @@
     "lodash.debounce": "^4.0.8",
     "moo": "^0.5.2",
     "nearley": "^2.20.1",
+    "pre-commit": "^1.2.2",
     "react": "^18.2.0",
     "react-chartjs-2": "^4.3.1",
     "react-copy-to-clipboard": "^5.1.0",
@@ -55,7 +56,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix --ext .js,.jsx ."
   },
   "eslintConfig": {
     "extends": [
@@ -63,6 +66,9 @@
       "react-app/jest"
     ]
   },
+  "pre-commit": [
+    "lint"
+  ],  
   "browserslist": {
     "production": [
       ">0.2%",

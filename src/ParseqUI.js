@@ -54,7 +54,8 @@ const version = packageJson.version;
 
 const default_prompts = {
   // eslint-disable-next-line no-template-curly-in-string
-  positive: "Cat :${prompt_weight_1} AND duck :${prompt_weight_2} AND open mouth :${prompt_weight_3} AND centered, high detail",
+  positive: `A lone white (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:\${prompt_weight_1} AND
+  A lone black (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midnight, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography :\${prompt_weight_2}`,
   negative: "low quality, artefacts, watermark, logo, signature"
 }
 const default_options = {
@@ -131,6 +132,7 @@ const ParseqUI = (props) => {
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
   const [lastRenderedState, setlastRenderedState] = useState("");
   const [graphAsPercentages, setGraphAsPercentages] = useState(false);
+  const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
   const [displayFields, setDisplayFields] = useState();
   const [options, setOptions] = useState()
@@ -940,35 +942,48 @@ const ParseqUI = (props) => {
     />
   </div>, [renderedData, displayFields, graphAsPercentages, addRow, frameToRowId]);
 
+  const handleClickedSparkline = useCallback((e) => {   
+    let field = e.currentTarget.id.replace("sparkline_", "");
+    if (interpolatable_fields.includes(field)) {
+      if (displayFields.includes(field)) {
+        setDisplayFields(displayFields.filter((f) => f !== field));
+      } else {
+        setDisplayFields([...displayFields, field]);
+      }
+    }
+  }, [interpolatable_fields, displayFields]);
+
   const renderSparklines = useCallback(() => renderedData && <>
-      <Grid container>
+    <FormControlLabel control={
+      <Checkbox defaultChecked={false}
+        id={"graph_as_percent"}
+        onChange={(e) => setShowFlatSparklines(e.target.checked)}
+      />}
+      label={<Box component="div" fontSize="0.75em">Show {interpolatable_fields.filter((field) =>!getAnimatedFields(renderedData).includes(field)).length} flat sparklines</Box>} />
+    <Grid container>
       {
-        interpolatable_fields.filter((field) => getAnimatedFields(renderedData).includes(field)).map((field) =>
-          <Grid xs={1} sx={{border: '1px solid', borderColor: 'divider'}}>
-            <Typography style={{ fontSize: "0.6em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >{field}</Typography> 
-            {props.settings_2d_only.includes(field) ? 
-              <Typography style={{ color:'SeaGreen', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[2D]</Typography>  :
-                props.settings_3d_only.includes(field) ? 
-                  <Typography style={{ color:'SteelBlue', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[3D]</Typography>  :
-                  <Typography style={{ color:'grey', fontSize: "0.5em", textOverflow: "ellipsis", whiteSpace: "nowrap", overflow: "hidden"}} >[2D+3D]</Typography>}
-          <Sparklines data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
-            <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
-          </Sparklines>
-          <small><small><small>delta:</small></small></small>
-          <Sparklines data={renderedData.rendered_frames.map(f => f[field + '_delta'])} margin={1} padding={1}>
-            <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255), fill: "none" }} />
-          </Sparklines>
-          </Grid >
+        interpolatable_fields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field) ).sort().map((field) =>
+          <Grid xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite' , border: '1px solid', borderColor: 'divider'}} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
+            <Typography style={{ fontSize: "0.5em"}}>{ (displayFields.includes(field) ? "✔️" : "") + field}</Typography>
+            {props.settings_2d_only.includes(field) ?
+              <Typography style={{ color: 'SeaGreen', fontSize: "0.5em"}} >[2D]</Typography> :
+              props.settings_3d_only.includes(field) ?
+                <Typography style={{ color: 'SteelBlue', fontSize: "0.5em"}} >[3D]</Typography> :
+                <Typography style={{ color: 'grey', fontSize: "0.5em"}} >[2D+3D]</Typography>}
+            <Sparklines style={{ bgcolor:'white'}} data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
+              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
+            </Sparklines>
+            <Typography style={{ fontSize: "0.5em"}}>delta</Typography>
+            <Sparklines data={renderedData.rendered_frames.map(f => f[field + '_delta'])} margin={1} padding={1}>
+              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
+            </Sparklines>
+          </Grid>
         )
       }
-      </Grid >
-  <Grid xs={12}>
-    <small>Hiding these <strong>flat</strong> sparklines: <code>{interpolatable_fields.filter((field) => !getAnimatedFields(renderedData).includes(field)).join(', ')}</code>.</small>
-  </Grid>      
-    </>
-    , [renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only]);
+    </Grid>
+  </>, [displayFields, showFlatSparklines, renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only, handleClickedSparkline]);
 
-  const renderedOutput = useMemo(() => <div style={{ fontSize:'0.75em', backgroundColor:'whitesmoke', height:'20em', overflow: 'scroll'}}>
+  const renderedOutput = useMemo(() => <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
     <pre>{renderedDataJsonString}</pre>
   </div>, [renderedDataJsonString]);
 

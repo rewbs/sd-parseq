@@ -1,7 +1,7 @@
 import type { ChartData, ChartOptions, ScriptableContext } from 'chart.js';
 import {
     CategoryScale, Chart as ChartJS, Interaction, Legend, LinearScale, LineElement, PointElement, Title,
-    Tooltip
+    Tooltip, LegendItem
 } from 'chart.js';
 import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
@@ -85,7 +85,10 @@ export class Editable extends React.Component<{
                 legend: {
                     position: 'bottom' as const,
                     labels: {
-                        usePointStyle: true
+                        usePointStyle: true,
+                        sort: (a: LegendItem, b: LegendItem) => {
+                            return a.text.localeCompare(b.text);
+                        }
                     }
                 },
                 tooltip: {

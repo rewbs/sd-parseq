@@ -4,32 +4,20 @@ import { Alert } from '@mui/material';
 import ParseqUI from './ParseqUI';
 import packageJson from '../package.json';
 import './robin.css';
+import { UserAuthContextProvider } from "./UserAuthContext";
+import Login from "./Login";
+import Signup from "./SignUp";
+import { Routes, Route } from "react-router-dom";
 
-// Import the functions you need from the SDKs you need
-import { getAnalytics } from "firebase/analytics";
-import { initializeApp } from "firebase/app";
 import GitInfo from 'react-git-info/macro';
+import { app } from './firebase-config';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
-  authDomain: "sd-parseq.firebaseapp.com",
-  projectId: "sd-parseq",
-  storageBucket: "sd-parseq.appspot.com",
-  messagingSenderId: "830535540412",
-  appId: "1:830535540412:web:858dde0a82381e6f32bab9",
-  measurementId: "G-TPY8W4RQ83"
-};
 
 const gitInfo = GitInfo();
 window.GIT_BRANCH = gitInfo.branch;
 window.GIT_COMMIT_HASH = gitInfo.commit.hash;
 window.GIT_COMMIT_SHORTHASH = gitInfo.commit.shortHash;
 window.GIT_COMMIT_DATE = gitInfo.commit.date;
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-// eslint-disable-next-line no-unused-vars
-const analytics = getAnalytics(app);
 
 const interpolatable_fields = [
   'seed',
@@ -66,6 +54,12 @@ const default_keyframes = [
 const App = () => {
   return (
     <div>
+    <UserAuthContextProvider>
+          <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+        </Routes>
+    </UserAuthContextProvider>      
       <Grid container paddingLeft={5} >
         <Grid xs="12">
           <h2>Parseq v{packageJson.version} <small><small><small><a href="https://github.com/rewbs/sd-parseq">(what is this? How do I use it? Where do I report bugs?)</a></small></small></small></h2>

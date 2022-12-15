@@ -24,29 +24,13 @@ import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager'
 import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
+import { app } from './firebase-config';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
-// Import the functions you need from the SDKs you need
-import { getAnalytics } from "firebase/analytics";
-import { initializeApp } from "firebase/app";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
-  authDomain: "sd-parseq.firebaseapp.com",
-  projectId: "sd-parseq",
-  storageBucket: "sd-parseq.appspot.com",
-  messagingSenderId: "830535540412",
-  appId: "1:830535540412:web:858dde0a82381e6f32bab9",
-  measurementId: "G-TPY8W4RQ83"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
- // eslint-disable-next-line  no-unused-vars
-const analytics = getAnalytics(app);
 
 //////////////////////////////////////////
 // Config

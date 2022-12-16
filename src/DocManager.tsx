@@ -65,6 +65,9 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
     
 }
 
+const saveDoc = debounce((doc: ParseqDoc) => { db.parseqDocs.put(doc, doc.docId); }, 200);
+
+
 type MyProps = {
     docId: DocId;
     onLoadContent: (latestVersion?: ParseqDocVersion) => void;
@@ -345,8 +348,9 @@ const shareDialog = <Dialog open={openShareDialog} onClose={handleCloseShareDial
             InputProps={{ style: { fontSize: '0.75em' } }}
             size="small"
             onChange={(e: any) => {
-                debounce(db.parseqDocs.put({ name: e.target.value, docId: docId }, docId), 200)
-                activeDoc.name = e.target.value;
+                const newDoc = {docId: docId, name: e.target.value };
+                saveDoc(newDoc);
+                setActiveDoc(newDoc);
             }}
         />
         <small><small>Last saved: {lastModified ? <ReactTimeAgo date={lastModified} locale="en-US" /> : "never"} </small></small>

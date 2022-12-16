@@ -8,6 +8,7 @@ import 'chartjs-plugin-dragdata';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
+import 'chart.js/auto';
 
 const ChartJSAddPointPlugin = {
     id: 'click',
@@ -30,7 +31,6 @@ ChartJS.register(
     Legend,
     ChartJSAddPointPlugin,
     CrosshairPlugin
-    
 );
 
 //@ts-ignore

@@ -8,8 +8,6 @@ import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
 import { faGithub,faDiscord } from '@fortawesome/free-brands-svg-icons'
 import { UserAuthContextProvider } from "./UserAuthContext";
 import Login from "./Login";
-import Signup from "./SignUp";
-import { Routes, Route } from "react-router-dom";
 
 import './robin.css';
 
@@ -192,7 +190,7 @@ const Deforum = () => {
           <Chip variant="outlined" component="a" href="https://www.buymeacoffee.com/rewbs" clickable icon={<FontAwesomeIcon icon={faCoffee} />} label="Coffee" />
           <UserAuthContextProvider>
             <Login />
-          </UserAuthContextProvider>          
+          </UserAuthContextProvider>
         </Grid>
       </Grid>
       <ParseqUI

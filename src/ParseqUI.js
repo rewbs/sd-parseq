@@ -25,6 +25,9 @@ import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
 import { app } from './firebase-config';
+import { UserAuthContextProvider } from "./UserAuthContext";
+import {InitialisationStatus} from "./components/InitialisationStatus";
+import { UploadButton } from "./components/UploadButton";
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -124,6 +127,8 @@ const ParseqUI = (props) => {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [enqueuedRender, setEnqueuedRender] = useState(false);
   const [autoRender, setAutoRender] = useState(true);
+  const [autoUpload, setAutoUpload] = useState(false);
+  const [initStatus, setInitStatus] = useState({});
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -205,20 +210,48 @@ const ParseqUI = (props) => {
   // Run on first load, once all react components are ready and Grid is ready.
   runOnceTimeout.current = 0;
   useEffect(() => {
- 
-    function runOnce() {
+     function runOnce() {
       const qps = new URLSearchParams(window.location.search);
-      const qsContent = qps.get("parseq") || qps.get("parsec");
-      if (qsContent) {
+      const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
+      const [qsImportRemote, qsRemoteImportToken ] = [qps.get("importRemote"), qps.get("token")];
+      if (qsLegacyContent) {
         // Attempt to load content from querystring 
         // This is to support *LEGACY* parsrq URLs. Doesn't in all browsers with large data.
-        freshLoadContentToState(JSON.parse(qsContent));
+        freshLoadContentToState(JSON.parse(qsLegacyContent));
+        setInitStatus({severity: "success", message: "Successfully imported legacy Parseq data from query string."});        
         const url = new URL(window.location);
         url.searchParams.delete('parsec');
         url.searchParams.delete('parseq');
         window.history.replaceState({}, '', url);
         setAutoSaveEnabled(true);
         setEnqueuedRender(true);
+      } else if (qsImportRemote && qsRemoteImportToken) {
+        setInitStatus({severity: "warning", message: "Importing remote document..."});
+        // Attempt to load content from remote URL
+        const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${qsImportRemote}?alt=media&token=${qsRemoteImportToken}`
+        fetch(importUrl).then((response) => {
+          if (response.ok) {
+            const loadedContent = response.json().then((json) => {
+              freshLoadContentToState(json);
+              setInitStatus({severity: "success", message: "Successfully imported remote document."});
+              const url = new URL(window.location);
+              url.searchParams.delete('importRemote');
+              url.searchParams.delete('token');
+              window.history.replaceState({}, '', url);              
+              setAutoSaveEnabled(true);
+              setEnqueuedRender(true);
+            }).catch((error) => {
+              console.error(error);
+              setInitStatus({severity: "error",  message: `Failed to import document ${qsImportRemote}: ${error.toString()}`});
+            });
+          } else {
+            console.error(response);
+            setInitStatus({severity: "error", message: `Failed to import document ${qsImportRemote}. Status: ${response.status}`});
+          }
+        }).catch((error) => {
+          console.error(error);
+          setInitStatus({severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}`});
+        });
       } else {
         loadVersion(activeDocId).then((loadedContent) => {
           freshLoadContentToState(loadedContent);
@@ -361,10 +394,7 @@ const ParseqUI = (props) => {
   // Must be called whenever the grid data is changed, so that the updates
   // are reflected in other keyframe observers.
   function refreshKeyframesFromGrid() {
-    console.log("Resetting _frameToRowId_cache");
     _frameToRowId_cache.current = undefined;
-
-    console.log("Refreshing keyframes from grid...");
     let keyframes_local = [];
 
     if (!gridRef || !gridRef.current || !gridRef.current.api) {
@@ -378,7 +408,6 @@ const ParseqUI = (props) => {
   }
 
   function refreshGridFromKeyframes(keyframes) {
-    console.log("Refreshing grid from keyframes...");
     if (!gridRef || !gridRef.current || !gridRef.current.api) {
       console.log("Could not refresh grid from keyframes: grid not ready.")
       return;
@@ -782,16 +811,18 @@ const ParseqUI = (props) => {
     </div>
   }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender, renderButton, renderedDataJsonString, props.settings_2d_only, props.settings_3d_only]);
 
-  const docManager = useMemo(() => <DocManagerUI
-    docId={activeDocId}
-    onLoadContent={(content) => {
-      console.log("Loading version", content);
-      if (content) {
-        freshLoadContentToState(content);
-        setEnqueuedRender(true);
-      }
-    }}
-  />, [activeDocId, freshLoadContentToState]);
+  const docManager = useMemo(() => <UserAuthContextProvider>
+      <DocManagerUI
+        docId={activeDocId}
+        onLoadContent={(content) => {
+          console.log("Loading version", content);
+          if (content) {
+            freshLoadContentToState(content);
+            setEnqueuedRender(true);
+          }
+        }}
+      />
+    </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
 
   const optionsUI = useMemo(() => options && <span>
     <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
@@ -990,6 +1021,9 @@ const ParseqUI = (props) => {
     }}>
       <CssBaseline />
       <Grid xs={6}>
+        <InitialisationStatus
+          status={initStatus}
+        />
         {renderStatus}
       </Grid>
       <Grid xs={6}>
@@ -1015,7 +1049,7 @@ const ParseqUI = (props) => {
           />}
           style={{ marginLeft: '0.75em' }}
           label={<Box component="div" fontSize="0.75em">Render on every edit</Box>}
-          />
+        />
         {addRowDialog}
         {deleteRowDialog}        
       </Grid>      
@@ -1034,7 +1068,14 @@ const ParseqUI = (props) => {
             {renderStatus}
           </Grid>  
           <Grid xs={6}>
-          {renderButton}
+          {renderButton}<br/>
+          <UserAuthContextProvider>
+            <UploadButton
+                docId={activeDocId}
+                renderedJson={renderedDataJsonString}
+                autoUpload={true}
+             />
+          </UserAuthContextProvider>
           </Grid>
           <Grid xs={12}>
             {renderedOutput}

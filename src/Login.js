@@ -1,24 +1,17 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from '@mui/material';
-import { faGoogle } from '@fortawesome/free-brands-svg-icons'
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Tooltip, Avatar, Chip } from '@mui/material';
 import { useUserAuth } from "./UserAuthContext";
 
 const Login = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const { logIn, googleSignIn } = useUserAuth();
+    const { googleSignIn, logOut, user } = useUserAuth();
     const navigate = useNavigate();
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
+    const handleLogout = async () => {
         try {
-            await logIn(email, password);
-            navigate("/home");
-        } catch (err) {
-            setError(err.message);
+            await logOut();
+            navigate(window.location);
+        } catch (error) {
+            console.log(error.message);
         }
     };
 
@@ -26,19 +19,34 @@ const Login = () => {
         e.preventDefault();
         try {
             await googleSignIn();
-            navigate("/");
+            navigate(window.location);
         } catch (error) {
             console.log(error.message);
         }
     };
 
-    return (
-        
-        <Button variant="contained" onClick={handleGoogleSignIn} startIcon={<faGoogle />} >
-            Sign in
-        </Button>
+    const chip = user ?    
+        <Chip
+            onClick={handleLogout}
+            avatar={<Avatar
+                alt="Log out"
+                src={user?.photoURL} 
+            />}
+            label="Log out"
+            variant="outlined"
+            color="info"
+        /> :
+        <Chip
+            onClick={handleGoogleSignIn}
+            avatar={<Avatar
+                alt="Sign in with Google"
+                src="google-logo.jpg"
+            />}
+            label="Sign in"
+            color="info"
+        />;
 
-    );
+    return chip; 
 };
 
 export default Login;

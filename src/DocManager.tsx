@@ -1,6 +1,6 @@
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material';
+import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Unstable_Grid2';
-import Dexie, { Table } from 'dexie';
 import { useLiveQuery } from "dexie-react-hooks";
 import equal from 'fast-deep-equal';
 import TimeAgo from 'javascript-time-ago';
@@ -10,20 +10,11 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import ReactTimeAgo from 'react-time-ago';
 import { v4 as uuidv4 } from 'uuid';
 import { generateDocName } from './doc-name-generator';
-
-export class ParseqDexie extends Dexie {
-    parseqVersions!: Table<ParseqDocVersion>;
-    parseqDocs!: Table<ParseqDoc>;
-
-    constructor() {
-        super('parseqDB');
-        this.version(1).stores({
-            parseqVersions: 'versionId, docId, timestamp',
-            parseqDocs: 'docId, name'
-        });
-    }
-}
-export const db = new ParseqDexie();
+//@ts-ignore
+import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "firebase/storage";
+import { db } from './db';
+//@ts-ignore
+import { useUserAuth } from "./UserAuthContext";
 
 export const makeDocId = (): DocId => "doc-" + uuidv4() as DocId
 const makeVersionId = (): VersionId => "version-" + uuidv4() as VersionId
@@ -76,6 +67,8 @@ type MyProps = {
 // TODO: separate React UI component from the service class.
 export function DocManagerUI({ docId, onLoadContent }: MyProps) { 
 
+    const defaultUploadStatus = <Alert severity='warning'>Once uploaded, your parseq doc will be <strong>publicly visible</strong>.</Alert>;
+
     const [openRevertDialog, setOpenRevertDialog] = useState(false);
     const [selectedVersionIdForRevert, setSelectedVersionIdForRevert] = useState<VersionId>();
     const [openLoadDialog, setOpenLoadDialog] = useState(false);
@@ -86,7 +79,13 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
     const [lastModified, setLastModified] = useState(0);
     const [activeDoc, setActiveDoc] = useState({docId : docId, name: "loading"} as ParseqDoc);
     const [exportableDoc, setExportableDoc] = useState("");
+    const [parseqShareUrl, setParseqShareUrl] = useState("");
+    const [uploadStatus, setUploadStatus] = useState(defaultUploadStatus);
 
+    //@ts-ignore - this type check is too deep down for me to figure out right now.
+    const { user } = useUserAuth();
+
+    // console.log("DocManager Auth", user);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const activeDocSetter = useLiveQuery(
         async () => {
@@ -257,6 +256,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                         ))
                     }
                 </TextField>
+                <small>Remember the prompt but not the doc name? Try the <a href='/browser' target='_blank'>browser</a>.</small>
             </Grid>
             <Grid xs={2} sx={{display: 'flex', justifyContent: 'right', alignItems: 'end'}}>
                 <Button size="small" variant="contained" id="load" onClick={handleCloseLoadDialog}>Load</Button>
@@ -295,40 +295,110 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
 const handleClickOpenShareDialog = (): void => {
     loadVersion(activeDoc.docId).then((version) => {
         setExportableDoc(JSON.stringify(version||"", null, 2));
+        setParseqShareUrl("");
+        setUploadStatus(defaultUploadStatus);
         setOpenShareDialog(true);
     });
 
 };
 const handleCloseShareDialog = (e: any): void => {
     setOpenShareDialog(false);
+
 };
 
-const shareDialog = <Dialog open={openShareDialog} onClose={handleCloseShareDialog}>
+const handleUpload = (): void => {
+    try {
+        setUploadStatus(<Alert severity='info'>Upload in progress...<CircularProgress size='1em' /></Alert>);
+        const storage = getStorage();
+        const objectPath = `shared/${activeDoc.docId}-${Date.now()}.json`;
+        const sRef = storageRef(storage, objectPath);
+        uploadString(sRef, exportableDoc, "raw", { contentType: 'application/json' }).then((snapshot) => {
+            getDownloadURL(sRef).then((url) => {
+                const qps = new URLSearchParams(url);
+                const token = qps.get("token");
+                const matchRes = url.match(/shared%2F(doc-.*?\.json)/);
+                if (matchRes && matchRes[1]) {
+                    setParseqShareUrl(window.location.href.replace(window.location.search, '') + `?importRemote=${matchRes[1]}&token=${token}`);
+                    setUploadStatus(<Alert severity="success">
+                        <p>Upload <a href={url}>successful</a>. Share the URL above to load it directly into Parseq on another system.</p>
+                    </Alert>);    
+                } else {
+                    setUploadStatus(<Alert severity="error">Unexpected response path: {url}</Alert>);
+                    return;
+                }
+            });
+        });
+    } catch (e : any) {
+        console.error(e);
+        setUploadStatus(<Alert severity="error">Upload failed: {e.toString()}</Alert>);
+    }
+
+
+};
+const shareDialog = <Dialog open={openShareDialog} onClose={handleCloseShareDialog} maxWidth='lg'>
     <DialogTitle>Share your Parseq document</DialogTitle>
     <DialogContent>
-        <DialogContentText>
-            Export your work so it can be loaded on another system:
-        </DialogContentText>
-        <TextField
-            style={{ width: '100%' }}
-            id="doc-export"
-            label="Exportable output"
-            multiline
-            onFocus={event => event.target.select()}
-            rows={20}
-            InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-            value={exportableDoc}
-            variant="filled"
+    <Grid container>
+        <Grid xs={12}>
+            <DialogContentText marginBottom='10px'>
+                Get a URL to share your doc:
+            </DialogContentText>
+        </Grid>
+        <Grid xs={2} sx={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+            <Button disabled={!user} size="small" id="copy_share" variant="contained"  onClick={handleUpload} >Upload ➡️</Button>
+        </Grid>
+        <Grid xs={8}>
+            <TextField
+                fullWidth={true}
+                id="doc-parseq-pastebin-url"
+                label="Parseq URL"
+                placeholder="(Please sign in and hit upload)"
+                InputLabelProps={{shrink: true}}
+                InputProps={{readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                onFocus={(event) => event.target.select()} 
+                value={parseqShareUrl}
+                variant="filled"
             />
-            <Alert severity="info">This is for you to load your work in Parseq on another system. Don't use this directly in Deforum or Stable diffusion (use the rendered output from the main screen for that). This JSON object includes only keyframe data, not rendered data for each frame.</Alert>
+        </Grid>
+        <Grid xs={2} sx={{display: 'flex', justifyContent: 'right', alignItems: 'start'}}>
+            <CopyToClipboard text={parseqShareUrl}>
+                <Button disabled={typeof parseqShareUrl === "undefined" || parseqShareUrl===""} size="small" id="copy_share" variant="contained" >🔗 Copy URL</Button>
+            </CopyToClipboard>            
+        </Grid>        
+        <Grid xs={10} style = {{paddingTop:'10px'}}>
+            {uploadStatus}
+        </Grid>
+        <Grid xs={12} paddingTop='20px'>
+            <hr/>
+            <DialogContentText paddingTop='20px' paddingBottom='5px'>
+            <strong>Or</strong> copy your document metadata to share with others manually:
+            </DialogContentText>
+        </Grid>
+        <Grid xs={10}>
+            <TextField
+                style={{ width: '100%' }}
+                id="doc-export"
+                label="Exportable output"
+                multiline
+                onFocus={event => event.target.select()}
+                rows={10}
+                InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                value={exportableDoc}
+                variant="filled"
+                />
+                <Alert severity="info">This is for you to load your work in Parseq on another system. Don't use this directly in Deforum or Stable diffusion (use the rendered output from the main screen for that). This JSON object includes only keyframe data, not rendered data for each frame.</Alert>
+        </Grid>
+        <Grid xs={2} sx={{display: 'flex', justifyContent: 'right', alignItems: 'start'}}>
+            <CopyToClipboard text={exportableDoc}>
+                <Button size="small" id="copy_share" variant="contained"  >📋 Copy doc</Button>
+            </CopyToClipboard>
+        </Grid>
+    </Grid>        
     </DialogContent>
     <DialogActions>
-        <CopyToClipboard text={exportableDoc}>
-            <Button size="small" id="copy_share" variant="contained"  >📋 Copy</Button>
-        </CopyToClipboard>
         <Button size="small" id="done_share" onClick={handleCloseShareDialog}>Done</Button>
     </DialogActions>
-</Dialog>    
+</Dialog>  
 
     return <div>
         {revertDialog}

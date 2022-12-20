@@ -1,30 +1,7 @@
 import React from 'react';
-import Grid from '@mui/material/Unstable_Grid2';
+//@ts-ignore
 import ParseqUI from './ParseqUI';
-import packageJson from '../package.json';
-import { Chip, Typography } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
-import { faGithub,faDiscord } from '@fortawesome/free-brands-svg-icons'
-import './robin.css';
-
-// Import the functions you need from the SDKs you need
-import { getAnalytics } from "firebase/analytics";
-import { initializeApp } from "firebase/app";
-const firebaseConfig = {
-  apiKey: "AIzaSyCGr7xczPkoHFQW-GanSAoAZZFGfLrYiTI",
-  authDomain: "sd-parseq.firebaseapp.com",
-  projectId: "sd-parseq",
-  storageBucket: "sd-parseq.appspot.com",
-  messagingSenderId: "830535540412",
-  appId: "1:830535540412:web:858dde0a82381e6f32bab9",
-  measurementId: "G-TPY8W4RQ83"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-// eslint-disable-next-line no-unused-vars
-const analytics = getAnalytics(app);
+import Header from "./components/Header";
 
 //////////////////////////////////////////
 // Config
@@ -164,29 +141,8 @@ const default_keyframes = [
 ];
 
 const Deforum = () => {
-  const displayDate = window.GIT_COMMIT_DATE;
-  const displayBranch = (!window.GIT_BRANCH || window.GIT_BRANCH === 'master') ? '' : `Branch: ${window.GIT_BRANCH};`;
-  const commitLink = <a href={"https://github.com/rewbs/sd-parseq/commit/"+window.GIT_COMMIT_HASH}>{window.GIT_COMMIT_SHORTHASH}</a>
-  const changeLogLink = <a href={"https://github.com/rewbs/sd-parseq/commits/"+(window.GIT_BRANCH ?? '')}>all changes</a>
-
-  return (
-    <div>
-      <Grid container paddingLeft={5} paddingRight={5}>
-        <Grid xs={8}>
-          <h2>Parseq v{packageJson.version} for Deforum
-          <Typography fontSize='0.4em'>
-          [{process.env.NODE_ENV}] {displayBranch} Built {displayDate} ({commitLink} - {changeLogLink})
-          </Typography>
-          </h2>
-        </Grid>
-        <Grid xs={4} display='flex' justifyContent="right" gap={1} alignItems='center'>
-          <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />
-          <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon icon={faBug} />} label="Bugs" />
-          <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon icon={faGithub} />} label="Code" />
-          <Chip variant="outlined" component="a" href="https://discord.gg/deforum" clickable icon={<FontAwesomeIcon icon={faDiscord} />} label="Chat" />
-          <Chip variant="outlined" component="a" href="https://www.buymeacoffee.com/rewbs" clickable icon={<FontAwesomeIcon icon={faCoffee} />} label="Coffee" />
-        </Grid>
-      </Grid>
+  return <>
+      <Header title="Parseq for Deforum" />,
       <ParseqUI
         interpolatable_fields={interpolatable_fields}
         default_keyframes={default_keyframes}
@@ -195,8 +151,7 @@ const Deforum = () => {
         settings_3d_only={settings_3d_only}
         settings_2d_only={settings_2d_only}
       />
-    </div>
-  );
+  </>;
 };
 
 export default Deforum;

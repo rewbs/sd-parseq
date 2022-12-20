@@ -13,6 +13,7 @@ import { generateDocName } from './doc-name-generator';
 //@ts-ignore
 import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "firebase/storage";
 import { db } from './db';
+//@ts-ignore
 import { useUserAuth } from "./UserAuthContext";
 
 export const makeDocId = (): DocId => "doc-" + uuidv4() as DocId
@@ -84,7 +85,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
     //@ts-ignore - this type check is too deep down for me to figure out right now.
     const { user } = useUserAuth();
 
-    console.log("DocManager Auth", user);
+    // console.log("DocManager Auth", user);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const activeDocSetter = useLiveQuery(
         async () => {

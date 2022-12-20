@@ -29,7 +29,7 @@ export default function Browser() {
     );
     const showBorders = { border: '1px solid', borderColor: 'divider' };
 
-    return [
+    return <>
         <Header title="Parseq - local storage browser" />,
         <Grid container paddingLeft={5} paddingRight={5} spacing={2}>
             <CssBaseline />
@@ -73,6 +73,6 @@ export default function Browser() {
                 })
             }
         </Grid>
-    ];
+    </>;
 
 }

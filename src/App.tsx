@@ -1,4 +1,5 @@
 import React from 'react';
+//@ts-ignore
 import ParseqUI from './ParseqUI';
 import Header from "./components/Header";
 
@@ -35,7 +36,7 @@ const default_keyframes = [
 ];
 
 const App = () => {
-  return [
+  return <>
     <Header title="Parseq Legacy (don't use this)" />,
       <ParseqUI
         interpolatable_fields={ interpolatable_fields }
@@ -45,7 +46,7 @@ const App = () => {
         settings_2d_only = {[]}
         settings_3d_only = {[]}
       />
-  ];
+  </>;
 };
 
 

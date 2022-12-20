@@ -7,20 +7,21 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
+  User
 } from "firebase/auth";
 
 import { auth } from './firebase-config';
 
-type UserAuthContextType =  {
+export type UserAuthContextType =  {
   googleSignIn: Function;
   logOut: Function;
   user: any;
 }
 
-const userAuthContext = createContext<UserAuthContextType>({googleSignIn: () => {}, logOut: () => {}, user: null});
+const userAuthContext = createContext(undefined);
 
 export function UserAuthContextProvider({ children } : any) {
-  const [user, setUser] = useState({});
+  const [user, setUser] = useState<User|null>();
 
   function logIn(email : string, password : string) {
     return signInWithEmailAndPassword(auth, email, password);
@@ -39,9 +40,7 @@ export function UserAuthContextProvider({ children } : any) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentuser) => {
-      if (currentuser)  {
-        setUser(currentuser);
-      }
+      setUser(currentuser);
     });
 
     return () => {
@@ -59,6 +58,6 @@ export function UserAuthContextProvider({ children } : any) {
   );
 }
 
-export function useUserAuth() : UserAuthContextType {
+export function useUserAuth() {
   return useContext(userAuthContext);
 }

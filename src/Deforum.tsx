@@ -1,4 +1,5 @@
 import React from 'react';
+//@ts-ignore
 import ParseqUI from './ParseqUI';
 import Header from "./components/Header";
 
@@ -140,7 +141,7 @@ const default_keyframes = [
 ];
 
 const Deforum = () => {
-  return [
+  return <>
       <Header title="Parseq for Deforum" />,
       <ParseqUI
         interpolatable_fields={interpolatable_fields}
@@ -150,7 +151,7 @@ const Deforum = () => {
         settings_3d_only={settings_3d_only}
         settings_2d_only={settings_2d_only}
       />
-  ];
+  </>;
 };
 
 export default Deforum;

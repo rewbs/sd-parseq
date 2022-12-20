@@ -4,24 +4,31 @@ import { useNavigate } from "react-router-dom";
 import { useUserAuth } from "./UserAuthContext";
 
 const Login = () => {
+    //@ts-ignore
     const { googleSignIn, logOut, user } = useUserAuth();
     const navigate = useNavigate();
     const handleLogout = async () => {
+        if (!logOut) {
+            return;
+        }
         try {
             await logOut();
-            navigate(window.location);
+            navigate(window.location, { replace: true });
         } catch (error : any) {
-            console.log(error.message);
+            console.error(error.message);
         }
-    };
+    }
 
     const handleGoogleSignIn = async (e:any) => {
+        if (!googleSignIn) {
+            return;
+        }
         e.preventDefault();
         try {
             await googleSignIn();
-            navigate(window.location);
+            navigate(window.location, { replace: true });
         } catch (error : any) {
-            console.log(error.message);
+            console.error(error.message);
         }
     };
 
@@ -29,10 +36,10 @@ const Login = () => {
         <Chip
             onClick={handleLogout}
             avatar={<Avatar
-                alt="Log out"
+                alt={user?.displayName}
                 src={user?.photoURL} 
             />}
-            label="Log out"
+            label="Sign out"
             variant="outlined"
             color="info"
         /> :

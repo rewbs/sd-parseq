@@ -6,7 +6,7 @@ import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "fir
 import * as React from 'react';
 import { useState } from 'react';
 //@ts-ignore
-import { useUserAuth } from "./../UserAuthContext";
+import { useUserAuth } from "../UserAuthContext";
 
 type MyProps = {
     docId: DocId,
@@ -19,9 +19,14 @@ let _lastUploadAttempt = '';
 export function UploadButton({ docId, renderedJson, autoUpload }: MyProps) {
 
     const [uploadStatus, setUploadStatus] = useState(<></>);
+    //@ts-ignore
     const { user } = useUserAuth();
     
     function upload(): void {
+        if (!user) {
+            setUploadStatus(<Alert severity="error">Sign in above to upload.</Alert>);
+            return;
+        }
         try {
             _lastUploadAttempt = renderedJson;
             setUploadStatus(<Alert severity='info'>Upload in progress...<CircularProgress size='1em' /></Alert>);
@@ -45,18 +50,19 @@ export function UploadButton({ docId, renderedJson, autoUpload }: MyProps) {
         }
     }
 
-    if (autoUpload) {
-        if (_lastUploadAttempt !== renderedJson) {
-            setTimeout(() => upload(), 100);
-        }
+    if (autoUpload
+        && user
+        && _lastUploadAttempt !== renderedJson) {
+        setTimeout(() => upload(), 100);
     }
+    
    
     return (<Box sx={{ display:'flex', justifyContent:"left", gap:1, alignItems:'center'}}>
         <Button style={{marginTop:'5px'}} size="small" variant="contained" disabled={!user} onClick={() => upload()}>⬆️ Upload output</Button>
         {user ?
             uploadStatus
             :
-            <Alert variant='outlined' severity="warning">Please log in (top right) to be enabled output uploads.</Alert>
+            <Alert severity="warning">Sign in above to upload.</Alert>
         }
 
     </Box>);

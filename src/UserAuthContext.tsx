@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import React from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -10,15 +11,21 @@ import {
 
 import { auth } from './firebase-config';
 
-const userAuthContext = createContext();
+type UserAuthContextType =  {
+  googleSignIn: Function;
+  logOut: Function;
+  user: any;
+}
 
-export function UserAuthContextProvider({ children }) {
+const userAuthContext = createContext<UserAuthContextType>({googleSignIn: () => {}, logOut: () => {}, user: null});
+
+export function UserAuthContextProvider({ children } : any) {
   const [user, setUser] = useState({});
 
-  function logIn(email, password) {
+  function logIn(email : string, password : string) {
     return signInWithEmailAndPassword(auth, email, password);
   }
-  function signUp(email, password) {
+  function signUp(email : string, password : string) {
     return createUserWithEmailAndPassword(auth, email, password);
   }
   function logOut() {
@@ -32,8 +39,9 @@ export function UserAuthContextProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentuser) => {
-      console.log("Auth", currentuser);
-      setUser(currentuser);
+      if (currentuser)  {
+        setUser(currentuser);
+      }
     });
 
     return () => {
@@ -43,6 +51,7 @@ export function UserAuthContextProvider({ children }) {
 
   return (
     <userAuthContext.Provider
+      //@ts-ignore - this type check is too deep down for me to figure out right now.
       value={{ user, logIn, signUp, logOut, googleSignIn }}
     >
       {children}
@@ -50,6 +59,6 @@ export function UserAuthContextProvider({ children }) {
   );
 }
 
-export function useUserAuth() {
+export function useUserAuth() : UserAuthContextType {
   return useContext(userAuthContext);
 }

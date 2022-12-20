@@ -1,7 +1,6 @@
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Unstable_Grid2';
-import Dexie, { Table } from 'dexie';
 import { useLiveQuery } from "dexie-react-hooks";
 import equal from 'fast-deep-equal';
 import TimeAgo from 'javascript-time-ago';
@@ -12,23 +11,9 @@ import ReactTimeAgo from 'react-time-ago';
 import { v4 as uuidv4 } from 'uuid';
 import { generateDocName } from './doc-name-generator';
 //@ts-ignore
+import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "firebase/storage";
+import { db } from './db';
 import { useUserAuth } from "./UserAuthContext";
-import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
-import { querystring } from '@firebase/util';
-
-export class ParseqDexie extends Dexie {
-    parseqVersions!: Table<ParseqDocVersion>;
-    parseqDocs!: Table<ParseqDoc>;
-
-    constructor() {
-        super('parseqDB');
-        this.version(1).stores({
-            parseqVersions: 'versionId, docId, timestamp',
-            parseqDocs: 'docId, name'
-        });
-    }
-}
-export const db = new ParseqDexie();
 
 export const makeDocId = (): DocId => "doc-" + uuidv4() as DocId
 const makeVersionId = (): VersionId => "version-" + uuidv4() as VersionId
@@ -93,10 +78,10 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
     const [lastModified, setLastModified] = useState(0);
     const [activeDoc, setActiveDoc] = useState({docId : docId, name: "loading"} as ParseqDoc);
     const [exportableDoc, setExportableDoc] = useState("");
-    const [resourceUrl, setResourceUrl] = useState("");
     const [parseqShareUrl, setParseqShareUrl] = useState("");
     const [uploadStatus, setUploadStatus] = useState(defaultUploadStatus);
 
+    //@ts-ignore - this type check is too deep down for me to figure out right now.
     const { user } = useUserAuth();
 
     console.log("DocManager Auth", user);
@@ -270,6 +255,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                         ))
                     }
                 </TextField>
+                <small>Remember the prompt but not the doc name? Try the <a href='/browser' target='_blank'>browser</a>.</small>
             </Grid>
             <Grid xs={2} sx={{display: 'flex', justifyContent: 'right', alignItems: 'end'}}>
                 <Button size="small" variant="contained" id="load" onClick={handleCloseLoadDialog}>Load</Button>
@@ -309,7 +295,6 @@ const handleClickOpenShareDialog = (): void => {
     loadVersion(activeDoc.docId).then((version) => {
         setExportableDoc(JSON.stringify(version||"", null, 2));
         setParseqShareUrl("");
-        setResourceUrl("");
         setUploadStatus(defaultUploadStatus);
         setOpenShareDialog(true);
     });
@@ -321,8 +306,6 @@ const handleCloseShareDialog = (e: any): void => {
 };
 
 const handleUpload = (): void => {
-    //https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2Fdoc-f1572864-8754-412a-bf6c-b1fd81aad912-1671170566494.json?alt=media&token=4cd7f419-050f-41ee-8432-721b67ee14a9
-    //https://storage.googleapis.com/sd-parseq.appspot.com/shared%2Fdoc-f1572864-8754-412a-bf6c-b1fd81aad912-1671170566494.json
     try {
         setUploadStatus(<Alert severity='info'>Upload in progress...<CircularProgress size='1em' /></Alert>);
         const storage = getStorage();
@@ -330,7 +313,6 @@ const handleUpload = (): void => {
         const sRef = storageRef(storage, objectPath);
         uploadString(sRef, exportableDoc, "raw", { contentType: 'application/json' }).then((snapshot) => {
             getDownloadURL(sRef).then((url) => {
-                setResourceUrl(url);
                 const qps = new URLSearchParams(url);
                 const token = qps.get("token");
                 const matchRes = url.match(/shared%2F(doc-.*?\.json)/);

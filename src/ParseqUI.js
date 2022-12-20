@@ -20,14 +20,13 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import useDebouncedEffect from 'use-debounced-effect';
 import packageJson from '../package.json';
+import { InitialisationStatus } from "./components/InitialisationStatus";
+import { UploadButton } from "./components/UploadButton";
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
-import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
-import { app } from './firebase-config';
 import { UserAuthContextProvider } from "./UserAuthContext";
-import {InitialisationStatus} from "./components/InitialisationStatus";
-import { UploadButton } from "./components/UploadButton";
+import { fieldNametoRGBa, frameToBeats, frameToSeconds } from './utils';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -231,7 +230,7 @@ const ParseqUI = (props) => {
         const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${qsImportRemote}?alt=media&token=${qsRemoteImportToken}`
         fetch(importUrl).then((response) => {
           if (response.ok) {
-            const loadedContent = response.json().then((json) => {
+            response.json().then((json) => {
               freshLoadContentToState(json);
               setInitStatus({severity: "success", message: "Successfully imported remote document."});
               const url = new URL(window.location);
@@ -1050,6 +1049,14 @@ const ParseqUI = (props) => {
           style={{ marginLeft: '0.75em' }}
           label={<Box component="div" fontSize="0.75em">Render on every edit</Box>}
         />
+        <FormControlLabel control={
+          <Checkbox defaultChecked={false}
+            id={"auto_render"}
+            onChange={(e) => setAutoUpload(e.target.checked)}
+          />}
+          style={{ marginLeft: '0.75em' }}
+          label={<Box component="div" fontSize="0.75em">Upload output after every render</Box>}
+        />        
         {addRowDialog}
         {deleteRowDialog}        
       </Grid>      
@@ -1073,7 +1080,7 @@ const ParseqUI = (props) => {
             <UploadButton
                 docId={activeDocId}
                 renderedJson={renderedDataJsonString}
-                autoUpload={true}
+                autoUpload={autoUpload}
              />
           </UserAuthContextProvider>
           </Grid>

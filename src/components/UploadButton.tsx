@@ -1,10 +1,10 @@
-import * as React from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "firebase/storage";
+import * as React from 'react';
 import { useState } from 'react';
-import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 //@ts-ignore
 import { useUserAuth } from "./../UserAuthContext";
 
@@ -14,22 +14,22 @@ type MyProps = {
     autoUpload: boolean
 };
 
-// TODO: separate React UI component from the service class.
+let _lastUploadAttempt = '';
+
 export function UploadButton({ docId, renderedJson, autoUpload }: MyProps) {
 
     const [uploadStatus, setUploadStatus] = useState(<></>);
-    const [resourceUrl, setResourceUrl] = useState('');
     const { user } = useUserAuth();
-
+    
     function upload(): void {
         try {
+            _lastUploadAttempt = renderedJson;
             setUploadStatus(<Alert severity='info'>Upload in progress...<CircularProgress size='1em' /></Alert>);
             const storage = getStorage();
             const objectPath = `rendered/${docId}.json`;
             const sRef = storageRef(storage, objectPath);
             uploadString(sRef, renderedJson, "raw", { contentType: 'application/json' }).then((snapshot) => {
                 getDownloadURL(sRef).then((url) => {
-                    setResourceUrl(url);
                     const matchRes = url.match(/rendered%2F(doc-.*?\.json)/);
                     if (matchRes && matchRes[1]) {
                         setUploadStatus(<Alert severity="success">Rendered output <a href={url}>available here</a>.</Alert>);
@@ -46,7 +46,9 @@ export function UploadButton({ docId, renderedJson, autoUpload }: MyProps) {
     }
 
     if (autoUpload) {
-        //upload()
+        if (_lastUploadAttempt !== renderedJson) {
+            setTimeout(() => upload(), 100);
+        }
     }
    
     return (<Box sx={{ display:'flex', justifyContent:"left", gap:1, alignItems:'center'}}>

@@ -1,6 +1,6 @@
+import { Avatar, Chip } from '@mui/material';
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Tooltip, Avatar, Chip } from '@mui/material';
 import { useUserAuth } from "./UserAuthContext";
 
 const Login = () => {
@@ -10,17 +10,17 @@ const Login = () => {
         try {
             await logOut();
             navigate(window.location);
-        } catch (error) {
+        } catch (error : any) {
             console.log(error.message);
         }
     };
 
-    const handleGoogleSignIn = async (e) => {
+    const handleGoogleSignIn = async (e:any) => {
         e.preventDefault();
         try {
             await googleSignIn();
             navigate(window.location);
-        } catch (error) {
+        } catch (error : any) {
             console.log(error.message);
         }
     };

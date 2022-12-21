@@ -35,10 +35,20 @@ For now Parseq is fully front-end and stores all state in browser local storage 
 
 ### Version 0.1.4
 
-* If you sign in at the top right (only Google sign-in supported for now, raise a feature request if this is too limiting), you can now easily create a sharable URL for your parseq doc from the `Share...` dialog.
-* Also if you sign in, you can upload the rendered output to a URL. With the latest version of the A1111 extension, you can refer to this URL in the Parseq manifest textbox, so you don't have to keep copying the full JSON data back and forth.
+* If you sign in at the top right (only Google sign-in supported for now, raise a feature request if this is too limiting), you can use 2 new upload features.
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209023672-70969c67-b80e-4aa1-95f5-470ff42574c8.png">
+
+* Once signed in, you can now easily create a sharable URL for your parseq doc from the `Share...` dialog.
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024021-a5051ff7-6bfd-43c5-b15b-eda8da6e8078.png">
+
+* Also once signed in, you can upload the rendered output to a URL. With the latest version of the A1111 extension, you can refer to this URL in the Parseq manifest textbox, so you don't have to keep copying the full JSON data back and forth.
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024413-231231a3-6626-4055-9017-ea70db3d6089.png"><img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024824-71454cde-256e-4deb-8134-9e133bbda1b9.png">
+
 * Sparklines are now clickable, so you can show/hide data more easily.
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024185-6ee11a71-614f-4bb9-b02e-6e3fe0cc1d91.png">
+
 * A simple Parseq document "Browser" is accessible from the `Load...` dialog that lets you see all the docs and versions in your local storage a bit more easily.
+<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209025568-ddaa5dee-1514-4908-b3ed-cd2d8302d6a7.png">
 
 
 ### Version 0.1.0

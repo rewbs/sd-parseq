@@ -33,6 +33,14 @@ For now Parseq is fully front-end and stores all state in browser local storage 
 
 * 🎉 You no longer need to use a branch of the A1111 Deforum extension. Parseq integration is now avialable in the official release. 🎉* 
 
+### Version 0.1.4
+
+* If you sign in at the top right (only Google sign-in supported for now, raise a feature request if this is too limiting), you can now easily create a sharable URL for your parseq doc from the `Share...` dialog.
+* Also if you sign in, you can upload the rendered output to a URL. With the latest version of the A1111 extension, you can refer to this URL in the Parseq manifest textbox, so you don't have to keep copying the full JSON data back and forth.
+* Sparklines are now clickable, so you can show/hide data more easily.
+* A simple Parseq document "Browser" is accessible from the `Load...` dialog that lets you see all the docs and versions in your local storage a bit more easily.
+
+
 ### Version 0.1.0
 
 * Parseq script mode is now deprecated, and Deforum integration mode is the default. I will no longer develop the Parseq script for a1111, focussing instead on making Parseq play well with the Deforum extension for a1111. The Parseq script was destined to only ever be an inferior version of the Deforum extension. If you need to work with the legacy parseq script variables, you can try here: https://sd-parseq.web.app/legacy .
@@ -71,8 +79,12 @@ Here are some examples of what you can do with this. Most of these were generate
 
 https://user-images.githubusercontent.com/74455/199890662-9f446def-0582-4021-8249-84ce6b7df5d7.mp4
 
+- Example of advanced audio synchronisation. A [detailed description of how this was created is available here](https://www.reddit.com/r/StableDiffusion/comments/zh8lk8/advanced_audio_sync_with_deforum_and_sdparseq/). The music is an excerpt of [The Prodigy - Smack My Bitch Up (Noisia Remix)](https://www.youtube.com/watch?v=r5OgQCvqbYA).
 
-- Vid2vid using the Parseq script backend, with fluctuations on many different params to attempt to synchronise param changes and image movement to music. The input audio is an excerpt of [The Prodigy - Smack My Bitch Up (Noisia Remix)](https://www.youtube.com/watch?v=r5OgQCvqbYA), and the original input video was generated with [Butterchurn](https://butterchurnviz.com/). Includes a side-by-side comparison of the original input video, the "dry run" video (which includes all pre-processing but no Stable Diffusion), and the final output:
+https://user-images.githubusercontent.com/74455/209022677-568bd283-3e2a-457c-93ab-b27182db7bc6.mp4
+
+
+- An older version of the same audio sync idea, with side-by-side comparisons with the input video and a preview render that bypasses SD:
 
 https://user-images.githubusercontent.com/74455/199890420-9c939e3a-ae8e-4262-9805-da0f45b4c0bc.mp4
 

@@ -1,9 +1,10 @@
 import type { ChartData, ChartOptions, ScriptableContext } from 'chart.js';
 import {
-    CategoryScale, Chart as ChartJS, Interaction, Legend, LinearScale, LineElement, PointElement, Title,
+    CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Title,
     Tooltip, LegendItem
 } from 'chart.js';
-import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
+//disabling crosshair plugin because it seems to cause errors on some systems.
+//import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
@@ -30,11 +31,11 @@ ChartJS.register(
     Tooltip,
     Legend,
     ChartJSAddPointPlugin,
-    CrosshairPlugin
+    //CrosshairPlugin
 );
 
 //@ts-ignore
-Interaction.modes.interpolate = Interpolate
+//Interaction.modes.interpolate = Interpolate
 
 export class Editable extends React.Component<{
     renderedData: RenderedData,

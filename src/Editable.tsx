@@ -30,7 +30,7 @@ ChartJS.register(
     Tooltip,
     Legend,
     ChartJSAddPointPlugin,
-    CrosshairPlugin
+    //CrosshairPlugin
 );
 
 //@ts-ignore

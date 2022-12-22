@@ -15,7 +15,6 @@ export const getLatestVersion = async (docId: DocId): Promise<ParseqDocVersion |
     }
 }
 
-
 export default function Browser() {
 
     const allDocsAllVersion = useLiveQuery(
@@ -30,7 +29,7 @@ export default function Browser() {
     const showBorders = { border: '1px solid', borderColor: 'divider' };
 
     return <>
-        <Header title="Parseq - local storage browser" />,
+        <Header title="Parseq - local storage browser" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2}>
             <CssBaseline />
             <Grid xs={12}>

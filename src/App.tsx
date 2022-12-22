@@ -37,7 +37,7 @@ const default_keyframes = [
 
 const App = () => {
   return <>
-    <Header title="Parseq Legacy (don't use this)" />,
+    <Header title="Parseq Legacy (don't use this)" />
       <ParseqUI
         interpolatable_fields={ interpolatable_fields }
         default_keyframes={ default_keyframes }

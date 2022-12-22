@@ -14,6 +14,7 @@ import * as Sentry from "@sentry/react";
 import { BrowserTracing } from "@sentry/tracing";
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en.json';
+import Analyser from './Analyser';
 import Browser from './Browser';
 import Deforum from './Deforum';
 import Interpreter from './Interpreter';
@@ -35,6 +36,7 @@ const router = <BrowserRouter>
       <Route path="/browser" element={<Browser />} />
       <Route path="/interpreter" element={<Interpreter />} />            
       <Route path="/legacy" element={<App />} />
+      <Route path="/analyser" element={<Analyser />} />
     </Routes>
 </BrowserRouter>
 

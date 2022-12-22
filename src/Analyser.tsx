@@ -19,19 +19,20 @@ export default function Analyser() {
     const [tempoHop, setTempoHop] = useState(bufferSize);
     const [tempoOutput, setTempoOutput] = useState<number>();
     const [tempoOutputConfidence, setTempoOutputConfidence] = useState<number>();
+    const tempoRef = useRef<HTMLInputElement>(null);
 
     const [onsetMethod, setOnsetMethod] = useState("default");
     const [onsetBuffer, setOnsetBuffer] = useState(bufferSize * 8);
     const [onsetThreshold, setOnsetThreshold] = useState(0.3);
-
     const [onsetHop, setOnsetHop] = useState(bufferSize);
     const [onsetOutput, setOnsetOutput] = useState<number>();
+    const onsetRef = useRef<HTMLInputElement>(null);
 
     const [pitchMethod, setPitchMethod] = useState("default" as PitchMethod);
     const [pitchBuffer, setPitchBuffer] = useState(bufferSize * 8);
     const [pitchHop, setPitchHop] = useState(bufferSize);
     const [pitchOutput, setPitchOutput] = useState<number>();
-    const pitchRef = useRef<HTMLDivElement>();
+    const pitchRef = useRef<HTMLInputElement>(null);
 
     //const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
     const [scriptProcessor, setScriptProcessor] = useState<ScriptProcessorNode>();
@@ -98,23 +99,31 @@ export default function Analyser() {
                     const confidence = tempo.getConfidence();
                     console.log("bpm", bpm);
                     console.log("confidence", confidence);
-                    setTempoOutput(bpm);
-                    setTempoOutputConfidence(confidence);
+                    // setTempoOutput(bpm);
+                    // setTempoOutputConfidence(confidence);
+                    if (tempoRef.current) {
+                        tempoRef.current.value = bpm.toFixed(2);
+                    }                    
                 }
+
             });
             scriptProcessor.addEventListener("audioprocess", function (event) {
                 if (onset.do(event.inputBuffer.getChannelData(0))) {
                     const lastOnset = onset.getLastMs();
                     console.log("onset", lastOnset);
-                    setOnsetOutput(lastOnset);
+                    //setOnsetOutput(lastOnset);
+                    if (onsetRef.current) {
+                        onsetRef.current.value = lastOnset.toFixed(2);
+                    }                         
                 }
             });
             scriptProcessor.addEventListener("audioprocess", function (event) {
                 const pitchResult = pitch.do(event.inputBuffer.getChannelData(0));
                 console.log("pitch", pitchResult);
                 //setPitchOutput(pitchResult);
-                if (pitchRef.current)
-                    pitchRef.current.nodeValue = pitchResult.toString();
+                if (pitchRef.current) {
+                    pitchRef.current.value = pitchResult.toFixed(2);
+                }
             });
 
             setScriptProcessor(scriptProcessor);
@@ -258,10 +267,12 @@ export default function Analyser() {
                             style: { fontFamily: 'Monospace', fontSize: '0.75em' }
                         }}
                         focused={true}
-                        value={tempoOutput?.toFixed(2)}
+                        //value={tempoOutput?.toFixed(2)}
                         variant="outlined"
                         color="success"
-                        helperText={"Confidence: " + tempoOutputConfidence?.toFixed(2)}
+                        //helperText={"Confidence: " + tempoOutputConfidence?.toFixed(2)}
+                        helperText={" "}
+                        inputRef={tempoRef}
                     />
                 </Grid>
                 <Grid xs={4}>
@@ -274,10 +285,11 @@ export default function Analyser() {
                             style: { fontFamily: 'Monospace', fontSize: '0.75em' }
                         }}
                         focused={true}
-                        value={onsetOutput?.toFixed(2)}
+                        //value={onsetOutput?.toFixed(2)}
                         variant="outlined"
                         color="success"
                         helperText=" "
+                        inputRef={onsetRef}
                     />
                 </Grid>
                 <Grid xs={4}>
@@ -291,12 +303,11 @@ export default function Analyser() {
                             
                         }}
                         focused={true}
-                        value={pitchOutput?.toFixed(2)}
+                        //value={pitchOutput?.toFixed(2)}
                         variant="outlined"
                         color="success"
                         helperText=" "
-                        ref={pitchRef}
-                        
+                        inputRef={pitchRef}
                     />
                 </Grid>
             </Grid>

@@ -4,6 +4,9 @@ import React, { useRef, useState } from 'react';
 import Header from './components/Header';
 import CssBaseline from '@mui/material/CssBaseline';
 import Grid from '@mui/material/Unstable_Grid2';
+//@ts-ignore
+import drawBuffer from 'draw-wave';
+import { border } from "@mui/system";
 
 export default function Analyser() {
 
@@ -37,6 +40,9 @@ export default function Analyser() {
     //const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
     const [scriptProcessor, setScriptProcessor] = useState<ScriptProcessorNode>();
     const [source, setSource] = useState<AudioBufferSourceNode>();
+
+    const wavDiv = useRef<HTMLDivElement>(null);
+    const playBackPos = useRef<HTMLSpanElement>(null);
 
 
     const startStop = async (event: any) => {
@@ -84,6 +90,16 @@ export default function Analyser() {
             const arrayBuffer = await selectedFile.arrayBuffer();
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
+            if (wavDiv.current) {
+                const waveSVG = drawBuffer.svg(audioBuffer, wavDiv.current.clientWidth, 300, '#000000');
+                while (wavDiv.current.firstChild) {
+                    wavDiv.current.removeChild(wavDiv.current.firstChild as Node);
+                }
+                wavDiv.current.appendChild(waveSVG);
+            }
+            
+
+
             const scriptProcessor = audioContext.createScriptProcessor(512, 1, 1);
             scriptProcessor.connect(audioContext.destination);
             //@ts-ignore - possible error in the Aubio type defs?
@@ -97,42 +113,39 @@ export default function Analyser() {
                 if (tempo.do(event.inputBuffer.getChannelData(0))) {
                     const bpm = tempo.getBpm()
                     const confidence = tempo.getConfidence();
-                    console.log("bpm", bpm);
-                    console.log("confidence", confidence);
-                    // setTempoOutput(bpm);
-                    // setTempoOutputConfidence(confidence);
                     if (tempoRef.current) {
                         tempoRef.current.value = bpm.toFixed(2);
-                    }                    
+                    }
                 }
 
             });
             scriptProcessor.addEventListener("audioprocess", function (event) {
                 if (onset.do(event.inputBuffer.getChannelData(0))) {
                     const lastOnset = onset.getLastMs();
-                    console.log("onset", lastOnset);
-                    //setOnsetOutput(lastOnset);
                     if (onsetRef.current) {
                         onsetRef.current.value = lastOnset.toFixed(2);
-                    }                         
+                    }
                 }
             });
             scriptProcessor.addEventListener("audioprocess", function (event) {
                 const pitchResult = pitch.do(event.inputBuffer.getChannelData(0));
-                console.log("pitch", pitchResult);
-                //setPitchOutput(pitchResult);
                 if (pitchRef.current) {
                     pitchRef.current.value = pitchResult.toFixed(2);
                 }
             });
-
+            scriptProcessor.addEventListener("audioprocess", function (event) {
+                if (playBackPos.current) {
+                    // event.target.
+                    // playBackPos.current.innerText = event.timeStamp.toFixed(2);
+                }
+            });
             setScriptProcessor(scriptProcessor);
 
             const source = audioContext.createBufferSource();
             setSource(source);
             source.buffer = audioBuffer;
             source.connect(scriptProcessor);
-            source.connect(audioContext.destination);
+            //source.connect(audioContext.destination);
             source.start();
             setIsPlaying(true);
             setStatusMessage(<Alert severity="success">Playing & analysing...</Alert>);
@@ -313,10 +326,14 @@ export default function Analyser() {
             </Grid>
             <Grid xs={12}>
                 <Button  variant="contained" onClick={startStop}>{isPlaying?"⏹️ Stop":"▶️ Play"} </Button>
+                <span ref={playBackPos}></span>
             </Grid>
             <Grid xs={12}>
                 {statusMessage}
             </Grid>
+            <Grid xs={12}>
+                <div style={{border:'1px solid red'}} ref={wavDiv}></div>
+            </Grid>            
         </Grid>
     </>;
 

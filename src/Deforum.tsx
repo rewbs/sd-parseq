@@ -34,6 +34,10 @@ const interpolatable_fields = [
   'fov',
   'near',
   'far',
+  'antiblur_kernel',
+  'antiblur_sigma',
+  'antiblur_amount',
+  'antiblur_threshold'
 ];
 
 const settings_3d_only = [
@@ -95,6 +99,10 @@ const default_keyframes = [
     "fov": 40,
     "near": 200,
     "far": 10000,
+    'antiblur_kernel':5,
+    'antiblur_sigma':1,
+    'antiblur_amount':0.2,
+    'antiblur_threshold':0
   },
   {
     "frame": 40,
@@ -136,7 +144,11 @@ const default_keyframes = [
     "contrast": 1,
     "fov": 40,
     "near": 200,
-    "far": 10000
+    "far": 10000,
+    'antiblur_kernel':5,
+    'antiblur_sigma':1,
+    'antiblur_amount':0.2,
+    'antiblur_threshold':0    
   }
 ];
 

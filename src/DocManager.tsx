@@ -261,7 +261,8 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
             <Grid xs={2} sx={{display: 'flex', justifyContent: 'right', alignItems: 'end'}}>
                 <Button size="small" variant="contained" id="load" onClick={handleCloseLoadDialog}>Load</Button>
             </Grid>
-            <Grid xs={12} style={{ marginTop: 40}}>
+            <Grid xs={12} style={{ marginTop: 20}}>
+                <hr/>                
                 <DialogContentText>
                     <strong>Or</strong> import a Parseq doc that has been shared with you:
                 </DialogContentText>              

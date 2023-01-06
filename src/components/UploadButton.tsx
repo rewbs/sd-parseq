@@ -7,6 +7,7 @@ import * as React from 'react';
 import { useState } from 'react';
 //@ts-ignore
 import { useUserAuth } from "../UserAuthContext";
+import ReactTimeAgo from 'react-time-ago';
 
 type MyProps = {
     docId: DocId,
@@ -37,7 +38,7 @@ export function UploadButton({ docId, renderedJson, autoUpload }: MyProps) {
                 getDownloadURL(sRef).then((url) => {
                     const matchRes = url.match(/rendered%2F(doc-.*?\.json)/);
                     if (matchRes && matchRes[1]) {
-                        setUploadStatus(<Alert severity="success">Rendered output <a href={url}>available here</a>.</Alert>);
+                        setUploadStatus(<Alert severity="success">Rendered output <a href={url}>available here</a>. <small>Last uploaded <ReactTimeAgo date={Date.now()} locale="en-US" /> </small></Alert>);
                     } else {
                         setUploadStatus(<Alert severity="error">Unexpected upload path: {url}</Alert>);
                         return;

@@ -3,6 +3,7 @@ import {
     CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Title,
     Tooltip, LegendItem
 } from 'chart.js';
+//disabling crosshair plugin because it seems to cause errors on some systems.
 //import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
 import React from 'react';

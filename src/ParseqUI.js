@@ -32,8 +32,6 @@ import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
-
-
 //////////////////////////////////////////
 // Config
 const version = packageJson.version;
@@ -73,6 +71,7 @@ const GridTooltip = (props) => {
       <div>Frame: {data.frame}</div>
       <div>Seconds: {frameToSeconds(data.frame, props.getFps()).toFixed(3)}</div>
       <div>Beat:  {frameToBeats(data.frame, props.getFps(), props.getBpm()).toFixed(3)}</div>
+      <div>Info:  {data.info ? data.info : ""}</div>
     </div>
   );
 };
@@ -81,7 +80,7 @@ const ParseqUI = (props) => {
   //log.debug(Date.now(), "Re-initializing ParseqUI....");
 
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
-  const gridRef = useRef(); 
+  const gridRef = useRef();
   const interpolatable_fields = props.interpolatable_fields;
   const default_keyframes = props.default_keyframes;
   const default_displayFields = props.default_displayFields;
@@ -97,7 +96,7 @@ const ParseqUI = (props) => {
       possiblyIncompleteContent.displayFields = default_displayFields;
     }
     // For options we want to merge the defaults with the existing options.
-    possiblyIncompleteContent.options = {...default_options, ...(possiblyIncompleteContent.options || {}) };
+    possiblyIncompleteContent.options = { ...default_options, ...(possiblyIncompleteContent.options || {}) };
 
     return possiblyIncompleteContent;
   }, [default_displayFields, default_keyframes]);
@@ -131,30 +130,27 @@ const ParseqUI = (props) => {
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
-  
+
   const columnDefs = useMemo(() => {
     return [
-    {
-      headerName: 'Frame #',
-      field: 'frame',
-      comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
-      sort: 'asc',
-      valueSetter: (params) => {
-        var newValue = parseInt(params.newValue);
-        params.data.frame = newValue;
-      },
-      pinned: 'left',
-    },
-    ...interpolatable_fields.flatMap(field => [
       {
-        field: field,
+        headerName: 'Frame #',
+        field: 'frame',
+        comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
+        sort: 'asc',
         valueSetter: (params) => {
-          params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
-        }
+          var newValue = parseInt(params.newValue);
+          params.data.frame = newValue;
+        },
+        pinned: 'left',
+        suppressMovable: true,
       },
       {
-        headerName: '➟' + field,
-        field: field + '_i',
+        headerName: 'Info',
+        field: 'info',
+        valueSetter: (params) => {
+          params.data.info = params.newValue;
+        },
         cellEditor: 'agLargeTextCellEditor',
         cellEditorPopup: true,
         cellEditorParams: {
@@ -162,12 +158,35 @@ const ParseqUI = (props) => {
           rows: 2,
           cols: 50
         },
-        valueSetter: (params) => {
-          params.data[field + '_i'] = params.newValue;
+        pinned: 'left',
+        suppressMovable: true,
+      },
+      ...interpolatable_fields.flatMap(field => [
+        {
+          field: field,
+          valueSetter: (params) => {
+            params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
+          },
+          suppressMovable: true,
         },
-      }
-    ])
-  ]}, [interpolatable_fields]);
+        {
+          headerName: '➟' + field,
+          field: field + '_i',
+          cellEditor: 'agLargeTextCellEditor',
+          cellEditorPopup: true,
+          cellEditorParams: {
+            maxLength: 1000,
+            rows: 2,
+            cols: 50
+          },
+          valueSetter: (params) => {
+            params.data[field + '_i'] = params.newValue;
+          },
+          suppressMovable: true,
+        }
+      ])
+    ]
+  }, [interpolatable_fields]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -209,15 +228,15 @@ const ParseqUI = (props) => {
   // Run on first load, once all react components are ready and Grid is ready.
   runOnceTimeout.current = 0;
   useEffect(() => {
-     function runOnce() {
+    function runOnce() {
       const qps = new URLSearchParams(window.location.search);
       const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
-      const [qsImportRemote, qsRemoteImportToken ] = [qps.get("importRemote"), qps.get("token")];
+      const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
       if (qsLegacyContent) {
         // Attempt to load content from querystring 
         // This is to support *LEGACY* parsrq URLs. Doesn't in all browsers with large data.
         freshLoadContentToState(JSON.parse(qsLegacyContent));
-        setInitStatus({severity: "success", message: "Successfully imported legacy Parseq data from query string."});        
+        setInitStatus({ severity: "success", message: "Successfully imported legacy Parseq data from query string." });
         const url = new URL(window.location);
         url.searchParams.delete('parsec');
         url.searchParams.delete('parseq');
@@ -225,31 +244,31 @@ const ParseqUI = (props) => {
         setAutoSaveEnabled(true);
         setEnqueuedRender(true);
       } else if (qsImportRemote && qsRemoteImportToken) {
-        setInitStatus({severity: "warning", message: "Importing remote document..."});
+        setInitStatus({ severity: "warning", message: "Importing remote document..." });
         // Attempt to load content from remote URL
         const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${qsImportRemote}?alt=media&token=${qsRemoteImportToken}`
         fetch(importUrl).then((response) => {
           if (response.ok) {
             response.json().then((json) => {
               freshLoadContentToState(json);
-              setInitStatus({severity: "success", message: "Successfully imported remote document."});
+              setInitStatus({ severity: "success", message: "Successfully imported remote document." });
               const url = new URL(window.location);
               url.searchParams.delete('importRemote');
               url.searchParams.delete('token');
-              window.history.replaceState({}, '', url);              
+              window.history.replaceState({}, '', url);
               setAutoSaveEnabled(true);
               setEnqueuedRender(true);
             }).catch((error) => {
               console.error(error);
-              setInitStatus({severity: "error",  message: `Failed to import document ${qsImportRemote}: ${error.toString()}`});
+              setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
             });
           } else {
             console.error(response);
-            setInitStatus({severity: "error", message: `Failed to import document ${qsImportRemote}. Status: ${response.status}`});
+            setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}. Status: ${response.status}` });
           }
         }).catch((error) => {
           console.error(error);
-          setInitStatus({severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}`});
+          setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
         });
       } else {
         loadVersion(activeDocId).then((loadedContent) => {
@@ -279,7 +298,7 @@ const ParseqUI = (props) => {
         if (rowNode.data) {
           _frameToRowId_cache.current.set(rowNode.data.frame, rowNode.id)
         }
-     });
+      });
     }
     return _frameToRowId_cache.current.get(frame);
   }, [_frameToRowId_cache]);
@@ -309,6 +328,35 @@ const ParseqUI = (props) => {
       setEnqueuedRender(true);
     }
   }, [autoRender, frameToRowId]);
+
+  const mergeKeyframes = useCallback((incomingKeyframes) => {
+    //console.log(dataToMerge);
+
+    // compute merged keyframes
+    var keyframes_local = incomingKeyframes.map((incomingKeyframe) => {
+      var existingKeyframe = keyframes.find((candidateKeyframe) => candidateKeyframe.frame === incomingKeyframe.frame);
+      if (existingKeyframe) {
+        // Keyframe already exists at this position, so merge it.
+        return {
+          ...existingKeyframe,
+          ...incomingKeyframe,
+          "info": "Merged: " + existingKeyframe.info ? existingKeyframe.info : "(?) + " + incomingKeyframe.info ? incomingKeyframe.info : "(?)",
+        };
+      } else {
+        return incomingKeyframe;
+      }
+    }).concat(keyframes.filter((existingKeyframe) => !incomingKeyframes.find((incomingKeyframe) => incomingKeyframe.frame === existingKeyframe.frame))  )
+    .sort((a, b) => a.frame - b.frame);
+
+    setKeyframes(keyframes_local);
+
+    refreshGridFromKeyframes(keyframes_local)
+    if (autoRender) {
+      setEnqueuedRender(true);
+    }
+
+  }, [keyframes, autoRender]);
+
 
   const deleteRow = useCallback((frame) => {
     //console.log(_frameToRowId_cache);
@@ -342,7 +390,7 @@ const ParseqUI = (props) => {
   const onCellValueChanged = useCallback((event) => {
     gridRef.current.api.onSortChanged();
     refreshKeyframesFromGrid();
-    
+
     if (autoRender) {
       setEnqueuedRender(true);
     }
@@ -375,7 +423,7 @@ const ParseqUI = (props) => {
       let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
       gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
       gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
-      gridRef.current.columnApi.setColumnsVisible(['frame'], true);
+      gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
       gridRef.current.api.onSortChanged();
       gridRef.current.api.sizeColumnsToFit();
     } else {
@@ -412,7 +460,7 @@ const ParseqUI = (props) => {
       return;
     }
     gridRef.current.api.setRowData(keyframes);
-  }  
+  }
 
   //////////////////////////////////////////
   // Other component event callbacks  
@@ -438,7 +486,7 @@ const ParseqUI = (props) => {
   const [openAddRowDialog, setOpenAddRowDialog] = useState(false);
   const handleClickOpenAddRowDialog = () => {
     setOpenAddRowDialog(true);
-  };  
+  };
   const handleCloseAddRowDialog = useCallback((e) => {
     setOpenAddRowDialog(false);
     if (e.target.id === "add") {
@@ -472,6 +520,86 @@ const ParseqUI = (props) => {
     </Dialog>
     , [openAddRowDialog, frameToAdd, handleCloseAddRowDialog]);
 
+  const [openMergeKeyframesDialog, setOpenMergeKeyframesDialog] = useState(false);
+  const [dataToMerge, setDataToMerge] = useState("");
+  const [keyFrameMergeStatus, setKeyFrameMergeStatus] = useState(<></>);
+  const [mergeEnabled, setMergeEnabled] = useState(false);
+  const handleClickOpenMergeKeyframesDialog = () => {
+    setOpenMergeKeyframesDialog(true);
+  };
+  const handleCloseMergeKeyframesDialog = useCallback((e) => {
+    setOpenMergeKeyframesDialog(false);
+    if (e.target.id === "merge") {
+      let json = JSON.parse(dataToMerge);
+      if (json['keyframes'] && Array.isArray(json['keyframes'])) {
+        mergeKeyframes(json['keyframes']);
+      } else if (Array.isArray(json)) {
+        mergeKeyframes(json);
+      } else {
+        console.error('Invalid format of keyframes to merge, should have been validated in dialog.');
+      }
+    }
+  }, [mergeKeyframes, dataToMerge]);  
+  const mergeKeyframesDialog = useMemo(() =>
+    <Dialog open={openMergeKeyframesDialog} onClose={handleCloseMergeKeyframesDialog}>
+      <DialogTitle>🌪️ Merge keyframes</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          Merge keyframes from another source into the current document. For example:
+          <ul>
+            <li>Try the <a href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">browser</a> to find keyframe data from your other documents.</li>
+            <li>⚠️ Experimental: try the <a href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">analyser</a> to generate keyframes from audio.</li>
+          </ul>
+        </DialogContentText>
+        <TextField
+                style={{ width: '100%', paddingTop: '10px' }}
+                id="merge-data"
+                multiline
+                onFocus={event => event.target.select()}
+                rows={10}
+                InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                placeholder="<Paste your Keyframes JSON here>"
+                value={dataToMerge}
+                onChange={(e) => {
+                  setMergeEnabled(false);
+                  setDataToMerge(e.target.value);
+
+                  let newKeyframes;
+                  let json;
+                  
+                  try {
+                    json = JSON.parse(e.target.value);
+                  } catch (e) {
+                    setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON. Got error: {e.message}</Alert>);
+                    return;
+                  }
+
+                  if (json['keyframes'] && Array.isArray(json['keyframes'])) {
+                    newKeyframes = json['keyframes'];
+                  } else if (Array.isArray(json)) {
+                    newKeyframes = json;
+                  } else {
+                    setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON array, or JSON object with top-level array named 'keyframes'.</Alert>);
+                    return;
+                  }
+
+                  if (!newKeyframes.every((kf) => typeof kf.frame === "number" )) {
+                    setKeyFrameMergeStatus(<Alert severity="error">All keyframes must have a numeric 'frame' field.</Alert>);
+                    return;
+                  }
+
+                  setKeyFrameMergeStatus(<Alert severity="success">Found {newKeyframes.length} keyframes to merge.</Alert>);
+                  setMergeEnabled(true);
+                }}
+          />
+        {keyFrameMergeStatus}
+      </DialogContent>
+      <DialogActions>
+        <Button size="small" id="cancel_add" onClick={handleCloseMergeKeyframesDialog}>Cancel</Button>
+        <Button disabled={!mergeEnabled} size="small" variant="contained" id="merge" onClick={handleCloseMergeKeyframesDialog}>Merge</Button>
+      </DialogActions>
+    </Dialog>
+    , [openMergeKeyframesDialog, handleCloseMergeKeyframesDialog, activeDocId, dataToMerge, keyFrameMergeStatus, mergeEnabled, options]);
 
   const [frameToDelete, setFrameToDelete] = useState();
   const [openDeleteRowDialog, setOpenDeleteRowDialog] = useState(false);
@@ -487,30 +615,30 @@ const ParseqUI = (props) => {
   }, [deleteRow, frameToDelete]);
 
   const deleteRowDialog = useMemo(() => <Dialog open={openDeleteRowDialog} onClose={handleCloseDeleteRowDialog}>
-  <DialogTitle>❌ Delete keyframe</DialogTitle>
-  <DialogContent>
-    <DialogContentText>
-      Delete a keyframe at the following position.
-    </DialogContentText>
-    <TextField
-      autoFocus
-      margin="dense"
-      id="delete_keyframe_at"
-      label="Frame"
-      variant="standard"
-      defaultValue={frameToDelete}
-      onChange={(e) => setFrameToDelete(e.target.value)}
-    />
-    <DialogContentText>
-      <small><small>TODO: warning here if frame doesn't exist</small></small>
-    </DialogContentText>
-  </DialogContent>
-  <DialogActions>
-    <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
-    <Button variant="contained" id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
-  </DialogActions>
-</Dialog>, [openDeleteRowDialog, frameToDelete, handleCloseDeleteRowDialog]);
- 
+    <DialogTitle>❌ Delete keyframe</DialogTitle>
+    <DialogContent>
+      <DialogContentText>
+        Delete a keyframe at the following position.
+      </DialogContentText>
+      <TextField
+        autoFocus
+        margin="dense"
+        id="delete_keyframe_at"
+        label="Frame"
+        variant="standard"
+        defaultValue={frameToDelete}
+        onChange={(e) => setFrameToDelete(e.target.value)}
+      />
+      <DialogContentText>
+        <small><small>TODO: warning here if frame doesn't exist</small></small>
+      </DialogContentText>
+    </DialogContent>
+    <DialogActions>
+      <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
+      <Button variant="contained" id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
+    </DialogActions>
+  </Dialog>, [openDeleteRowDialog, frameToDelete, handleCloseDeleteRowDialog]);
+
   // TODO: switch to useMemo that updates when elements change?
   const getPersistableState = useCallback(() => ({
     "meta": {
@@ -524,7 +652,7 @@ const ParseqUI = (props) => {
     keyframes: keyframes,
   }), [prompts, options, displayFields, keyframes]);
 
-  const needsRender = useMemo( () => {
+  const needsRender = useMemo(() => {
     return !lastRenderedState
       || !equal(lastRenderedState.keyframes, keyframes)
       || !equal(lastRenderedState.options, options)
@@ -713,37 +841,38 @@ const ParseqUI = (props) => {
 
     setRenderedData(data);
     setlastRenderedState({
-       // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
-       // So if we want to compare a future grid state to the last rendered state, we need to
-       // do a deep copy.
-      keyframes : clonedeep(keyframes),
+      // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
+      // So if we want to compare a future grid state to the last rendered state, we need to
+      // do a deep copy.
+      keyframes: clonedeep(keyframes),
       prompts,
-      options});
+      options
+    });
     console.timeEnd('Render')
   }, [keyframes, prompts, options, getPersistableState, interpolatable_fields, frameToRowId]);
 
   const renderButton = useMemo(() =>
-    <Button size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true) }>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
+    <Button size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
     [needsRender, enqueuedRender]);
 
 
   const grid = useMemo(() => <>
-  <div className="ag-theme-alpine" style={{  width: '100%', height: 200 }}>
-    <AgGridReact
-      ref={gridRef}
-      rowData={default_keyframes}
-      columnDefs={columnDefs}
-      defaultColDef={defaultColDef}
-      onCellValueChanged={onCellValueChanged}
-      onCellKeyPress={onCellKeyPress}
-      onGridReady={onGridReady}
-      animateRows={true}
-      columnHoverHighlight={true}
-      undoRedoCellEditing={true}
-      undoRedoCellEditingLimit={0}
-      enableCellChangeFlash={true}
-      tooltipShowDelay={0}
-    />
+    <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
+      <AgGridReact
+        ref={gridRef}
+        rowData={default_keyframes}
+        columnDefs={columnDefs}
+        defaultColDef={defaultColDef}
+        onCellValueChanged={onCellValueChanged}
+        onCellKeyPress={onCellKeyPress}
+        onGridReady={onGridReady}
+        animateRows={true}
+        columnHoverHighlight={true}
+        undoRedoCellEditing={true}
+        undoRedoCellEditingLimit={0}
+        enableCellChangeFlash={true}
+        tooltipShowDelay={0}
+      />
     </div>
   </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, default_keyframes]);
 
@@ -760,8 +889,8 @@ const ParseqUI = (props) => {
       console.time('enqueuedRender');
     } else {
       console.timeEnd('enqueuedRender');
-    }    
-}, [enqueuedRender]);
+    }
+  }, [enqueuedRender]);
 
   const renderedDataJsonString = useMemo(() => renderedData && JSON.stringify(renderedData, null, 4), [renderedData]);
 
@@ -783,12 +912,12 @@ const ParseqUI = (props) => {
     let statusMessage = <></>;
     if (enqueuedRender) {
       statusMessage = <Alert severity="warning">
-      Render in progres...
-    </Alert>
+        Render in progres...
+      </Alert>
     } else if (renderedErrorMessage || needsRender) {
       statusMessage = <Alert severity="info">
         Please render to update the output.
-        <span style={{float: 'right'}}>
+        <span style={{ float: 'right' }}>
           {renderButton}
         </span>
         <p><small>{message}</small></p>
@@ -796,13 +925,13 @@ const ParseqUI = (props) => {
     } else {
       statusMessage = <Alert severity="success">
         Output is up-to-date.
-        <span style={{float: 'right'}}>
+        <span style={{ float: 'right' }}>
           <CopyToClipboard text={renderedDataJsonString}>
             <Button size="small" disabled={needsRender} style={{ marginLeft: '1em' }} variant="outlined">📋 Copy</Button>
           </CopyToClipboard>
         </span>
-        <p><small>{message}</small></p>        
-      </Alert>;      
+        <p><small>{message}</small></p>
+      </Alert>;
     }
     return <div>
       {errorMessage}
@@ -811,17 +940,17 @@ const ParseqUI = (props) => {
   }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender, renderButton, renderedDataJsonString, props.settings_2d_only, props.settings_3d_only]);
 
   const docManager = useMemo(() => <UserAuthContextProvider>
-      <DocManagerUI
-        docId={activeDocId}
-        onLoadContent={(content) => {
-          console.log("Loading version", content);
-          if (content) {
-            freshLoadContentToState(content);
-            setEnqueuedRender(true);
-          }
-        }}
-      />
-    </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
+    <DocManagerUI
+      docId={activeDocId}
+      onLoadContent={(content) => {
+        console.log("Loading version", content);
+        if (content) {
+          freshLoadContentToState(content);
+          setEnqueuedRender(true);
+        }
+      }}
+    />
+  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
 
   const optionsUI = useMemo(() => options && <span>
     <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
@@ -859,7 +988,7 @@ const ParseqUI = (props) => {
     renderValue={(selected) => (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.1 }}>
         {selected.map((value) => (
-          <Chip sx={{fontSize:"0.75em"}} key={value} label={value} />
+          <Chip sx={{ fontSize: "0.75em" }} key={value} label={value} />
         ))}
       </Box>
     )}
@@ -868,7 +997,7 @@ const ParseqUI = (props) => {
         style: {
           maxHeight: 48 * 10 + 8, //item high * 4.5 + padding
           width: 250,
-          fontSize:"0.75em"
+          fontSize: "0.75em"
         }
       }
     }}
@@ -881,12 +1010,12 @@ const ParseqUI = (props) => {
         {field}
       </MenuItem>
     ))}
-  </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields ])
+  </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields])
 
   const promptsUI = useMemo(() => prompts && <>
-    <Grid xs={12} container style={{margin: 0, padding: 0}}>
-    <Grid xs={6} style={{marginTop: 0, paddingTop: 0}}>
-          <TextField
+    <Grid xs={12} container style={{ margin: 0, padding: 0 }}>
+      <Grid xs={6} style={{ marginTop: 0, paddingTop: 0 }}>
+        <TextField
           fullWidth={true}
           id={"positive_prompt"}
           label={"Positive prompt"}
@@ -894,13 +1023,13 @@ const ParseqUI = (props) => {
           minRows={2}
           maxRows={16}
           value={prompts.positive}
-          onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
+          onBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
           InputProps={{ style: { fontSize: '0.75em', color: 'DarkGreen' } }}
           onChange={(e) => setPrompts({ ...prompts, positive: e.target.value })}
           size="small"
           variant="standard" />
       </Grid>
-      <Grid xs={6} style={{marginTop: 0, paddingTop: 0}}>
+      <Grid xs={6} style={{ marginTop: 0, paddingTop: 0 }}>
         <TextField
           fullWidth={true}
           id={"negative_prompt"}
@@ -908,7 +1037,7 @@ const ParseqUI = (props) => {
           multiline
           minRows={2}
           maxRows={16}
-          onBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true)}}
+          onBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
           value={prompts.negative}
           InputProps={{ style: { fontSize: '0.75em', color: 'Firebrick' } }}
           onChange={(e) => setPrompts({ ...prompts, negative: e.target.value })}
@@ -916,7 +1045,7 @@ const ParseqUI = (props) => {
           variant="standard" />
       </Grid>
     </Grid>
-  
+
   </>, [prompts, autoRender, needsRender]);
 
   const editableGraph = useMemo(() => renderedData && <div>
@@ -956,7 +1085,7 @@ const ParseqUI = (props) => {
     />
   </div>, [renderedData, displayFields, graphAsPercentages, addRow, frameToRowId]);
 
-  const handleClickedSparkline = useCallback((e) => {   
+  const handleClickedSparkline = useCallback((e) => {
     let field = e.currentTarget.id.replace("sparkline_", "");
     if (interpolatable_fields.includes(field)) {
       if (displayFields.includes(field)) {
@@ -973,21 +1102,21 @@ const ParseqUI = (props) => {
         id={"graph_as_percent"}
         onChange={(e) => setShowFlatSparklines(e.target.checked)}
       />}
-      label={<Box component="div" fontSize="0.75em">Show {interpolatable_fields.filter((field) =>!getAnimatedFields(renderedData).includes(field)).length} flat sparklines</Box>} />
+      label={<Box component="div" fontSize="0.75em">Show {interpolatable_fields.filter((field) => !getAnimatedFields(renderedData).includes(field)).length} flat sparklines</Box>} />
     <Grid container>
       {
-        interpolatable_fields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field) ).sort().map((field) =>
-          <Grid xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite' , border: '1px solid', borderColor: 'divider'}} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
-            <Typography style={{ fontSize: "0.5em"}}>{ (displayFields.includes(field) ? "✔️" : "") + field}</Typography>
+        interpolatable_fields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
+          <Grid xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
+            <Typography style={{ fontSize: "0.5em" }}>{(displayFields.includes(field) ? "✔️" : "") + field}</Typography>
             {props.settings_2d_only.includes(field) ?
-              <Typography style={{ color: 'SeaGreen', fontSize: "0.5em"}} >[2D]</Typography> :
+              <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
               props.settings_3d_only.includes(field) ?
-                <Typography style={{ color: 'SteelBlue', fontSize: "0.5em"}} >[3D]</Typography> :
-                <Typography style={{ color: 'grey', fontSize: "0.5em"}} >[2D+3D]</Typography>}
-            <Sparklines style={{ bgcolor:'white'}} data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
+                <Typography style={{ color: 'SteelBlue', fontSize: "0.5em" }} >[3D]</Typography> :
+                <Typography style={{ color: 'grey', fontSize: "0.5em" }} >[2D+3D]</Typography>}
+            <Sparklines style={{ bgcolor: 'white' }} data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
               <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
             </Sparklines>
-            <Typography style={{ fontSize: "0.5em"}}>delta</Typography>
+            <Typography style={{ fontSize: "0.5em" }}>delta</Typography>
             <Sparklines data={renderedData.rendered_frames.map(f => f[field + '_delta'])} margin={1} padding={1}>
               <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
             </Sparklines>
@@ -1001,8 +1130,8 @@ const ParseqUI = (props) => {
     <pre>{renderedDataJsonString}</pre>
   </div>, [renderedDataJsonString]);
 
-  
-  
+
+
   //////////////////////////////////////////
   // Page
   return (
@@ -1024,6 +1153,12 @@ const ParseqUI = (props) => {
           status={initStatus}
         />
         {renderStatus}
+        <small>
+          <ul>
+            <li><a href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">Browser</a>: explore your Parseq documents</li>
+            <li><a href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">Analyser</a>: generate Parseq keyframes from audio (⚠️ experimental).</li>
+          </ul>
+        </small>
       </Grid>
       <Grid xs={6}>
         {docManager}
@@ -1032,14 +1167,15 @@ const ParseqUI = (props) => {
         <h3>Prompts</h3>
         {promptsUI}
       </Grid>
-      <Grid xs={12} style={{display: 'inline', alignItems: 'center'}}>
+      <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <h3>Keyframes for parameter flow</h3>
         {optionsUI}
-          <small>Show fields:</small>
-          {fieldSelector}
+        <small>Show fields:</small>
+        {fieldSelector}
         {grid}
         <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
-        <Button size="small"variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
+        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenMergeKeyframesDialog}>🌪️ Merge keyframes</Button>
+        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
         {renderButton}
         <FormControlLabel control={
           <Checkbox defaultChecked={true}
@@ -1056,10 +1192,11 @@ const ParseqUI = (props) => {
           />}
           style={{ marginLeft: '0.75em' }}
           label={<Box component="div" fontSize="0.75em">Upload output after every render</Box>}
-        />        
+        />
         {addRowDialog}
-        {deleteRowDialog}        
-      </Grid>      
+        {mergeKeyframesDialog}
+        {deleteRowDialog}
+      </Grid>
       <Grid xs={12}>
         <h3>Visualised parameter flow</h3>
         {editableGraph}
@@ -1073,21 +1210,21 @@ const ParseqUI = (props) => {
         <Grid container>
           <Grid xs={6}>
             {renderStatus}
-          </Grid>  
+          </Grid>
           <Grid xs={6}>
-          {renderButton}<br/>
-          <UserAuthContextProvider>
-            <UploadButton
+            {renderButton}<br />
+            <UserAuthContextProvider>
+              <UploadButton
                 docId={activeDocId}
                 renderedJson={renderedDataJsonString}
                 autoUpload={autoUpload}
-             />
-          </UserAuthContextProvider>
+              />
+            </UserAuthContextProvider>
           </Grid>
           <Grid xs={12}>
             {renderedOutput}
           </Grid>
-        </Grid> 
+        </Grid>
       </Grid>
     </Grid>
   );

@@ -51,7 +51,7 @@ type ParseqKeyframes = [{
     frame: number;
     // TODO: make this stricter
     [key: string]: string | number;
-}];
+}] | [];
 
 type ParseqRenderedFrames = [{
     frame: number;

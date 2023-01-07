@@ -3,20 +3,15 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useLiveQuery } from "dexie-react-hooks";
 import React from 'react';
+import { useSearchParams } from "react-router-dom";
 import ReactTimeAgo from 'react-time-ago';
 import Header from './components/Header';
 import { db } from './db';
 
-export const getLatestVersion = async (docId: DocId): Promise<ParseqDocVersion | undefined> => {
-    // Load latest version of doc
-    const versions = await db.parseqVersions.where('docId').equals(docId).reverse().sortBy('timestamp');
-    if (versions.length > 0) {
-        return versions[0];
-    }
-}
-
-
 export default function Browser() {
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const allDocsAllVersion = useLiveQuery(
         async () => {
@@ -30,11 +25,11 @@ export default function Browser() {
     const showBorders = { border: '1px solid', borderColor: 'divider' };
 
     return <>
-        <Header title="Parseq - local storage browser" />,
+        <Header title="Parseq - local storage browser" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2}>
             <CssBaseline />
             <Grid xs={12}>
-                <a href='/'>⬅️ Home</a>
+                <a href={'/' + (searchParams.get('refDocId') ? '?docId='+ searchParams.get('refDocId') : '')}>⬅️ Home</a>
                 <p>Here is a list of all the Parseq docs in your browser local storage:</p>
             </Grid>
             <Grid container xs={12}>

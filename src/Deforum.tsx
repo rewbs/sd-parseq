@@ -154,7 +154,7 @@ const default_keyframes = [
 
 const Deforum = () => {
   return <>
-      <Header title="Parseq for Deforum" />,
+      <Header title="Parseq for Deforum" />
       <ParseqUI
         interpolatable_fields={interpolatable_fields}
         default_keyframes={default_keyframes}

@@ -143,6 +143,7 @@ const ParseqUI = (props) => {
           params.data.frame = newValue;
         },
         pinned: 'left',
+        suppressMovable: true,
       },
       {
         headerName: 'Info',
@@ -158,13 +159,15 @@ const ParseqUI = (props) => {
           cols: 50
         },
         pinned: 'left',
+        suppressMovable: true,
       },
       ...interpolatable_fields.flatMap(field => [
         {
           field: field,
           valueSetter: (params) => {
             params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
-          }
+          },
+          suppressMovable: true,
         },
         {
           headerName: '➟' + field,
@@ -179,6 +182,7 @@ const ParseqUI = (props) => {
           valueSetter: (params) => {
             params.data[field + '_i'] = params.newValue;
           },
+          suppressMovable: true,
         }
       ])
     ]

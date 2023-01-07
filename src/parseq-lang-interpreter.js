@@ -80,6 +80,8 @@ export function interpret(ast, context) {
           return f => cubic_spline_interpolation(context.definedFrames, context.definedValues, f);
         case 'f':
           return f => f;
+        case 'k': // offset since last active keyframe
+          return f => f - getPreviousKeyframe(context, f);
         case 'prev_keyframe':
           return f => getPreviousKeyframe(context, f);
         case 'next_keyframe':
@@ -112,8 +114,14 @@ export function interpret(ast, context) {
         case 'tri':          
         case 'saw':
         case 'pulse':
-          let [period, phase, amp, centre, pulse] = get_oscillator_named_arguments(ast.arguments).map(arg => interpret(arg, context));
-          return f => oscillator(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f));
+          let [period, phase, amp, centre, pulse, limit] = get_oscillator_named_arguments(ast.arguments).map(arg => interpret(arg, context));
+          return f => {
+            if (limit(f) > 0 &&  (f - getPreviousKeyframe(context, f)) > limit(f)*period(f) ) {
+              return 0;
+            } else {
+              return oscillator(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f));
+            }
+          }
         case 'min':
           let l1 = interpret(named_argument_extractor(ast.arguments, ['left', 'l'], null), context);
           let r1 = interpret(named_argument_extractor(ast.arguments, ['right', 'r'], null), context);          
@@ -132,6 +140,17 @@ export function interpret(ast, context) {
           let vr1 = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
           let vr2 = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], 0), context);
           return f => toFixedNumber(vr1(f), vr2(f));
+        case 'slide':
+            let target = interpret(named_argument_extractor(ast.arguments, ['target', 'to' , 't'], null), context);
+            let span = interpret(named_argument_extractor(ast.arguments, ['span', 'in', 's'], null), context);              
+            return f => {
+                if (f - getPreviousKeyframe(context, f) >= span(f)) {
+                  return target(f);
+                } else {
+                  const slope = (target(f) - getPreviousKeyframeValue(context, f))/span(f);
+                  return getPreviousKeyframeValue(context, f) + slope * (f - getPreviousKeyframe(context, f));
+                }
+            }          
         default:
           throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.right.start.line}:${ast.right.start.col}`);
       }
@@ -142,8 +161,14 @@ export function interpret(ast, context) {
           case 'tri':          
           case 'saw':
           case 'pulse':  
-            let [period, phase = _ => 0, amp = _ => 1, centre = _ => 0, pulse = _ => 5] = ast.arguments.map(arg => interpret(arg, context));
-            return f => oscillator(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f))
+            let [period, phase = _ => 0, amp = _ => 1, centre = _ => 0, pulse = _ => 5, limit = _ => 0] = ast.arguments.map(arg => interpret(arg, context));
+            return f => {
+              if (limit(f) > 0 &&  (f - getPreviousKeyframe(context, f)) > limit(f)*period(f) ) {
+                return 0;
+              } else {
+                return oscillator(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f));
+              }
+            }
           case 'min':
             return f => Math.min(interpret(ast.arguments[0], context)(f), interpret(ast.arguments[1], context)(f));
           case 'max':
@@ -156,6 +181,16 @@ export function interpret(ast, context) {
           case 'bez':
             let [x1 = _ => 0.5, y1 = _ => 0, x2 = _ => 0.5, y2 = _ => 1] = ast.arguments.map(arg => interpret(arg, context))
             return f => bezier(f, x1(f), y1(f), x2(f), y2(f), context);
+          case 'slide':
+            let [target, span] = ast.arguments.map(arg => interpret(arg, context))
+            return f => {
+                if (f - getPreviousKeyframe(context, f) >= span(f)) {
+                  return target(f);
+                } else {
+                  const slope = (target(f) - getPreviousKeyframeValue(context, f))/span(f);
+                  return getPreviousKeyframeValue(context, f) + slope * (f - getPreviousKeyframe(context, f));
+                }
+            }
           default:
             throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.start.line}:${ast.start.col}`);
         }
@@ -250,7 +285,8 @@ function get_oscillator_named_arguments(args) {
     named_argument_extractor(args, ['phase', 'ps'],  0),
     named_argument_extractor(args, ['amp', 'a'],  1),
     named_argument_extractor(args, ['centre', 'c'], 0),
-    named_argument_extractor(args, ['pulsewidth', 'pulse', 'pw'], 5)
+    named_argument_extractor(args, ['pulsewidth', 'pulse', 'pw'], 5),
+    named_argument_extractor(args, ['limit', 'li'], 0)
   ]
 }
 

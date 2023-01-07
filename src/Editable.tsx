@@ -1,6 +1,6 @@
 import type { ChartData, ChartOptions, ScriptableContext } from 'chart.js';
 import {
-    CategoryScale, Chart as ChartJS, Interaction, Legend, LinearScale, LineElement, PointElement, Title,
+    CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Title,
     Tooltip, LegendItem
 } from 'chart.js';
 //import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';

@@ -1,29 +1,32 @@
-import { Alert, Button, TextField, Box, InputAdornment, Select, MenuItem, InputLabel, Stack, Slider } from "@mui/material";
-import { PitchMethod } from "aubiojs";
-import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
-import Header from './components/Header';
+import { Alert, Box, Button, InputAdornment, InputLabel, MenuItem, Select, Slider, Stack, TextField, Typography } from "@mui/material";
 import CssBaseline from '@mui/material/CssBaseline';
-import LinearWithValueLabel from "./components/LinearProgressWithLabel";
 import Grid from '@mui/material/Unstable_Grid2';
-import { WaveSurfer, WaveForm, Marker } from "wavesurfer-react";
+import { PitchMethod } from "aubiojs";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from "react-router-dom";
+import { WaveForm, WaveSurfer } from "wavesurfer-react";
+import Header from './components/Header';
+import LinearWithValueLabel from "./components/LinearProgressWithLabel";
 //@ts-ignore
 import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
 //@ts-ignore
 import MarkersPlugin from "wavesurfer.js/src/plugin/markers";
 //@ts-ignore
 import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faSearchPlus, faSearchMinus } from '@fortawesome/free-solid-svg-icons'
+
+import { faSearchMinus, faSearchPlus } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import colormap from './data/hot-colormap.json';
 
-import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Label, ReferenceLine } from 'recharts';
+import { CartesianGrid, Label, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { Simplify } from 'simplify-ts';
 
+import { deepCopy } from "@firebase/util";
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 //@ts-ignore
 import Stats from 'stats-analysis';
-import { deepCopy } from "@firebase/util";
 
 // TODO - HACK - this is duplicated from Deforum.tsx, need to refactor.
 const interpolatable_fields = [
@@ -57,10 +60,28 @@ const interpolatable_fields = [
     'far',
 ];
 
+function AnalyserInput(props : {label: string, value: number|string, onChange: (event: React.ChangeEvent<HTMLInputElement>) => void, disabled: boolean, isString?: boolean, helperText?: string}) {
+    return <TextField
+        type={props.isString ? "string" : "number"}
+        size="small"
+        style={{ paddingBottom: '10px' }}
+        id={props.label.replace(" ", "_")}
+        label={props.label}
+        disabled={props.disabled}
+        inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+        InputLabelProps={{ shrink: true, }}
+        helperText={props.helperText}
+        value={props.value}
+        onChange={props.onChange}
+    />;
+}
 
 export default function Analyser() {
 
     const audioContext = new AudioContext();
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const fileInput = useRef<HTMLInputElement>("" as any);
     const [isAnalysing, setIsAnalysing] = useState(false);
@@ -74,12 +95,13 @@ export default function Analyser() {
     const [tempoHop, setTempoHop] = useState(256);
     const tempoRef = useRef<HTMLInputElement>(null);
     const [tempoProgress, setTempoProgress] = useState(0);
+    const [tempoOutputConfidence, setTempoOutputConfidence] = useState(0);    
 
     const [onsetMethod, setOnsetMethod] = useState("default");
     const [onsetBuffer, setOnsetBuffer] = useState(4096);
     const [onsetThreshold, setOnsetThreshold] = useState(0.3);
     const [onsetHop, setOnsetHop] = useState(256);
-    const [onsetWhitening, setOnsetWhitening] = useState(false);
+    const [onsetWhitening, setOnsetWhitening] = useState(0);
     const [onsetMinoi, setOnsetMinoi] = useState(0.02);
     const [onsetSilence, setOnsetSilence] = useState(-90);
     const onsetRef = useRef<HTMLInputElement>(null);
@@ -93,7 +115,7 @@ export default function Analyser() {
     const pitchRef = useRef<HTMLInputElement>(null);
     const [pitchProgress, setPitchProgress] = useState(0);
 
-    const [trackLength, setTrackLength] = useState(10);
+    const [trackLength, setTrackLength] = useState(0);
     const analysisPos = useRef<HTMLSpanElement>(null);
 
     const wavesurferRef = useRef<WaveSurfer>();
@@ -101,7 +123,7 @@ export default function Analyser() {
     const [waveSurferZoom, setWaveSurferZoom] = useState(50);
 
     const [keyframes, setKeyframes] = useState<object>({});
-    const [fps, setFps] = useState<number>(20);
+    const [fps, setFps] = useState<number>(parseInt(searchParams.get('fps')|| "20"));
     const [detectedBPMOverride, setDetectedBPMOverride] = useState<number>(0);
     const [firstBeatOffset, setFirstBeatOffset] = useState<number>(0);
     const [beatSkip, setBeatSkip] = useState<number>(1);
@@ -169,7 +191,7 @@ export default function Analyser() {
             }
             wavesurferRef.current.zoom(waveSurferZoom);
         }
-    }, []);
+    }, [waveSurferZoom]);
 
     const loadFile = async (event: any) => {
         try {
@@ -197,6 +219,9 @@ export default function Analyser() {
     }
 
     useEffect(() => {
+        if (!trackLength) {
+            return;
+        }
         const analysisPositionS = (tempoProgress + onsetProgress + pitchProgress) / 300 * trackLength;
         if (analysisPos.current) {
             analysisPos.current.innerHTML = ` ( ${analysisPositionS.toFixed(2)}s / ${trackLength.toFixed(2)}s )`;
@@ -239,6 +264,7 @@ export default function Analyser() {
         // Reset UI
         setIsAnalysing(true);
         setTempoProgress(0);
+        setTempoOutputConfidence(0);
         tempoRef.current.value = "";
         setOnsetProgress(0);
         onsetRef.current.value = "";
@@ -263,6 +289,7 @@ export default function Analyser() {
         tempoDetectionWorker.onmessage = (e: any) => {
             if (tempoRef.current && e.data.bpm) {
                 tempoRef.current.value = e.data.fudgedBpm.toFixed(2);
+                setTempoOutputConfidence(e.data.confidence);
             }
 
             setTempoProgress(e.data.progress * 100);
@@ -393,25 +420,26 @@ export default function Analyser() {
         // Merge into a single array of points
         const pointMap = new Map();
         for (const p of simplifiedPitchPoints) {
-            pointMap.set(p.x, {x: p.x, original: p.y});
+            pointMap.set(p.x, { x: p.x, original: p.y });
         }
         for (const p of simplifiedNormalisedPitchPoints) {
             const existing = pointMap.get(p.x);
             pointMap.set(p.x, {
                 ...existing || {},
                 x: p.x,
-                normalised: p.y} );
+                normalised: p.y
+            });
         }
 
         console.log(pointMap);
 
         // TODO need to merge these properly.
-        const dataToRender =  Array.from(pointMap.values())
+        const dataToRender = Array.from(pointMap.values())
             .sort((a, b) => (a.x - b.x));
 
         return <LineChart data={dataToRender}>
-            <Line connectNulls={true} yAxisId="left"  type="monotone" dataKey="original" stroke="#8884d8" dot={false} animationDuration={175} />
-            <Line connectNulls={true} yAxisId="right" type="monotone" dataKey="normalised" stroke="#662255" dot={false} animationDuration={175} />            
+            <Line connectNulls={true} yAxisId="left" type="monotone" dataKey="original" stroke="#8884d8" dot={false} animationDuration={175} />
+            <Line connectNulls={true} yAxisId="right" type="monotone" dataKey="normalised" stroke="#662255" dot={false} animationDuration={175} />
             <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
             <XAxis
                 dataKey="x"
@@ -434,12 +462,12 @@ export default function Analyser() {
             >
                 <Label angle={270} position='right' offset={10} style={{ textAnchor: 'middle' }}>
                     Normalised value
-                </Label>                
+                </Label>
             </YAxis>
             <Tooltip />
         </LineChart>
 
-    }, [adjustedPitchPoints, pitchPoints, trackLength]);
+    }, [adjustedPitchPoints, pitchPoints]);
 
 
     const generateKeyframes = useCallback(() => {
@@ -454,14 +482,14 @@ export default function Analyser() {
         const pitchValues = pitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
         const minPitch = Math.min(...pitchValues);
         const maxPitch = Math.max(...pitchValues);
-        const outliers = Stats.indexOfOutliers(pitchValues, Stats.outlierMethod.medianDiff, pitchOutlierThreshold);
-        
+        const outliers = pitchOutlierThreshold >= 0 ? Stats.indexOfOutliers(pitchValues, Stats.outlierMethod.medianDiff, pitchOutlierThreshold) : [];
+
         const normalisedPitchPoints = pitchPoints
             .filter((p, index) => !outliers.includes(index))
             .map((p) => ({
-                    x: p.x,
-                    y: ((p.y - minPitch) / (maxPitch-minPitch)) * (pitchNormMax-pitchNormMin) + pitchNormMin
-                }));
+                x: p.x,
+                y: ((p.y - minPitch) / (maxPitch - minPitch)) * (pitchNormMax - pitchNormMin) + pitchNormMin
+            }));
 
         console.log("length comp", pitchValues.length, pitchPoints.length, normalisedPitchPoints.length);
 
@@ -485,7 +513,7 @@ export default function Analyser() {
                 meta: "beat"
             }
             wavesurferRef.current.markers.add(newMarker);
-            
+
         }
 
         // Re-insert onset markers
@@ -505,14 +533,14 @@ export default function Analyser() {
                     info: marker.label,
                     // TODO: this lookup is sketchy, should take weighted avg between 2 closest points.
                     [pitchTarget]: normalisedPitchPoints.find((point) => point.x >= marker.time)?.y,
-                    [beatTarget]: onsetTargetValue,
-                    [beatTarget+"_i"]: onsetTargetInterpolation
+                    [beatTarget]: beatTargetValue,
+                    [beatTarget + "_i"]: beatTargetInterpolation
                 }
             });
 
         const onsetKeyframes = wavesurferRef.current.markers.markers
             .filter((marker) => marker.label?.startsWith("onset"))
-            .filter((marker, index) => index % beatSkip === 0)
+            .filter((marker, index) => index % onsetSkip === 0)
             .map((marker, index) => {
                 return {
                     frame: Math.round(marker.time * fps),
@@ -520,22 +548,34 @@ export default function Analyser() {
                     // TODO: this lookup is sketchy, should take weighted avg between 2 closest points.
                     [pitchTarget]: normalisedPitchPoints.find((point) => point.x >= marker.time)?.y,
                     [onsetTarget]: onsetTargetValue,
-                    [onsetTarget+"_i"]: onsetTargetInterpolation
+                    [onsetTarget + "_i"]: onsetTargetInterpolation
                 }
             })
-            // If a beat and onset event result in a keyframe at the same frame position, keep only the beat one.
-            // TODO: merge fields instead.
-            .filter((onsetKeyframe) => !beatKeyframes.some((beatKeyframe) => beatKeyframe.frame === onsetKeyframe.frame));
 
-        const newKeyframes = beatKeyframes.concat(onsetKeyframes)
-                            .sort((a, b) => a.frame - b.frame)
+        // Combine onset and beat keyframes but merge frames with same frame number.
+        // TODO: replace this with more generic merging function that supports 2> sources. Also, this duplicates merge logic in the main UI component.
+        const newKeyframes = beatKeyframes.map((beatKeyFrame) => {
+            let onsetKeyFrame = onsetKeyframes.find((candidateKeyFrame) => candidateKeyFrame.frame === beatKeyFrame.frame)
+            if (onsetKeyFrame) {
+                return {
+                    ...onsetKeyFrame,
+                    ...beatKeyFrame,
+                    info: beatKeyFrame.info + " / " + onsetKeyFrame.info
+                }
+            } else {
+                return beatKeyFrame;
+            }
+        }).concat(onsetKeyframes.filter((onsetKeyFrame) => !beatKeyframes.find((beatKeyFrame) => beatKeyFrame.frame === onsetKeyFrame.frame)))
+        .sort((a, b) => a.frame - b.frame);
 
         setKeyframes({
             keyframes: newKeyframes
         })
 
-
-    }, [fps, detectedBPMOverride, firstBeatOffset, beatSkip, onsetSkip, pitchTarget, pitchPoints, pitchNormMax, pitchNormMin, pitchOutlierThreshold]);
+    }, [fps, detectedBPMOverride, firstBeatOffset, beatSkip, onsetSkip, pitchTarget,
+        pitchPoints, pitchNormMax, pitchNormMin, pitchOutlierThreshold, beatTarget,
+        onsetTarget, onsetTargetInterpolation, onsetTargetValue, beatTargetInterpolation, beatTargetValue,
+        trackLength]);
 
     return <>
         <Header title="Parseq - audio analyser ALPHA" />
@@ -553,7 +593,7 @@ export default function Analyser() {
         }}>
             <CssBaseline />
             <Grid xs={12}>
-                <a href='/'>⬅️ Home</a>
+                <a href={'/' + (searchParams.get('refDocId') ? '?docId='+ searchParams.get('refDocId') : '')}>⬅️ Home</a>
                 <p>(Todo: list caveats of this analyser)</p>
             </Grid>
             <Grid xs={12} bgcolor="lightgray">
@@ -586,91 +626,57 @@ export default function Analyser() {
                 Pitch detection settings
             </Grid>
             <Grid xs={4}>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="tempoBuffer"
+                <AnalyserInput
                     label="Tempo Buffer"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={tempoBuffer}
                     onChange={(e) => setTempoBuffer(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="tempoHop"
-                    label="Tempo Hop"
                     disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />
+                <AnalyserInput
+                    label="Tempo Hop"
                     value={tempoHop}
                     onChange={(e) => setTempoHop(Number.parseInt(e.target.value))}
+                    disabled={isAnalysing}
                 />
             </Grid>
             <Grid xs={4}>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetBuffer"
+                <AnalyserInput
                     label="Onset Buffer"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={onsetBuffer}
                     onChange={(e) => setOnsetBuffer(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetHop"
-                    label="Onset Hop"
                     disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />
+                <AnalyserInput
+                    label="Onset Hop"
                     value={onsetHop}
                     onChange={(e) => setOnsetHop(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetThreshold"
-                    label="Onset Threshold"
                     disabled={isAnalysing}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />
+                <AnalyserInput
+                    label="Onset Threshold"
                     value={onsetThreshold}
                     onChange={(e) => setOnsetThreshold(Number.parseFloat(e.target.value))}
+                    disabled={isAnalysing}
                 />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetMinInterval"
+                <AnalyserInput
                     label="Onset Min Interval"
-                    //disabled={isPlaying}
-                    disabled={true}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={onsetMinoi}
                     onChange={(e) => setOnsetMinoi(Number.parseFloat(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetWhitening"
-                    label="Onset Whitening"
-                    //disabled={isPlaying}
                     disabled={true}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                    value={onsetWhitening}
-                    onChange={(e) => setOnsetWhitening(Boolean(e.target.value))}
                 />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetSilence"
+                <AnalyserInput
+                    label="Onset Whitening"
+                    value={onsetWhitening}
+                    onChange={(e) => setOnsetWhitening(Number.parseInt(e.target.value))}
+                    disabled={true}
+                />
+                <AnalyserInput
                     label="Onset Silence"
-                    disabled={isAnalysing}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={onsetSilence}
                     onChange={(e) => setOnsetSilence(Number.parseInt(e.target.value))}
-                />
-                <InputLabel id="onsetMethodLabel">Onset Method</InputLabel>
+                    disabled={isAnalysing}
+                />                   
+                <InputLabel style={{fontSize: '0.75em' }} id="onsetMethodLabel">Onset Method</InputLabel>
                 <Select
                     size="small"
                     labelId="onsetMethodLabel"
@@ -692,44 +698,30 @@ export default function Analyser() {
                 </Select>
             </Grid>
             <Grid xs={4}>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="pitchBuffer"
+                <AnalyserInput
                     label="Pitch Buffer"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={pitchBuffer}
                     onChange={(e) => setPitchBuffer(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="pitchHop"
-                    label="Pitch Hop"
                     disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />
+                <AnalyserInput
+                    label="Pitch Hop"
                     value={pitchHop}
                     onChange={(e) => setPitchHop(Number.parseInt(e.target.value))}
+                    disabled={isAnalysing}
                 />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="pitchTolerance"
+                <AnalyserInput
                     label="Pitch Tolerance"
-                    //disabled={isAnalysing}
-                    disabled={true}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={pitchTolerance}
                     onChange={(e) => setPitchTolerance(Number.parseFloat(e.target.value))}
-                />
-                <InputLabel id="pitchMethodLabel">Pitch Method</InputLabel>
+                    disabled={true}
+                />                 
+                <InputLabel style={{fontSize: '0.75em' }} id="pitchMethodLabel">Pitch Method</InputLabel>
                 <Select
                     size="small"
                     labelId="pitchMethodLabel"
                     id="pitchMethod"
                     disabled={isAnalysing}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={pitchMethod}
                     onChange={(e) => setPitchMethod(e.target.value as PitchMethod)}
                 >
@@ -751,12 +743,11 @@ export default function Analyser() {
                         endAdornment: <InputAdornment position="end">bpm</InputAdornment>,
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' }
                     }}
+                    InputLabelProps={{ shrink: true }}
                     focused={true}
-                    //value={tempoOutput?.toFixed(2)}
                     variant="outlined"
                     color="success"
-                    //helperText={"Confidence: " + tempoOutputConfidence?.toFixed(2)}
-                    helperText={" "}
+                    helperText={"Confidence: " + tempoOutputConfidence?.toFixed(2)}
                     inputRef={tempoRef}
                 />
                 {isAnalysing && <LinearWithValueLabel value={tempoProgress} />}
@@ -770,11 +761,11 @@ export default function Analyser() {
                         endAdornment: <InputAdornment position="end">s</InputAdornment>,
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' }
                     }}
+                    InputLabelProps={{ shrink: true }}
                     focused={true}
-                    //value={onsetOutput?.toFixed(2)}
                     variant="outlined"
                     color="success"
-                    helperText=" "
+                    helperText={"Event count: " + wavesurferRef.current?.markers.markers.filter(m => m?.label?.startsWith("onset")).length }
                     inputRef={onsetRef}
                 />
                 {isAnalysing && <LinearWithValueLabel value={onsetProgress} />}
@@ -790,10 +781,11 @@ export default function Analyser() {
 
                     }}
                     focused={true}
+                    InputLabelProps={{ shrink: true }}
                     //value={pitchOutput?.toFixed(2)}
                     variant="outlined"
                     color="success"
-                    helperText=" "
+                    helperText={"Pitch points: " + pitchPoints.length + " (minus outliers: " + adjustedPitchPoints.length + ")"}
                     inputRef={pitchRef}
                 />
                 {isAnalysing && <LinearWithValueLabel value={pitchProgress} />}
@@ -849,7 +841,13 @@ export default function Analyser() {
                     <FontAwesomeIcon icon={faSearchPlus} />
                 </Stack>
             </Grid>
-            <Grid xs={4}></Grid>
+            <Grid xs={4}>
+                <small>
+                    <div><Typography style={{ display: 'inline-block' }} color={"red"}>&diams;</Typography>: detected onset events</div>
+                    <div><Typography style={{ display: 'inline-block' }} color={"blue"}>&diams;</Typography>: beats</div>
+                    <div><Typography style={{ display: 'inline-block' }} color={"lightblue"}>&diams;</Typography>: ajusted beats</div>
+                </small>
+            </Grid>
             <Grid xs={12} bgcolor="lightgray">
                 <h3>Conversion to Parseq keyframes</h3>
             </Grid>
@@ -863,37 +861,25 @@ export default function Analyser() {
                 Pitch conversion settings
             </Grid>
             <Grid xs={4}>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="bpmOverride"
+                <AnalyserInput
                     label="Detected BPM override"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={detectedBPMOverride}
                     onChange={(e) => setDetectedBPMOverride(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="beatOffset"
+                    disabled={isAnalysing}
+                />                   
+                <AnalyserInput
                     label="First beat offset (s)"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={firstBeatOffset}
-                    onChange={(e) => setFirstBeatOffset(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px'}}
-                    id="beatOffset"
-                    label="Include every Nth beat"
+                    onChange={(e) => setFirstBeatOffset(Number.parseFloat(e.target.value))}
                     disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />
+                <AnalyserInput
+                    label="Include every Nth beat"
                     value={beatSkip}
                     onChange={(e) => setBeatSkip(Number.parseInt(e.target.value))}
-                />
-                <InputLabel id="beatTargetLabel">Set value on beat keyframes:</InputLabel>
+                    disabled={isAnalysing}
+                />                                        
+                <InputLabel style={{fontSize: '0.75em' }} id="beatTargetLabel">Set value on beat keyframes:</InputLabel>
                 <Select
                     size="small"
                     labelId="beatTargetLabel"
@@ -903,49 +889,30 @@ export default function Analyser() {
                     value={beatTarget}
                     onChange={(e) => setBeatTarget(e.target.value)}
                 >
-                    {interpolatable_fields.map((field) => (
-                        <MenuItem
-                            key={field}
-                            value={field}
-                        >
-                            {field}
-                        </MenuItem>
-                    ))}
-                </Select><br/>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px', marginTop: '10px' }}
-                    id="beatTargetValue"
+                    {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
+                </Select><br />
+                <AnalyserInput
                     label="Value"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={beatTargetValue}
-                    onChange={(e) => setBeatTargetValue(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="beatTargetInterpolation"
-                    label="Interpolation"
+                    onChange={(e) => setBeatTargetValue(Number.parseFloat(e.target.value))}
                     disabled={isAnalysing}
-                    inputProps={{style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />
+                <AnalyserInput
+                    label="Interpolation"
+                    isString={true}
                     value={beatTargetInterpolation}
                     onChange={(e) => setBeatTargetInterpolation(e.target.value)}
-                />                 
-
+                    disabled={isAnalysing}
+                />                
             </Grid>
             <Grid xs={4}>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetSkip"
+                <AnalyserInput
                     label="Include every Nth event"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={onsetSkip}
                     onChange={(e) => setOnsetSkip(Number.parseInt(e.target.value))}
-                />
-                <InputLabel id="onsetTargetLabel">Set value on onset keyframes:</InputLabel>
+                    disabled={isAnalysing}
+                />                
+                <InputLabel style={{fontSize: '0.75em' }} id="onsetTargetLabel">Set value on onset keyframes:</InputLabel>
                 <Select
                     size="small"
                     labelId="beatTargetLabel"
@@ -955,118 +922,92 @@ export default function Analyser() {
                     value={onsetTarget}
                     onChange={(e) => setOnsetTarget(e.target.value)}
                 >
-                    {interpolatable_fields.map((field) => (
-                        <MenuItem
-                            key={field}
-                            value={field}
-                        >
-                            {field}
-                        </MenuItem>
-                    ))}
-                </Select><br/>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px', marginTop: '10px' }}
-                    id="onsetTargetValue"
+                    {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
+                </Select><br />
+                <AnalyserInput
                     label="Value"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={onsetTargetValue}
-                    onChange={(e) => setOnsetTargetValue(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="onsetTargetInterpolation"
-                    label="Interpolation"
+                    onChange={(e) => setOnsetTargetValue(Number.parseFloat(e.target.value))}
                     disabled={isAnalysing}
-                    inputProps={{style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />
+                <AnalyserInput
+                    label="Interpolation"
+                    isString={true}
                     value={onsetTargetInterpolation}
                     onChange={(e) => setOnsetTargetInterpolation(e.target.value)}
-                />                                          
+                    disabled={isAnalysing}
+                />
             </Grid>
             <Grid xs={4}>
                 Normalisation:<br />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="pitchNormMin"
+                <AnalyserInput
                     label="min"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={pitchNormMin}
-                    onChange={(e) => setPitchNormMin(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="pitchNormMax"
+                    onChange={(e) => setPitchNormMin(Number.parseFloat(e.target.value))}
+                    disabled={isAnalysing}
+                />         
+               <AnalyserInput
                     label="max"
-                    disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                     value={pitchNormMax}
-                    onChange={(e) => setPitchNormMax(Number.parseInt(e.target.value))}
-                />
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="pitchNormPercentile"
-                    label="Outlier tolerance"
+                    onChange={(e) => setPitchNormMax(Number.parseFloat(e.target.value))}
                     disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                    value={pitchOutlierThreshold}
-                    onChange={(e) => setPitchOutlierThreshold(Number.parseInt(e.target.value))}
                 />
-                <InputLabel id="pitchTargetLabel">Assign pitch value to:</InputLabel>
+               <AnalyserInput
+                    label="Outlier tolerance"
+                    value={pitchOutlierThreshold}
+                    onChange={(e) => setPitchOutlierThreshold(Number.parseFloat(e.target.value))}
+                    disabled={isAnalysing}
+                    helperText="Higher => accept more outliers; -1 to disable"
+                />
+
+                <InputLabel style={{fontSize: '0.75em' }} id="pitchTargetLabel">Assign pitch value to:</InputLabel>
                 <Select
                     size="small"
                     labelId="pitchTargetLabel"
                     id="pitchTarget"
                     disabled={isAnalysing}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em', } }}
                     value={pitchTarget}
                     onChange={(e) => setPitchTarget(e.target.value)}
                 >
-                    {interpolatable_fields.map((field) => (
-                        <MenuItem
-                            key={field}
-                            value={field}
-                        >
-                            {field}
-                        </MenuItem>
-                    ))}
-                </Select><br/>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px', marginTop: '10px' }}
-                    id="pitchTargetInterpolation"
+                    {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
+                </Select><br />
+                <AnalyserInput
                     label="Interpolation"
-                    disabled={isAnalysing}
-                    inputProps={{style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                    isString={true}
                     value={pitchTargetInterpolation}
                     onChange={(e) => setPitchTargetInterpolation(e.target.value)}
-                />      
-            </Grid>
-            <Grid xs={4}>
-                <Button variant="contained" onClick={generateKeyframes}>✨ Generate keyframes</Button>
-            </Grid>
-            <Grid xs={4}>
-                <TextField
-                    size="small"
-                    style={{ paddingBottom: '10px' }}
-                    id="fps"
-                    label="FPS"
                     disabled={isAnalysing}
-                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                />                
+            </Grid>
+            <Grid xs={4}>
+                <Button variant="contained" disabled={!trackLength} onClick={generateKeyframes}>✨ Generate keyframes</Button>
+            </Grid>
+            <Grid xs={4}>
+                 <AnalyserInput
+                    label="FPS"
                     value={fps}
                     onChange={(e) => setFps(Number.parseInt(e.target.value))}
+                    disabled={isAnalysing}
                 />
             </Grid>
-            <Grid xs={4}></Grid>
-            <Grid xs={12}>
-                <pre>{JSON.stringify(keyframes, null, 4)}</pre>
+            <Grid xs={4}>
+                <CopyToClipboard text={JSON.stringify(keyframes, null, 4)}>
+                    <Button variant="contained" disabled={!keyframes || !trackLength} style={{ marginLeft: '1em' }} >📋 Copy keyframes</Button>
+                </CopyToClipboard>
             </Grid>
+            <Grid xs={12}>
+                <div
+                    id="generated"
+                    style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '80em', overflow: 'scroll' }}
+                    onClick={(e) => 
+                        //@ts-ignore
+                        window.getSelection().selectAllChildren(document.getElementById('generated'))
+                        }>
+                <pre>{JSON.stringify(keyframes, null, 4)}</pre>
+            </div>
         </Grid>
+    </Grid>
     </>;
 
 }

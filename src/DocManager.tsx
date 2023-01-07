@@ -51,6 +51,7 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
             ...content
         }    
         //log.debug("Saving...");
+        //db.parseqDocs.update(docId, { lastModified: version.timestamp });
         return db.parseqVersions.add(version, version.versionId);
     }
     

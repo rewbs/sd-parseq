@@ -17,7 +17,6 @@ const GIT_COMMIT_HASH = gitInfo.commit.hash;
 const GIT_COMMIT_SHORTHASH = gitInfo.commit.shortHash;
 const GIT_COMMIT_DATE = gitInfo.commit.date;
 
-
 type MyProps = {
     title: string
 };

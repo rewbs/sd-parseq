@@ -8,7 +8,9 @@ const run = (tempo : Tempo, bufferToAnalyse : Float32Array, hopSize : number) =>
         const endPos = startPos + hopSize;
         const retval = tempo.do(bufferToAnalyse.subarray(startPos, endPos));
         const bpm = tempo.getBpm();
-        const fudgedBpm = bpm * (1 - bpm / 200 / 100);
+        // HACK - in my experience, aubio overshoots the bpm by a factor of 1% of the bpm at hop size 768.
+        // The error margin decreases with lower hop sizes and lower BPMs.
+        const fudgedBpm = bpm * (1 - (bpm/95/100)*(hopSize/512));
         const confidence = tempo.getConfidence();
 
         if (retval) {
@@ -20,6 +22,7 @@ const run = (tempo : Tempo, bufferToAnalyse : Float32Array, hopSize : number) =>
                 confidence: confidence,
             });
         }
+        console.log(bpm, fudgedBpm, bpm-fudgedBpm);
 
         startPos += hopSize;        
     }

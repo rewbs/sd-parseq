@@ -197,14 +197,14 @@ export function interpret(ast, context) {
                 }
             }
           case 'info_match':
-            var pattern = interpret(ast.arguments[0], context)
+            let pattern = interpret(ast.arguments[0], context)
             return f => context.allKeyframes
               .findLast((kf) => {console.log(kf, f, kf.frame, kf.info); return kf.frame <= f})
               .info?.match(pattern(f)) ? 1 : 0
           case 'info_match_count':
-            var pattern = interpret(ast.arguments[0], context)
+            let pat = interpret(ast.arguments[0], context)
             return f => context.allKeyframes
-              .filter((kf) => kf.frame <= f && kf.info?.match(pattern(f)))
+              .filter((kf) => kf.frame <= f && kf.info?.match(pat(f)))
               .length
           default:
             throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.start.line}:${ast.start.col}`);

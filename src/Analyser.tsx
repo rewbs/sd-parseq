@@ -1,8 +1,8 @@
-import { Alert, Box, Button, InputAdornment, InputLabel, MenuItem, OutlinedInput, Select, Slider, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, InputAdornment, MenuItem, Slider, Stack, TextField, Typography } from "@mui/material";
 import CssBaseline from '@mui/material/CssBaseline';
 import Grid from '@mui/material/Unstable_Grid2';
 import { PitchMethod } from "aubiojs";
-import React, { EffectCallback, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from "react-router-dom";
 import { WaveForm, WaveSurfer } from "wavesurfer-react";
 import Header from './components/Header';
@@ -187,7 +187,7 @@ export default function Analyser() {
         const curPosSeconds = wavesurferRef.current?.getCurrentTime() || 0;
         const curPosFrames = curPosSeconds*fps;
         setPlaybackPos(`${curPosSeconds.toFixed(2)}/${trackLength.toFixed(2)}s (frame: ${curPosFrames.toFixed(0)}/${lengthFrames.toFixed(0)})`);
-    }, [trackLength, fps, isPlaying]);
+    }, [trackLength, fps]);
     
     //Update wavesurfer's seek callback on track length change and fps change
     useEffect(() => {
@@ -598,7 +598,7 @@ export default function Analyser() {
             .concat(onsetKeyframes.filter((onsetKeyFrame) => !beatKeyframes.find((beatKeyFrame) => beatKeyFrame.frame === onsetKeyFrame.frame)))
             // Add pitch values
             .map((keyframe) => {
-                if (pitchTarget != '(none)') {
+                if (pitchTarget !== '(none)') {
                     const keyframePosinSeconds = keyframe.frame / fps;
                     const keyframedPitchPoint = {
                         x: keyframePosinSeconds,

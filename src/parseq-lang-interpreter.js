@@ -34,6 +34,7 @@ export class InterpreterContext {
     this.thisKf = context.thisKf;
     this.definedFrames = context.definedFrames;
     this.definedValues = context.definedValues;
+    this.allKeyframes = context.allKeyframes;
     this.FPS = context.FPS;
     this.BPM = context.BPM;
   }
@@ -68,6 +69,8 @@ export function interpret(ast, context) {
   switch (ast.type) {
     case 'number_literal':
       return _ => ast.value;
+    case 'string_literal':
+      return _ => ast.value;      
     case 'var_reference':
       switch(ast.var_name.value) {
         case 'L':
@@ -75,19 +78,21 @@ export function interpret(ast, context) {
         case 'P':
           return f => poly_interpolation(context.definedFrames, context.definedValues, f);
         case 'S':
-          return f => getPreviousKeyframeValue(context, f);
+          return f => getActiveKeyframeValue(context, f);
         case 'C':
           return f => cubic_spline_interpolation(context.definedFrames, context.definedValues, f);
         case 'f':
           return f => f;
         case 'k': // offset since last active keyframe
-          return f => f - getPreviousKeyframe(context, f);
+          return f => f - getActiveKeyframe(context, f);
         case 'prev_keyframe':
-          return f => getPreviousKeyframe(context, f);
+        case 'active_keyframe': // deprecated, use 'active_keyframe', which is a more accurate name.
+          return f => getActiveKeyframe(context, f);
         case 'next_keyframe':
           return f => getNextKeyframe(context, f);
-        case 'prev_keyframe_value':
-          return f => getPreviousKeyframeValue(context, f);
+        case 'prev_keyframe_value': // deprecated, use 'active_keyframe_value', which is a more accurate name.
+        case 'active_keyframe_value':
+          return f => getActiveKeyframeValue(context, f);
         case 'next_keyframe_value':
           return f => getNextKeyframeValue(context, f);
         default:
@@ -116,7 +121,7 @@ export function interpret(ast, context) {
         case 'pulse':
           let [period, phase, amp, centre, pulse, limit] = get_oscillator_named_arguments(ast.arguments).map(arg => interpret(arg, context));
           return f => {
-            if (limit(f) > 0 &&  (f - getPreviousKeyframe(context, f)) > limit(f)*period(f) ) {
+            if (limit(f) > 0 &&  (f - getActiveKeyframe(context, f)) > limit(f)*period(f) ) {
               return 0;
             } else {
               return oscillator(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f));
@@ -144,11 +149,11 @@ export function interpret(ast, context) {
             let target = interpret(named_argument_extractor(ast.arguments, ['target', 'to' , 't'], null), context);
             let span = interpret(named_argument_extractor(ast.arguments, ['span', 'in', 's'], null), context);              
             return f => {
-                if (f - getPreviousKeyframe(context, f) >= span(f)) {
+                if (f - getActiveKeyframe(context, f) >= span(f)) {
                   return target(f);
                 } else {
-                  const slope = (target(f) - getPreviousKeyframeValue(context, f))/span(f);
-                  return getPreviousKeyframeValue(context, f) + slope * (f - getPreviousKeyframe(context, f));
+                  const slope = (target(f) - getActiveKeyframeValue(context, f))/span(f);
+                  return getActiveKeyframeValue(context, f) + slope * (f - getActiveKeyframe(context, f));
                 }
             }          
         default:
@@ -163,7 +168,7 @@ export function interpret(ast, context) {
           case 'pulse':  
             let [period, phase = _ => 0, amp = _ => 1, centre = _ => 0, pulse = _ => 5, limit = _ => 0] = ast.arguments.map(arg => interpret(arg, context));
             return f => {
-              if (limit(f) > 0 &&  (f - getPreviousKeyframe(context, f)) > limit(f)*period(f) ) {
+              if (limit(f) > 0 &&  (f - getActiveKeyframe(context, f)) > limit(f)*period(f) ) {
                 return 0;
               } else {
                 return oscillator(ast.fun_name.value, period(f), phase(f)+f, amp(f), centre(f), pulse(f));
@@ -184,13 +189,23 @@ export function interpret(ast, context) {
           case 'slide':
             let [target, span] = ast.arguments.map(arg => interpret(arg, context))
             return f => {
-                if (f - getPreviousKeyframe(context, f) >= span(f)) {
+                if (f - getActiveKeyframe(context, f) >= span(f)) {
                   return target(f);
                 } else {
-                  const slope = (target(f) - getPreviousKeyframeValue(context, f))/span(f);
-                  return getPreviousKeyframeValue(context, f) + slope * (f - getPreviousKeyframe(context, f));
+                  const slope = (target(f) - getActiveKeyframeValue(context, f))/span(f);
+                  return getActiveKeyframeValue(context, f) + slope * (f - getActiveKeyframe(context, f));
                 }
             }
+          case 'info_match':
+            var pattern = interpret(ast.arguments[0], context)
+            return f => context.allKeyframes
+              .findLast((kf) => {console.log(kf, f, kf.frame, kf.info); return kf.frame <= f})
+              .info?.match(pattern(f)) ? 1 : 0
+          case 'info_match_count':
+            var pattern = interpret(ast.arguments[0], context)
+            return f => context.allKeyframes
+              .filter((kf) => kf.frame <= f && kf.info?.match(pattern(f)))
+              .length
           default:
             throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.start.line}:${ast.start.col}`);
         }
@@ -223,7 +238,7 @@ export function interpret(ast, context) {
   }
 }
 
-function getPreviousKeyframe(context, f) {
+function getActiveKeyframe(context, f) {
   let idx = context.definedFrames.findLastIndex(v => v <= f);
   return idx !== -1 ? context.definedFrames[idx] : context.definedFrames.at(0);
 }
@@ -233,7 +248,7 @@ function getNextKeyframe(context, f) {
   return idx !== -1 ? context.definedFrames[idx] : context.definedFrames.at(-1);
 }
 
-function getPreviousKeyframeValue(context, f) {
+function getActiveKeyframeValue(context, f) {
   let idx = context.definedFrames.findLastIndex(v => v <= f);
   return idx !== -1 ? context.definedValues[idx] : context.definedValues.at(0);
 }
@@ -257,10 +272,10 @@ function oscillator(osc, period, pos, amp, centre, pulsewidth) {
 
 function bezier(f, x1, y1, x2, y2, context) {
   let bezier = BezierEasing(x1, y1, x2, y2);
-  let start_x = getPreviousKeyframe(context, f);
-  let range_x = getNextKeyframe(context, f) - getPreviousKeyframe(context, f);
-  let start_y = getPreviousKeyframeValue(context, f);
-  let range_y = getNextKeyframeValue(context, f) - getPreviousKeyframeValue(context, f);
+  let start_x = getActiveKeyframe(context, f);
+  let range_x = getNextKeyframe(context, f) - getActiveKeyframe(context, f);
+  let start_y = getActiveKeyframeValue(context, f);
+  let range_y = getNextKeyframeValue(context, f) - getActiveKeyframeValue(context, f);
   return start_y + bezier((f-start_x) / range_x) * range_y;
 }
 

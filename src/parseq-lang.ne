@@ -25,6 +25,10 @@ const lexer = moo.compile({
         match: /#[^\n]*/,
         value: s => s.substring(1)
     },
+    string_literal: {
+        match: /"(?:[^\n\\"]|\\["\\ntbfr])*"/,
+        value: s => JSON.parse(s)
+    },    
     number_literal: {
         match: /[0-9]+(?:\.[0-9]+)?[fsb]?/
     },    
@@ -265,6 +269,7 @@ unary_expression
             })
         %}
     |  call_expression      {% id %}
+    |  string_literal       {% id %}
     |  if_expression      {% id %}
     |  boolean_literal      {% id %}
     |  "(" expression ")"

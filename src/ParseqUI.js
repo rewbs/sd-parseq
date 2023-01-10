@@ -737,10 +737,12 @@ const ParseqUI = (props) => {
               thisKf: frame,
               definedFrames: definedFrames,
               definedValues: definedValues,
+              allKeyframes: keyframes,
               FPS: options.output_fps,
               BPM: options.bpm,
             });
 
+            console.log(context);
             try {
               interpolator = interpret(result, context);
             } catch (error) {

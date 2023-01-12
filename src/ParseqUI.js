@@ -193,7 +193,7 @@ const ParseqUI = (props) => {
     resizable: true,
     tooltipField: 'frame',
     tooltipComponent: GridTooltip,
-    tooltipComponentParams: { getBpm: _ => options.bpm, getFps: _ => options.output_fps },
+    tooltipComponentParams: { getBpm: _ => options?.bpm, getFps: _ => options?.output_fps },
     suppressKeyboardEvent: (params) => {
       return params.event.ctrlKey && (
         params.event.key === 'a'
@@ -740,6 +740,7 @@ const ParseqUI = (props) => {
               allKeyframes: keyframes,
               FPS: options.output_fps,
               BPM: options.bpm,
+              variableMap: {}              
             });
 
             console.log(context);
@@ -772,18 +773,42 @@ const ParseqUI = (props) => {
     // Calculate rendered prompt based on prompts and weights
     all_frame_numbers.forEach((frame) => {
 
-      let positive_prompt = prompts.positive
-        .replace(/\$\{(.*?)\}/g, (_, weight) => rendered_frames[frame][weight])
-        .replace(/(\n)/g, " ");
-      let negative_prompt = prompts.negative
-        .replace(/\$\{(.*?)\}/g, (_, weight) => rendered_frames[frame][weight])
-        .replace(/(\n)/g, " ");
+      let variableMap = {};
+      interpolatable_fields.forEach((field) => {
+        variableMap= {
+            ...variableMap || {},
+            [field]: rendered_frames[frame][field]
+        }
+      });
+      
+      var context = new InterpreterContext({
+        fieldName: null,
+        thisKf: frame,
+        definedFrames: [],
+        definedValues: [],
+        FPS: options.output_fps,
+        BPM: options.bpm,
+        allKeyframes: keyframes,
+        variableMap: variableMap
+      });
 
-      rendered_frames[frame] = {
-        ...rendered_frames[frame] || {},
-        positive_prompt: positive_prompt,
-        negative_prompt: negative_prompt,
-        deforum_prompt: `${positive_prompt} --neg ${negative_prompt}`
+      try {
+        let positive_prompt = prompts.positive
+          .replace(/\$\{(.*?)\}/g, (_, weight) => { const result = interpret(parse(weight), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/(\n)/g, " ");
+        let negative_prompt = prompts.negative
+          .replace(/\$\{(.*?)\}/g, (_, weight) =>  { const result = interpret(parse(weight), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/(\n)/g, " ");
+
+        rendered_frames[frame] = {
+          ...rendered_frames[frame] || {},
+          positive_prompt: positive_prompt,
+          negative_prompt: negative_prompt,
+          deforum_prompt: `${positive_prompt} --neg ${negative_prompt}`
+        }
+      } catch (error) {
+        console.error(error);
+        setRenderedErrorMessage(`Error parsing prompt weight value: ` + error);
       }
 
     });

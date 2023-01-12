@@ -18,6 +18,8 @@ import { faSearchMinus, faSearchPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 //@ts-ignore
 import Spline from 'cubic-spline';
+//@ts-ignore
+import { linear } from 'everpolate';
 
 import colormap from './data/hot-colormap.json';
 
@@ -306,6 +308,8 @@ export default function Analyser() {
         pitchRef.current.value = "";
         setStatusMessage(<Alert severity="success">Analysing...</Alert>);
         setPitchPoints([{ x: 0, y: 0 }]);
+        setNormalisedPitchPoints([]);
+        setKeyframedPitchPointsForGraph([]);
         wavesurferRef.current?.markers.clear();
 
         // Only use left channel for now.
@@ -521,25 +525,6 @@ export default function Analyser() {
 
         const bpm = detectedBPMOverride || parseInt(tempoRef.current.value);
 
-
-        // Normalise pitch points
-        const pitchValues = pitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
-        const outliers = pitchOutlierThreshold >= 0 ? Stats.indexOfOutliers(pitchValues, Stats.outlierMethod.medianDiff, pitchOutlierThreshold) : [];
-
-        const filteredPitchPoints = pitchPoints.filter((p, index) => !outliers.includes(index) &&  pitchDiscardBelow<= p.y && p.y<=pitchDiscardAbove)
-        const filteredPitchValues = filteredPitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
-        const minPitch = Math.min(...filteredPitchValues);
-        const maxPitch = Math.max(...filteredPitchValues);
-        const normalisedPitchPoints = filteredPitchPoints.map((p) => ({
-                x: p.x,
-                y: ((p.y - minPitch) / (maxPitch - minPitch)) * (pitchNormMax - pitchNormMin) + pitchNormMin
-            }));
-
-        const normalisedPitchSpline = new Spline(normalisedPitchPoints.map(p=>p.x), normalisedPitchPoints.map(p=>p.y));            
-
-        setPitchDiscardedRatio(100 * (pitchPoints.length-normalisedPitchPoints.length) / pitchPoints.length);
-        setNormalisedPitchPoints(normalisedPitchPoints);
-
         // We want to remove beat markers only. The API doesn't allow us to do that cleanly
         // (we must remove by index but indices change on removal so iterating and removing is tricky)
         // so we take a copy, wipe the markers, and re-add the ones we want to keep.
@@ -568,21 +553,19 @@ export default function Analyser() {
                 wavesurferRef?.current?.markers.add(marker);
             });
 
+        // Create keyframes for beat and onset events
         const beatKeyframes = wavesurferRef.current.markers.markers
             .filter((marker) => marker.label?.startsWith("beat"))
             .filter((marker, index) => (index-beatStartFrom) >= 0 && (index-beatStartFrom)%beatSkip === 0)
             .map((marker) => markerToKeyframe(marker, beatTarget, beatTargetValue, beatTargetInterpolation, beatInfo));
-
         const onsetKeyframes = wavesurferRef.current.markers.markers
             .filter((marker) => marker.label?.startsWith("onset"))
             .filter((marker, index) => (index-onsetStartFrom) >= 0 && (index-onsetStartFrom)%onsetSkip === 0)
             .map((marker) => markerToKeyframe(marker, onsetTarget, onsetTargetValue, onsetTargetInterpolation, onsetInfo));
 
-        const keyframedPitchPoints : { x: number, y: number }[] = [];
-
-        const newKeyframes = beatKeyframes
-            // Combine onset and beat keyframes but merge frames with same frame number.
-            // TODO: replace this with more generic merging function that supports 2> sources. Also, this duplicates merge logic in the main UI component.
+        // Combine onset and beat keyframes but merge frames with same frame number.
+        // TODO: replace this with more generic merging function that supports 2> sources. Also, this duplicates merge logic in the main UI component.
+        const beatAndOnsetKeyframes = beatKeyframes
             .map((beatKeyFrame) => {
                 let onsetKeyFrame = onsetKeyframes.find((candidateKeyFrame) => candidateKeyFrame.frame === beatKeyFrame.frame)
                 if (onsetKeyFrame) {
@@ -595,38 +578,80 @@ export default function Analyser() {
                     return beatKeyFrame;
                 }
             })
-            .concat(onsetKeyframes.filter((onsetKeyFrame) => !beatKeyframes.find((beatKeyFrame) => beatKeyFrame.frame === onsetKeyFrame.frame)))
-            // Add pitch values
-            .map((keyframe) => {
-                if (pitchTarget !== '(none)') {
-                    const keyframePosinSeconds = keyframe.frame / fps;
-                    const keyframedPitchPoint = {
-                        x: keyframePosinSeconds,
-                        y: normalisedPitchSpline.at(keyframePosinSeconds)
-                    }
+            .concat(onsetKeyframes.filter((onsetKeyFrame) => !beatKeyframes.find((beatKeyFrame) => beatKeyFrame.frame === onsetKeyFrame.frame)));
+
+        // Combine pitch values into exising keyframe set
+        const newKeyframes = addPitchValuesToKeyframes(beatAndOnsetKeyframes);
+
+        setKeyframes({ keyframes: newKeyframes });
+    };
+
+    function addPitchValuesToKeyframes(beatAndOnsetKeyframes: { frame: number; info: string; }[]) {
+        const pitchValues = pitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
+        const outliers = pitchOutlierThreshold >= 0 ? Stats.indexOfOutliers(pitchValues, Stats.outlierMethod.medianDiff, pitchOutlierThreshold) : [];
+
+        const filteredPitchPoints = pitchPoints.filter((p, index) => !outliers.includes(index) && pitchDiscardBelow <= p.y && p.y <= pitchDiscardAbove);
+        const filteredPitchValues = filteredPitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
+        const minPitch = Math.min(...filteredPitchValues);
+        const maxPitch = Math.max(...filteredPitchValues);
+        const normalisedPitchPoints = filteredPitchPoints.map((p) => ({
+            x: p.x,
+            y: ((p.y - minPitch) / (maxPitch - minPitch)) * (pitchNormMax - pitchNormMin) + pitchNormMin
+        })).sort((a, b) => a.x - b.x);
+        // Force in a zero point at the start if there is none.
+        if (normalisedPitchPoints.length >0 && normalisedPitchPoints[0].x !== 0) {
+            normalisedPitchPoints.unshift({ x: 0, y: normalisedPitchPoints[0].y });
+        }
+        setPitchDiscardedRatio(100 * (pitchPoints.length - normalisedPitchPoints.length) / pitchPoints.length);
+        setNormalisedPitchPoints(normalisedPitchPoints);
+
+        // Find pitch values for each keyframe
+        const allKeyframePosInS = beatAndOnsetKeyframes.map((kf) => kf.frame / fps);
+        const keyFramePitchVals = normalisedPitchPoints.length > 0 ? // WARNING: linear() seems to hang on empty arrays for 2nd or 3rd arg
+            linear(allKeyframePosInS, normalisedPitchPoints.map(p => p.x), normalisedPitchPoints.map(p => p.y))
+            : [];
+
+        // Add pitch values to keyframes
+        const keyframedPitchPoints: { x: number; y: number; }[] = [];
+        const newKeyframes = beatAndOnsetKeyframes.map((keyframe, index) => {
+            if (pitchTarget !== '(none)' && index < keyFramePitchVals.length && index < allKeyframePosInS.length) {
+                const keyframedPitchPoint = {
+                    x: allKeyframePosInS[index],
+                    y: keyFramePitchVals[index]
+                };
+                if (typeof keyframedPitchPoint.y === "number" && !isNaN(keyframedPitchPoint.y)) {
                     keyframedPitchPoints.push(keyframedPitchPoint);
                     return {
                         ...keyframe,
                         [pitchTarget]: keyframedPitchPoint.y,
-                        [pitchTarget+'_i']: pitchTargetInterpolation,
-                    }
-                } else {
-                    return keyframe;
+                        [pitchTarget + '_i']: pitchTargetInterpolation,
+                    };
                 }
-            })
-            .sort((a, b) => a.frame - b.frame);
-
-        setKeyframedPitchPointsForGraph(keyframedPitchPoints);
-
-        setKeyframes({
-            keyframes: newKeyframes
+            }
+            return keyframe;
         })
-
-    };
+            .sort((a, b) => a.frame - b.frame);
+        setKeyframedPitchPointsForGraph(keyframedPitchPoints);
+        return newKeyframes;
+    }
 
     function calculateIncluded(start: number, step: number, limit: number) {
         return Array.from({ length: limit }, (_, index) => start + index * step);
     }
+
+    function markerToKeyframe(marker : Marker, customField : string, customFieldValue : number, customFieldInterpolation : string, customInfo:string) {
+
+        const customFields = (customField === '(none)') ? {} : {
+            [customField]: customFieldValue,
+            [customField + "_i"]: customFieldInterpolation
+        };
+
+        return {
+            frame: Math.round(marker.time * fps),
+            info: marker.label + (customInfo.length > 0 ? ` ${customInfo}` : ''),
+            ...customFields
+        };
+    }    
 
     return <>
         <Header title="Parseq - audio analyser ALPHA" />
@@ -1151,17 +1176,5 @@ export default function Analyser() {
     </>;
 
 
-    function markerToKeyframe(marker : Marker, customField : string, customFieldValue : number, customFieldInterpolation : string, customInfo:string) {
 
-        const customFields = (customField === '(none)') ? {} : {
-            [customField]: customFieldValue,
-            [customField + "_i"]: customFieldInterpolation
-        };
-
-        return {
-            frame: Math.round(marker.time * fps),
-            info: marker.label + (customInfo.length > 0 ? ` ${customInfo}` : ''),
-            ...customFields
-        };
-    }
 }

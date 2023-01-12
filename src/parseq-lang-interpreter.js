@@ -37,6 +37,8 @@ export class InterpreterContext {
     this.allKeyframes = context.allKeyframes;
     this.FPS = context.FPS;
     this.BPM = context.BPM;
+    this.variableMap = context.variableMap;
+  
   }
 }
 
@@ -49,11 +51,10 @@ export function parse(input) {
 // Evaluation of parseq lang
 // Returns: a function that takes a frame number and returns a float value
 export function interpret(ast, context) {
-  //console.debug("Interpreting: ", ast, context);
-
+//console.debug("Interpreting: ", ast, context);
   if (typeof ast === 'number') {
     // Node was interpreted down to a constant.
-    return _ => ast
+    return _ => ast;
   }
 
   // TODO rewrite in Typescript to avoid this manual type checking nonsense.
@@ -96,7 +97,11 @@ export function interpret(ast, context) {
         case 'next_keyframe_value':
           return f => getNextKeyframeValue(context, f);
         default:
-          throw new Error(`Unrecognised variable ${ast.var_name.value} at ${ast.var_name.start.line}:${ast.var_name.start.col}`);
+          if (ast.var_name.value in context.variableMap) {
+            return _ => context.variableMap[ast.var_name.value];
+          } else {
+            throw new Error(`Unrecognised variable ${ast.var_name.value} at ${ast.var_name.start.line}:${ast.var_name.start.col}`);
+          }
       }
     case 'number_with_unit':
       switch (ast.unit) {

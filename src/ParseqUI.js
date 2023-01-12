@@ -723,10 +723,10 @@ const ParseqUI = (props) => {
       const filtered = sortedKeyframes.filter(kf => isValidNumber(kf[field]));
       
       // Add bookend keyframes if they have a value for this field (implying none were present in the original keyframes)
-      if (bookendKeyFrames.first[field]) {
+      if (isValidNumber(bookendKeyFrames.first[field])) {
         filtered.unshift(bookendKeyFrames.first);
       }
-      if (bookendKeyFrames.last[field]) {
+      if (isValidNumber(bookendKeyFrames.last[field])) {
         filtered.push(bookendKeyFrames.last);
       }
 

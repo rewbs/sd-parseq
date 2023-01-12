@@ -30,7 +30,7 @@ const Interpreter = () => {
     const fieldName = "denoise";
     const context = new InterpreterContext({
       fieldName: fieldName,
-      thisKf: 0,
+      activeKeyframe: 0,
       definedFrames: testKeyframes.filter(kf => typeof kf[fieldName] !== "undefined").map(kf => kf.frame),
       definedValues: testKeyframes.filter(kf => typeof kf[fieldName] !== "undefined").map(kf => kf[fieldName]),
       FPS: 20,
@@ -51,11 +51,11 @@ const Interpreter = () => {
 
     const frameFetcher = interpret(parsed, context)
     if (!frameFetcher) {
-      setOutputText(`Interpreting: ${input.current} for ${context.fieldName}:${context.thisKf} \n\nFailed, see console.`);
+      setOutputText(`Interpreting: ${input.current} for ${context.fieldName}:${context.activeKeyframe} \n\nFailed, see console.`);
       return;
     }
 
-    setOutputText(`Interpreting done  for ${context.fieldName}:${context.thisKf}. Ready to invoke: ${input.current}`);
+    setOutputText(`Interpreting done  for ${context.fieldName}:${context.activeKeyframe}. Ready to invoke: ${input.current}`);
 
     let result = [];
     let output_text = "";
@@ -68,7 +68,7 @@ const Interpreter = () => {
           "denoise": computedValue
         })
       } catch (error) {
-        setOutputText(`Evaluating ${input.current} for ${context.fieldName}:${context.thisKf} with frame ${frame}:\n\nError: ${error}`);
+        setOutputText(`Evaluating ${input.current} for ${context.fieldName}:${context.activeKeyframe} with frame ${frame}:\n\nError: ${error}`);
         console.error(error);
         return
       }

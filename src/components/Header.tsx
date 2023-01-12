@@ -40,9 +40,9 @@ export default function Header({ title }: MyProps) {
                 </h2>
                 <Box display='none'>
                     <Typography fontSize='0.4em'>
-                        <pre>App: {JSON.stringify(app, undefined, 2)}</pre>
-                        <pre>Analytics: {JSON.stringify(analytics, undefined, 2)}</pre>
-                        <pre>Auth: {JSON.stringify(auth, undefined, 2)}</pre>
+                        App: {JSON.stringify(app, undefined, 2)}
+                        Analytics: {JSON.stringify(analytics, undefined, 2)}
+                        Auth: {JSON.stringify(auth, undefined, 2)}
                     </Typography>
                 </Box>
             </Grid>

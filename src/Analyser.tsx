@@ -17,8 +17,6 @@ import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.
 import { faSearchMinus, faSearchPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 //@ts-ignore
-import Spline from 'cubic-spline';
-//@ts-ignore
 import { linear } from 'everpolate';
 
 import colormap from './data/hot-colormap.json';
@@ -478,7 +476,7 @@ export default function Analyser() {
                 ...existing || {},
                 x: p.x,
                 keyframed: p.y
-            });            
+            });
         }
         const dataToRender = Array.from(pointMap.values())
             .sort((a, b) => (a.x - b.x));

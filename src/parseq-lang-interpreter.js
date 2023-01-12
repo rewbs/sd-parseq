@@ -31,14 +31,13 @@ function step_interpolation(definedFrames, definedValues, frame) {
 export class InterpreterContext {
   constructor (context) {
     this.fieldName = context.fieldName;
-    this.thisKf = context.thisKf;
+    this.activeKeyframe = context.activeKeyframe;
     this.definedFrames = context.definedFrames;
     this.definedValues = context.definedValues;
     this.allKeyframes = context.allKeyframes;
     this.FPS = context.FPS;
     this.BPM = context.BPM;
     this.variableMap = context.variableMap;
-  
   }
 }
 
@@ -51,7 +50,8 @@ export function parse(input) {
 // Evaluation of parseq lang
 // Returns: a function that takes a frame number and returns a float value
 export function interpret(ast, context) {
-//console.debug("Interpreting: ", ast, context);
+  //console.debug("Interpreting: ", ast, context);
+
   if (typeof ast === 'number') {
     // Node was interpreted down to a constant.
     return _ => ast;
@@ -60,10 +60,10 @@ export function interpret(ast, context) {
   // TODO rewrite in Typescript to avoid this manual type checking nonsense.
   if (typeof context === "undefined"
     || typeof context.fieldName === "undefined"
-    || typeof context.thisKf === "undefined"
+    || typeof context.activeKeyframe === "undefined"
     || typeof context.definedFrames === "undefined"
     || typeof context.definedValues === "undefined") {
-    throw new Error(`Invalid context when interpreting ${ast}: ${context}`);
+    throw new Error(`Invalid context when interpreting: ${JSON.stringify(Object.keys(context))}`); 
   }
 
   // TODO replace this with proper polymorphic evaluatable AST nodes
@@ -85,10 +85,10 @@ export function interpret(ast, context) {
         case 'f':
           return f => f;
         case 'k': // offset since last active keyframe
-          return f => f - getActiveKeyframe(context, f);
-        case 'prev_keyframe':
-        case 'active_keyframe': // deprecated, use 'active_keyframe', which is a more accurate name.
-          return f => getActiveKeyframe(context, f);
+          return f => f - context.activeKeyframe;
+        case 'prev_keyframe': // deprecated, use 'active_keyframe', which is a more accurate name.
+        case 'active_keyframe': 
+          return _ => context.activeKeyframe;
         case 'next_keyframe':
           return f => getNextKeyframe(context, f);
         case 'prev_keyframe_value': // deprecated, use 'active_keyframe_value', which is a more accurate name.
@@ -211,6 +211,12 @@ export function interpret(ast, context) {
             return f => context.allKeyframes
               .filter((kf) => kf.frame <= f && kf.info?.match(pat(f)))
               .length
+          case 'info_match_last':
+            let patt = interpret(ast.arguments[0], context) // HACK, need to split this monster switch....
+            return f => context.allKeyframes
+              .findLast
+              .findLast((kf) => kf.frame <= f && kf.info?.match(patt(f)))
+              .frame             
           default:
             throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.start.line}:${ast.start.col}`);
         }

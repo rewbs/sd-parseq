@@ -1,4 +1,4 @@
-import { Alert, Box, Button, InputAdornment, InputLabel, MenuItem, Select, Slider, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, InputAdornment, MenuItem, Slider, Stack, TextField, Typography } from "@mui/material";
 import CssBaseline from '@mui/material/CssBaseline';
 import Grid from '@mui/material/Unstable_Grid2';
 import { PitchMethod } from "aubiojs";
@@ -10,16 +10,18 @@ import LinearWithValueLabel from "./components/LinearProgressWithLabel";
 //@ts-ignore
 import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
 //@ts-ignore
-import MarkersPlugin from "wavesurfer.js/src/plugin/markers";
+import MarkersPlugin, { Marker } from "wavesurfer.js/src/plugin/markers";
 //@ts-ignore
 import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
 
 import { faSearchMinus, faSearchPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+//@ts-ignore
+import { linear } from 'everpolate';
 
 import colormap from './data/hot-colormap.json';
 
-import { CartesianGrid, Label, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Label, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 
 import { Simplify } from 'simplify-ts';
 
@@ -121,29 +123,40 @@ export default function Analyser() {
     const wavesurferRef = useRef<WaveSurfer>();
     const [isPlaying, setIsPlaying] = useState(false);
     const [waveSurferZoom, setWaveSurferZoom] = useState(50);
+    const [playbackPos, setPlaybackPos] = useState<string>();
 
     const [keyframes, setKeyframes] = useState<object>({});
     const [keyframesString, setKeyframesString] = useState<string>("");
     const [fps, setFps] = useState<number>(parseInt(searchParams.get('fps') || "20"));
+    
     const [detectedBPMOverride, setDetectedBPMOverride] = useState<number>(0);
     const [firstBeatOffset, setFirstBeatOffset] = useState<number>(0);
+    
     const [beatSkip, setBeatSkip] = useState<number>(1);
+    const [beatStartFrom, setBeatStartFrom] = useState<number>(0);
     const [beatTarget, setBeatTarget] = useState<string>("noise");
     const [beatTargetValue, setBeatTargetValue] = useState<number>(0);
     const [beatTargetInterpolation, setBeatTargetInterpolation] = useState<string>("C");
+    const [beatInfo, setBeatInfo] = useState<string>("");
 
     const [onsetSkip, setOnsetSkip] = useState<number>(1);
+    const [onsetStartFrom, setOnsetStartFrom] = useState<number>(0);
     const [onsetTarget, setOnsetTarget] = useState<string>("zoom");
     const [onsetTargetValue, setOnsetTargetValue] = useState<number>(0);
     const [onsetTargetInterpolation, setOnsetTargetInterpolation] = useState<string>("C");
+    const [onsetInfo, setOnsetInfo] = useState<string>("");
 
+    const [pitchDiscardBelow, setPitchDiscardBelow] = useState<number>(0);
+    const [pitchDiscardAbove, setPitchDiscardAbove] = useState<number>(20000);
+    const [pitchOutlierThreshold, setPitchOutlierThreshold] = useState<number>(3);
+    const [pitchDiscardedRatio, setPitchDiscardedRatio] = useState<number>(0);
     const [pitchNormMin, setPitchNormMin] = useState<number>(0);
     const [pitchNormMax, setPitchNormMax] = useState<number>(1);
-    const [pitchOutlierThreshold, setPitchOutlierThreshold] = useState<number>(3);
     const [pitchTarget, setPitchTarget] = useState<string>("strength");
     const [pitchTargetInterpolation, setPitchTargetInterpolation] = useState<string>("C");
 
-    const [adjustedPitchPoints, setNormalisedPitchPoints] = useState<{ x: number, y: number }[]>([{ x: 0, y: 0 }]);
+    const [normalisedPitchPoints, setNormalisedPitchPoints] = useState<{ x: number, y: number }[]>([{ x: 0, y: 0 }]);
+    const [keyframedPitchPointsForGraph, setKeyframedPitchPointsForGraph] = useState<{ x: number, y: number }[]>([{ x: 0, y: 0 }]);
 
     const waveSurferPlugins = [
         {
@@ -169,6 +182,22 @@ export default function Analyser() {
         }
     ];
 
+    const updatePlaybackPos = useCallback(() => {
+        const lengthFrames = trackLength * fps;
+        const curPosSeconds = wavesurferRef.current?.getCurrentTime() || 0;
+        const curPosFrames = curPosSeconds*fps;
+        setPlaybackPos(`${curPosSeconds.toFixed(2)}/${trackLength.toFixed(2)}s (frame: ${curPosFrames.toFixed(0)}/${lengthFrames.toFixed(0)})`);
+    }, [trackLength, fps]);
+    
+    //Update wavesurfer's seek callback on track length change and fps change
+    useEffect(() => {
+        updatePlaybackPos();
+        wavesurferRef.current?.on("seek", updatePlaybackPos);
+        return () => {
+            wavesurferRef.current?.un("seek",updatePlaybackPos);
+        }
+    }, [updatePlaybackPos]);
+
     const handleWSMount = useCallback((waveSurfer: WaveSurfer) => {
         if (waveSurfer.markers) {
             waveSurfer.clearMarkers();
@@ -177,13 +206,17 @@ export default function Analyser() {
         wavesurferRef.current = waveSurfer;
 
         if (wavesurferRef.current) {
-
+            wavesurferRef.current.on("loading", (data) => {
+                console.log("Wavesurfer loading --> ", data);
+            });
             wavesurferRef.current.on("ready", () => {
                 console.log("WaveSurfer is ready");
             });
-
-            wavesurferRef.current.on("loading", (data) => {
-                console.log("Wavesurfer loading --> ", data);
+            wavesurferRef.current.on("error", (data) => {
+                console.error("WaveSurfer error: ", data);
+            });
+            wavesurferRef.current.on("finish", (data) => {
+                setIsPlaying(false);
             });
 
             if (window) {
@@ -212,7 +245,7 @@ export default function Analyser() {
 
             // Load audio file into wavesurfer visualisation
             wavesurferRef.current?.loadDecodedBuffer(newAudioBuffer);
-            wavesurferRef.current?.markers.clear();
+            wavesurferRef.current?.markers.clear();          
         } catch (e: any) {
             setStatusMessage(<Alert severity="error">Error loading file: {e.message}</Alert>)
             console.error(e);
@@ -273,6 +306,8 @@ export default function Analyser() {
         pitchRef.current.value = "";
         setStatusMessage(<Alert severity="success">Analysing...</Alert>);
         setPitchPoints([{ x: 0, y: 0 }]);
+        setNormalisedPitchPoints([]);
+        setKeyframedPitchPointsForGraph([]);
         wavesurferRef.current?.markers.clear();
 
         // Only use left channel for now.
@@ -305,7 +340,7 @@ export default function Analyser() {
                             color: "blue",
                             position: "bottom" as "bottom",
                             draggable: false,
-                            label: "beat " + (pos / secondsPerBeat).toFixed(0),
+                            label: `beat ${(pos/secondsPerBeat).toFixed(0)}`,
                             meta: "beat"
                         }
                         wavesurferRef.current.markers.add(newMarker);
@@ -330,7 +365,7 @@ export default function Analyser() {
                     color: "red",
                     position: "top" as "top",
                     draggable: true,
-                    label: "onset " + (onsetCount++),
+                    label: `onset ${onsetCount++}`,
                     meta: "onset"
                 }
                 wavesurferRef.current.markers.add(newMarker);
@@ -420,9 +455,9 @@ export default function Analyser() {
         const tolerance: number = pitchPoints.length < 4000 ? 0 : pitchPoints.length / 100000;
         const highQuality: boolean = true;
         const simplifiedPitchPoints = Simplify(pitchPoints, tolerance, highQuality);
-        const simplifiedNormalisedPitchPoints = Simplify(adjustedPitchPoints, tolerance, highQuality);
-
-        // Merge into a single array of points
+        const simplifiedNormalisedPitchPoints = Simplify(normalisedPitchPoints, tolerance, highQuality);
+        
+        // Merge into a single array of points for graphin.
         const pointMap = new Map();
         for (const p of simplifiedPitchPoints) {
             pointMap.set(p.x, { x: p.x, original: p.y });
@@ -435,70 +470,58 @@ export default function Analyser() {
                 normalised: p.y
             });
         }
-
-        console.log(pointMap);
-
-        // TODO need to merge these properly.
+        for (const p of keyframedPitchPointsForGraph) {
+            const existing = pointMap.get(p.x);
+            pointMap.set(p.x, {
+                ...existing || {},
+                x: p.x,
+                keyframed: p.y
+            });
+        }
         const dataToRender = Array.from(pointMap.values())
             .sort((a, b) => (a.x - b.x));
 
         return <LineChart data={dataToRender}>
-            <Line connectNulls={true} yAxisId="left" type="monotone" dataKey="original" stroke="#8884d8" dot={false} animationDuration={175} />
+            <Line unit="Hz" connectNulls={true} yAxisId="left" type="monotone" dataKey="original" stroke="#8884d8" dot={false} animationDuration={175} />
             <Line connectNulls={true} yAxisId="right" type="monotone" dataKey="normalised" stroke="#662255" dot={false} animationDuration={175} />
+            <Line connectNulls={true} yAxisId="right" type="monotone" dataKey="keyframed" stroke="#CC1133" animationDuration={175} />
             <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
             <XAxis
                 dataKey="x"
-                label={{ value: 'Time (s)', position: 'bottom', offset: -10 }}
+                label={{ value: 'Time (s)', fontSize:'0.75em', position: 'bottom', offset: -10 }}
                 tickFormatter={(tick) => ((typeof tick === "number") ? tick.toFixed(2) : tick)}
                 style={{ fontSize: "0.65em" }}
+                unit="s"
             />
             <YAxis
                 yAxisId="left"
                 style={{ fontSize: "0.65em" }}
             >
-                <Label angle={270} position='left' offset={-10} style={{ textAnchor: 'middle' }}>
-                    Pitch (Hz)
-                </Label>
+                <Label angle={270} position='left' offset={-15} style={{ fontSize:'0.75em', textAnchor: 'middle' }}>Pitch (Hz)</Label>
             </YAxis>
             <YAxis
                 yAxisId="right"
                 orientation="right"
                 style={{ fontSize: "0.65em" }}
             >
-                <Label angle={270} position='right' offset={10} style={{ textAnchor: 'middle' }}>
-                    Normalised value
-                </Label>
+                <Label angle={270} position='right' offset={-30} style={{ fontSize:'0.75em', textAnchor: 'middle' }}>Normalised</Label>
             </YAxis>
-            <Tooltip />
+            <Tooltip
+                formatter={(value, name, props) => typeof value === "number" ? value.toFixed(2) : value}
+                labelFormatter={(label:any) => typeof label === "number" ? `${label.toFixed(2)}s, frame: ${Math.round(label * fps)}` : label}
+             />
+            <Legend verticalAlign="bottom" height={36}/>
         </LineChart>
 
-    }, [adjustedPitchPoints, pitchPoints]);
+    }, [normalisedPitchPoints, pitchPoints, keyframedPitchPointsForGraph, fps]);
 
 
-    const generateKeyframes = useCallback(() => {
+    const generateKeyframes = () => {
         if (!tempoRef.current || !wavesurferRef.current) {
             return;
         }
 
         const bpm = detectedBPMOverride || parseInt(tempoRef.current.value);
-
-
-        // Normalise pitch points
-        const pitchValues = pitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
-        const minPitch = Math.min(...pitchValues);
-        const maxPitch = Math.max(...pitchValues);
-        const outliers = pitchOutlierThreshold >= 0 ? Stats.indexOfOutliers(pitchValues, Stats.outlierMethod.medianDiff, pitchOutlierThreshold) : [];
-
-        const normalisedPitchPoints = pitchPoints
-            .filter((p, index) => !outliers.includes(index))
-            .map((p) => ({
-                x: p.x,
-                y: ((p.y - minPitch) / (maxPitch - minPitch)) * (pitchNormMax - pitchNormMin) + pitchNormMin
-            }));
-
-        console.log("length comp", pitchValues.length, pitchPoints.length, normalisedPitchPoints.length);
-
-        setNormalisedPitchPoints(normalisedPitchPoints);
 
         // We want to remove beat markers only. The API doesn't allow us to do that cleanly
         // (we must remove by index but indices change on removal so iterating and removing is tricky)
@@ -522,65 +545,111 @@ export default function Analyser() {
         }
 
         // Re-insert onset markers
-        console.log("oldMarkers", oldMarkers);
         oldMarkers
             .filter((marker) => marker.label?.startsWith("onset"))
             .forEach((marker) => {
                 wavesurferRef?.current?.markers.add(marker);
             });
 
+        // Create keyframes for beat and onset events
         const beatKeyframes = wavesurferRef.current.markers.markers
             .filter((marker) => marker.label?.startsWith("beat"))
-            .filter((marker, index) => index % beatSkip === 0)
-            .map((marker, index) => {
-                return {
-                    frame: Math.round(marker.time * fps),
-                    info: marker.label,
-                    // TODO: this lookup is sketchy, should take weighted avg between 2 closest points.
-                    [pitchTarget]: normalisedPitchPoints.find((point) => point.x >= marker.time)?.y,
-                    [beatTarget]: beatTargetValue,
-                    [beatTarget + "_i"]: beatTargetInterpolation
-                }
-            });
-
+            .filter((marker, index) => (index-beatStartFrom) >= 0 && (index-beatStartFrom)%beatSkip === 0)
+            .map((marker) => markerToKeyframe(marker, beatTarget, beatTargetValue, beatTargetInterpolation, beatInfo));
         const onsetKeyframes = wavesurferRef.current.markers.markers
             .filter((marker) => marker.label?.startsWith("onset"))
-            .filter((marker, index) => index % onsetSkip === 0)
-            .map((marker, index) => {
-                return {
-                    frame: Math.round(marker.time * fps),
-                    info: marker.label,
-                    // TODO: this lookup is sketchy, should take weighted avg between 2 closest points.
-                    [pitchTarget]: normalisedPitchPoints.find((point) => point.x >= marker.time)?.y,
-                    [onsetTarget]: onsetTargetValue,
-                    [onsetTarget + "_i"]: onsetTargetInterpolation
-                }
-            })
+            .filter((marker, index) => (index-onsetStartFrom) >= 0 && (index-onsetStartFrom)%onsetSkip === 0)
+            .map((marker) => markerToKeyframe(marker, onsetTarget, onsetTargetValue, onsetTargetInterpolation, onsetInfo));
 
         // Combine onset and beat keyframes but merge frames with same frame number.
         // TODO: replace this with more generic merging function that supports 2> sources. Also, this duplicates merge logic in the main UI component.
-        const newKeyframes = beatKeyframes.map((beatKeyFrame) => {
-            let onsetKeyFrame = onsetKeyframes.find((candidateKeyFrame) => candidateKeyFrame.frame === beatKeyFrame.frame)
-            if (onsetKeyFrame) {
-                return {
-                    ...onsetKeyFrame,
-                    ...beatKeyFrame,
-                    info: beatKeyFrame.info + " / " + onsetKeyFrame.info
+        const beatAndOnsetKeyframes = beatKeyframes
+            .map((beatKeyFrame) => {
+                let onsetKeyFrame = onsetKeyframes.find((candidateKeyFrame) => candidateKeyFrame.frame === beatKeyFrame.frame)
+                if (onsetKeyFrame) {
+                    return {
+                        ...onsetKeyFrame,
+                        ...beatKeyFrame,
+                        info: beatKeyFrame.info + " / " + onsetKeyFrame.info
+                    }
+                } else {
+                    return beatKeyFrame;
                 }
-            } else {
-                return beatKeyFrame;
+            })
+            .concat(onsetKeyframes.filter((onsetKeyFrame) => !beatKeyframes.find((beatKeyFrame) => beatKeyFrame.frame === onsetKeyFrame.frame)));
+
+        // Combine pitch values into exising keyframe set
+        const newKeyframes = addPitchValuesToKeyframes(beatAndOnsetKeyframes);
+
+        setKeyframes({ keyframes: newKeyframes });
+    };
+
+    function addPitchValuesToKeyframes(beatAndOnsetKeyframes: { frame: number; info: string; }[]) {
+        const pitchValues = pitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
+        const outliers = pitchOutlierThreshold >= 0 ? Stats.indexOfOutliers(pitchValues, Stats.outlierMethod.medianDiff, pitchOutlierThreshold) : [];
+
+        const filteredPitchPoints = pitchPoints.filter((p, index) => !outliers.includes(index) && pitchDiscardBelow <= p.y && p.y <= pitchDiscardAbove);
+        const filteredPitchValues = filteredPitchPoints.map((p) => p.y).filter((p) => typeof p === "number" && !isNaN(p));
+        const minPitch = Math.min(...filteredPitchValues);
+        const maxPitch = Math.max(...filteredPitchValues);
+        const normalisedPitchPoints = filteredPitchPoints.map((p) => ({
+            x: p.x,
+            y: ((p.y - minPitch) / (maxPitch - minPitch)) * (pitchNormMax - pitchNormMin) + pitchNormMin
+        })).sort((a, b) => a.x - b.x);
+        // Force in a zero point at the start if there is none.
+        if (normalisedPitchPoints.length >0 && normalisedPitchPoints[0].x !== 0) {
+            normalisedPitchPoints.unshift({ x: 0, y: normalisedPitchPoints[0].y });
+        }
+        setPitchDiscardedRatio(100 * (pitchPoints.length - normalisedPitchPoints.length) / pitchPoints.length);
+        setNormalisedPitchPoints(normalisedPitchPoints);
+
+        // Find pitch values for each keyframe
+        const allKeyframePosInS = beatAndOnsetKeyframes.map((kf) => kf.frame / fps);
+        const keyFramePitchVals = normalisedPitchPoints.length > 0 ? // WARNING: linear() seems to hang on empty arrays for 2nd or 3rd arg
+            linear(allKeyframePosInS, normalisedPitchPoints.map(p => p.x), normalisedPitchPoints.map(p => p.y))
+            : [];
+
+        // Add pitch values to keyframes
+        const keyframedPitchPoints: { x: number; y: number; }[] = [];
+        const newKeyframes = beatAndOnsetKeyframes.map((keyframe, index) => {
+            if (pitchTarget !== '(none)' && index < keyFramePitchVals.length && index < allKeyframePosInS.length) {
+                const keyframedPitchPoint = {
+                    x: allKeyframePosInS[index],
+                    y: keyFramePitchVals[index]
+                };
+                if (typeof keyframedPitchPoint.y === "number" && !isNaN(keyframedPitchPoint.y)) {
+                    keyframedPitchPoints.push(keyframedPitchPoint);
+                    return {
+                        ...keyframe,
+                        [pitchTarget]: keyframedPitchPoint.y,
+                        [pitchTarget + '_i']: pitchTargetInterpolation,
+                    };
+                }
             }
-        }).concat(onsetKeyframes.filter((onsetKeyFrame) => !beatKeyframes.find((beatKeyFrame) => beatKeyFrame.frame === onsetKeyFrame.frame)))
-            .sort((a, b) => a.frame - b.frame);
-
-        setKeyframes({
-            keyframes: newKeyframes
+            return keyframe;
         })
+            .sort((a, b) => a.frame - b.frame);
+        setKeyframedPitchPointsForGraph(keyframedPitchPoints);
+        return newKeyframes;
+    }
 
-    }, [fps, detectedBPMOverride, firstBeatOffset, beatSkip, onsetSkip, pitchTarget,
-        pitchPoints, pitchNormMax, pitchNormMin, pitchOutlierThreshold, beatTarget,
-        onsetTarget, onsetTargetInterpolation, onsetTargetValue, beatTargetInterpolation, beatTargetValue,
-        trackLength]);
+    function calculateIncluded(start: number, step: number, limit: number) {
+        return Array.from({ length: limit }, (_, index) => start + index * step);
+    }
+
+    function markerToKeyframe(marker : Marker, customField : string, customFieldValue : number, customFieldInterpolation : string, customInfo:string) {
+
+        const customFields = (customField === '(none)') ? {} : {
+            [customField]: customFieldValue,
+            [customField + "_i"]: customFieldInterpolation
+        };
+
+        return {
+            frame: Math.round(marker.time * fps),
+            info: marker.label + (customInfo.length > 0 ? ` ${customInfo}` : ''),
+            ...customFields
+        };
+    }    
 
     return <>
         <Header title="Parseq - audio analyser ALPHA" />
@@ -691,16 +760,19 @@ export default function Analyser() {
                     onChange={(e) => setOnsetSilence(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
                 />
-                <InputLabel style={{ fontSize: '0.75em' }} id="onsetMethodLabel">Onset Method</InputLabel>
-                <Select
-                    size="small"
-                    labelId="onsetMethodLabel"
-                    id="onsetMethod"
-                    disabled={isAnalysing}
-                    inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                    value={onsetMethod}
-                    onChange={(e) => setOnsetMethod(e.target.value)}
-                >
+                <TextField
+                            fullWidth={true}
+                            size="small"
+                            style={{ paddingBottom: '10px' }}
+                            id="onsetMethod"
+                            label="Onset method"
+                            disabled={isAnalysing}
+                            InputLabelProps={{ shrink: true, }}
+                            SelectProps={{ style: {  fontSize: '0.75em' } }}
+                            value={onsetMethod}
+                            onChange={(e) => setOnsetMethod(e.target.value)}        
+                            select
+                        >    
                     <MenuItem value={"default"}>default</MenuItem>
                     <MenuItem value={"energy"}>energy</MenuItem>
                     <MenuItem value={"hfc"}>hfc</MenuItem>
@@ -710,7 +782,7 @@ export default function Analyser() {
                     <MenuItem value={"kl"}>kl</MenuItem>
                     <MenuItem value={"mkl"}>mkl</MenuItem>
                     <MenuItem value={"specflux"}>specflux</MenuItem>
-                </Select>
+                </TextField>   
             </Grid>
             <Grid xs={4}>
                 <AnalyserInput
@@ -731,15 +803,19 @@ export default function Analyser() {
                     onChange={(e) => setPitchTolerance(Number.parseFloat(e.target.value))}
                     disabled={true}
                 />
-                <InputLabel style={{ fontSize: '0.75em' }} id="pitchMethodLabel">Pitch Method</InputLabel>
-                <Select
-                    size="small"
-                    labelId="pitchMethodLabel"
-                    id="pitchMethod"
-                    disabled={isAnalysing}
-                    value={pitchMethod}
-                    onChange={(e) => setPitchMethod(e.target.value as PitchMethod)}
-                >
+               <TextField
+                            fullWidth={true}
+                            size="small"
+                            style={{ paddingBottom: '10px' }}
+                            id="pitchMethod"
+                            label="Pitch method"
+                            disabled={isAnalysing}
+                            InputLabelProps={{ shrink: true, }}
+                            SelectProps={{ style: {  fontSize: '0.75em' } }}
+                            value={pitchMethod}
+                            onChange={(e) => setPitchMethod(e.target.value as PitchMethod)}        
+                            select
+                        >   
                     <MenuItem value={"default"}>default</MenuItem>
                     <MenuItem value={"schmitt"}>schmitt</MenuItem>
                     <MenuItem value={"fcomb"}>fcomb</MenuItem>
@@ -747,7 +823,7 @@ export default function Analyser() {
                     <MenuItem value={"specacf"}>specacf</MenuItem>
                     <MenuItem value={"yin"}>yin</MenuItem>
                     <MenuItem value={"yinfft"}>yinfft</MenuItem>
-                </Select>
+                </TextField>
             </Grid>
             <Grid xs={4}>
                 <TextField
@@ -800,7 +876,7 @@ export default function Analyser() {
                     //value={pitchOutput?.toFixed(2)}
                     variant="outlined"
                     color="success"
-                    helperText={"Pitch points: " + pitchPoints.length + " (minus outliers: " + adjustedPitchPoints.length + ")"}
+                    helperText={"Pitch points: " + pitchPoints.length + " (minus outliers: " + normalisedPitchPoints.length + ")"}
                     inputRef={pitchRef}
                 />
                 {isAnalysing && <LinearWithValueLabel value={pitchProgress} />}
@@ -825,25 +901,26 @@ export default function Analyser() {
                 </WaveSurfer>
             </Grid>
             <Grid xs={12}>
-                <ResponsiveContainer width={"100%"} aspect={8}>
-                    {
-                        pitchGraph
-                    }
+                <ResponsiveContainer width={"100%"} aspect={4} maxHeight={200}>
+                    {pitchGraph}
                 </ResponsiveContainer>
             </Grid>
             <Grid xs={4}>
                 <Button disabled={!wavesurferRef.current?.isReady || isPlaying} variant="contained" onClick={(e) => {
-                    setIsPlaying(true)
-                    wavesurferRef.current?.play()
+                    setIsPlaying(true);
+                    updatePlaybackPos();
+                    wavesurferRef.current?.play();
                 }}>
                     ▶️ Play
                 </Button>
                 <Button disabled={!wavesurferRef.current?.isReady || !isPlaying} variant="contained" onClick={(e) => {
-                    setIsPlaying(false)
+                    setIsPlaying(false);
+                    updatePlaybackPos();
                     wavesurferRef.current?.pause()
                 }}>
                     ⏸️ Pause
                 </Button>
+                <div>{playbackPos}</div>
             </Grid>
             <Grid xs={4}>
                 <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
@@ -858,7 +935,7 @@ export default function Analyser() {
             </Grid>
             <Grid xs={4}>
                 <small>
-                    <div><Typography style={{ display: 'inline-block' }} color={"red"}>&diams;</Typography>: detected onset events</div>
+                    <div><Typography style={{ display: 'inline-block' }} color={"red"}>&diams;</Typography>: onset events (draggable)</div>
                     <div><Typography style={{ display: 'inline-block' }} color={"blue"}>&diams;</Typography>: beats</div>
                     <div><Typography style={{ display: 'inline-block' }} color={"lightblue"}>&diams;</Typography>: ajusted beats</div>
                 </small>
@@ -876,12 +953,29 @@ export default function Analyser() {
                 Pitch conversion settings
             </Grid>
             <Grid xs={4}>
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>Filtering:</Typography>
                 <AnalyserInput
                     label="Include every Nth beat"
                     value={beatSkip}
                     onChange={(e) => setBeatSkip(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
-                />                
+                    helperText={"Will include: " + calculateIncluded(beatStartFrom, beatSkip, 3).join(', ') + "..."}
+                />
+                <AnalyserInput
+                    label="Starting from"
+                    value={beatStartFrom}
+                    onChange={(e) => setBeatStartFrom(Number.parseInt(e.target.value))}
+                    disabled={isAnalysing}
+                />
+                <AnalyserInput
+                    label="Custom label"
+                    value={beatInfo}
+                    isString={true}
+                    onChange={(e) => setBeatInfo(e.target.value)}
+                    disabled={isAnalysing}
+                    helperText={`beat <N> ${beatInfo}`}
+                />
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>Correction:</Typography>
                 <AnalyserInput
                     label="BPM override"
                     value={detectedBPMOverride}
@@ -894,20 +988,24 @@ export default function Analyser() {
                     onChange={(e) => setFirstBeatOffset(Number.parseFloat(e.target.value))}
                     disabled={isAnalysing}
                 />
-                <InputLabel style={{ fontSize: '0.75em', paddingBottom: '5px' }} id="beatTargetLabel">Set value on beat keyframes:</InputLabel>
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>Set value on beat keyframes:</Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center' }}>
-                    <Select
-                        size="small"
-                        labelId="beatTargetLabel"
-                        id="beatTarget"
-                        disabled={isAnalysing}
-                        inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-
-                        value={beatTarget}
-                        onChange={(e) => setBeatTarget(e.target.value)}
-                    >
-                        {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
-                    </Select>
+                    <TextField
+                            size="small"
+                            style={{ paddingBottom: '10px' }}
+                            id="beatTarget"
+                            label="Field"
+                            disabled={isAnalysing}
+                            inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                            InputLabelProps={{ shrink: true, }}
+                            SelectProps={{ style: {  fontSize: '0.75em' } }}
+                            value={beatTarget}
+                            onChange={(e) => setBeatTarget(e.target.value)}
+                            select
+                        >
+                        <MenuItem key="(none)" value="(none)" style={{ fontSize: '0.75em', paddingBottom: '5px', paddingTop: '5px' }}>(none)</MenuItem>
+                        {interpolatable_fields.map((field) => <MenuItem key={field} value={field} style={{ fontSize: '0.75em', paddingBottom: '5px', paddingTop: '5px' }}>{field}</MenuItem>)}
+                    </TextField>
                     <AnalyserInput
                         label="Value"
                         value={beatTargetValue}
@@ -924,25 +1022,46 @@ export default function Analyser() {
                 </Box>
             </Grid>
             <Grid xs={4}>
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>Filtering:</Typography>
                 <AnalyserInput
                     label="Include every Nth event"
                     value={onsetSkip}
                     onChange={(e) => setOnsetSkip(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
+                    helperText={"Will include: " + calculateIncluded(onsetStartFrom, onsetSkip, 3).join(', ') + "..."}
                 />
-                <InputLabel style={{ fontSize: '0.75em', paddingBottom: '5px' }} id="onsetTargetLabel">Set value on onset keyframes:</InputLabel>
+                <AnalyserInput
+                    label="Starting from"
+                    value={onsetStartFrom}
+                    onChange={(e) => setOnsetStartFrom(Number.parseInt(e.target.value))}
+                    disabled={isAnalysing}
+                />
+                <AnalyserInput
+                    label="Custom label"
+                    value={onsetInfo}
+                    isString={true}
+                    onChange={(e) => setOnsetInfo(e.target.value)}
+                    disabled={isAnalysing}
+                    helperText={`onset <N> ${onsetInfo}`}
+                />
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>Set value on onset keyframes:</Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center' }}>
-                    <Select
-                        size="small"
-                        labelId="beatTargetLabel"
-                        id="beatTarget"
-                        disabled={isAnalysing}
-                        inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                        value={onsetTarget}
-                        onChange={(e) => setOnsetTarget(e.target.value)}
-                    >
+                    <TextField
+                            size="small"
+                            style={{ paddingBottom: '10px' }}
+                            id="onsetTarget"
+                            label="Field"
+                            disabled={isAnalysing}
+                            inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                            InputLabelProps={{ shrink: true, }}
+                            SelectProps={{ style: {  fontSize: '0.75em' } }}
+                            value={onsetTarget}
+                            onChange={(e) => setOnsetTarget(e.target.value)}
+                            select
+                        >
+                        <MenuItem key="(none)" value="(none)">(none)</MenuItem>
                         {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
-                    </Select>
+                    </TextField>
                     <AnalyserInput
                         label="Value"
                         value={onsetTargetValue}
@@ -959,7 +1078,30 @@ export default function Analyser() {
                 </Box>
             </Grid>
             <Grid xs={4}>
-                <InputLabel style={{ fontSize: '0.75em', paddingBottom: '5px' }} id="Normalisation">Normalisation:</InputLabel>
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>
+                    Filtering: {pitchDiscardedRatio ? `(discarded ${pitchDiscardedRatio.toFixed(0)}% of pitch points)` : ''}
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center' }}>
+                    <AnalyserInput
+                        label="Outlier tolerance"
+                        value={pitchOutlierThreshold}
+                        onChange={(e) => setPitchOutlierThreshold(Number.parseFloat(e.target.value))}
+                        disabled={isAnalysing}
+                    />
+                    <AnalyserInput
+                        label="Discard below Hz"
+                        value={pitchDiscardBelow}
+                        onChange={(e) => setPitchDiscardBelow(Number.parseInt(e.target.value))}
+                        disabled={isAnalysing}
+                    />
+                    <AnalyserInput
+                        label="Discard above Hz"
+                        value={pitchDiscardAbove}
+                        onChange={(e) => setPitchDiscardAbove(Number.parseInt(e.target.value))}
+                        disabled={isAnalysing}
+                    />
+                </Box>
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>Normalisation:</Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center' }}>
                     <AnalyserInput
                         label="min"
@@ -974,27 +1116,24 @@ export default function Analyser() {
                         disabled={isAnalysing}
                     />
                 </Box>
-                <AnalyserInput
-                    label="Outlier tolerance"
-                    value={pitchOutlierThreshold}
-                    onChange={(e) => setPitchOutlierThreshold(Number.parseFloat(e.target.value))}
-                    disabled={isAnalysing}
-                    helperText="Higher => accept more outliers; -1 to disable"
-                />
-
-                <InputLabel style={{ fontSize: '0.75em', paddingBottom: '5px' }} id="pitchTargetLabel">Assign pitch value to:</InputLabel>
+                <Typography style={{ fontSize: '0.75em', paddingBottom: '10px', fontWeight: 'bold' }}>Set normalised pitch value on all keyframes:</Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center' }}>
-                    <Select
-                        size="small"
-                        labelId="pitchTargetLabel"
-                        id="pitchTarget"
-                        disabled={isAnalysing}
-                        inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em', } }}
-                        value={pitchTarget}
-                        onChange={(e) => setPitchTarget(e.target.value)}
-                    >
+                    <TextField
+                            size="small"
+                            style={{ paddingBottom: '10px' }}
+                            id="pitchTarget"
+                            label="Field"
+                            disabled={isAnalysing}
+                            inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                            InputLabelProps={{ shrink: true, }}
+                            SelectProps={{ style: {  fontSize: '0.75em' } }}
+                            value={pitchTarget}
+                            onChange={(e) => setPitchTarget(e.target.value)}
+                            select
+                        >
+                        <MenuItem key="(none)" value="(none)">(none)</MenuItem>
                         {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
-                    </Select>
+                    </TextField>
                     <AnalyserInput
                         label="Interpolation"
                         isString={true}
@@ -1011,7 +1150,7 @@ export default function Analyser() {
                 <AnalyserInput
                     label="FPS"
                     value={fps}
-                    onChange={(e) => setFps(Number.parseInt(e.target.value))}
+                    onChange={(e) => {setFps(Number.parseInt(e.target.value));}}
                     disabled={isAnalysing}
                 />
             </Grid>
@@ -1033,5 +1172,7 @@ export default function Analyser() {
             </Grid>
         </Grid>
     </>;
+
+
 
 }

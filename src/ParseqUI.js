@@ -26,7 +26,8 @@ import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager'
 import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import { UserAuthContextProvider } from "./UserAuthContext";
-import { fieldNametoRGBa, frameToBeats, frameToSeconds } from './utils';
+import { fieldNametoRGBa, frameToBeats, frameToSeconds, isValidNumber } from './utils';
+import { deepCopy } from '@firebase/util';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -90,7 +91,8 @@ const ParseqUI = (props) => {
       possiblyIncompleteContent.prompts = default_prompts;
     }
     if (!possiblyIncompleteContent.keyframes) {
-      possiblyIncompleteContent.keyframes = default_keyframes;
+      // Deep copy the default keyframes so that we can still refer to the original defaults in the future (e.g. when missing a field in firs or last keyframe)
+      possiblyIncompleteContent.keyframes = deepCopy(default_keyframes);
     }
     if (!possiblyIncompleteContent.displayFields) {
       possiblyIncompleteContent.displayFields = default_displayFields;
@@ -193,7 +195,7 @@ const ParseqUI = (props) => {
     resizable: true,
     tooltipField: 'frame',
     tooltipComponent: GridTooltip,
-    tooltipComponentParams: { getBpm: _ => options.bpm, getFps: _ => options.output_fps },
+    tooltipComponentParams: { getBpm: _ => options?.bpm, getFps: _ => options?.output_fps },
     suppressKeyboardEvent: (params) => {
       return params.event.ctrlKey && (
         params.event.key === 'a'
@@ -340,7 +342,7 @@ const ParseqUI = (props) => {
         return {
           ...existingKeyframe,
           ...incomingKeyframe,
-          "info": "Merged: " + existingKeyframe.info ? existingKeyframe.info : "(?) + " + incomingKeyframe.info ? incomingKeyframe.info : "(?)",
+          "info": "Merged: " + (existingKeyframe.info ? existingKeyframe.info : "(?)") + " + " + (incomingKeyframe.info ? incomingKeyframe.info : "(?)"),
         };
       } else {
         return incomingKeyframe;
@@ -690,66 +692,97 @@ const ParseqUI = (props) => {
       console.timeEnd('Render');
       return;
     }
-    let firstKeyFrame = keyframes[0];
-    let lastKeyFrame = keyframes[keyframes.length - 1];
-    let missingFieldsFirst = [];
-    let missingFieldsLast = [];
+    let sortedKeyframes = keyframes.sort((a, b) => a.frame - b.frame);    
+    let firstKeyFrame = sortedKeyframes[0];
+    let lastKeyFrame = sortedKeyframes[keyframes.length - 1];
+
+    // Create implicit bookend keyframes to use any first or last values are missing.
+    const bookendKeyFrames = { first: { frame: firstKeyFrame.frame }, last: { frame: lastKeyFrame.frame } };
     (interpolatable_fields.concat(['frame'])).forEach((field) => {
-      if (lastKeyFrame[field] === undefined || isNaN(lastKeyFrame[field]) || lastKeyFrame[field] === "") {
-        missingFieldsLast.push(field)
+      let firstKeyFrame = sortedKeyframes[0];
+      if (!isValidNumber(firstKeyFrame[field])) {
+        const firstKeyFrameWithValueForField = sortedKeyframes.find((kf) => isValidNumber(kf[field]));
+        const substituteValue = firstKeyFrameWithValueForField ? firstKeyFrameWithValueForField[field] : default_keyframes[0][field];
+        console.log(`No value found for ${field} on the first keyframe, using: ${substituteValue}`);
+        bookendKeyFrames.first = { ...bookendKeyFrames.first, [field]: substituteValue };
       }
-      if (firstKeyFrame[field] === undefined || isNaN(firstKeyFrame[field]) || firstKeyFrame[field] === "") {
-        missingFieldsFirst.push(field)
+      if (!isValidNumber(lastKeyFrame[field])) {
+        const lastKeyFrameWithValueForField = sortedKeyframes.findLast((kf) => isValidNumber(kf[field]));
+        const substituteValue = lastKeyFrameWithValueForField ? lastKeyFrameWithValueForField[field] : default_keyframes[0][field];
+        console.log(`No value found for ${field} on the final keyframe, using: ${substituteValue}`);
+        bookendKeyFrames.last = { ...bookendKeyFrames.last, [field]: substituteValue };
       }
     });
-    if (missingFieldsFirst.length > 0 || missingFieldsLast.length > 0) {
-      setRenderedErrorMessage(`First and last frames must have values for all fields, else interpolation cannot be calculated. Missing from first frame: ${missingFieldsFirst}. Missing from last frame: ${missingFieldsLast}`);
-      console.timeEnd('Render');
-      return;
-    }
 
     // Calculate actual rendered value for all interpolatable fields
     var rendered_frames = [];
     var all_frame_numbers = getAllFrameNumbersToRender();
     interpolatable_fields.forEach((field) => {
-      const filtered = keyframes.filter(kf => !(kf[field] === undefined || isNaN(kf[field]) || kf[field] === ""))
+      
+      // Get all keyframes that have a value for this field
+      const filtered = sortedKeyframes.filter(kf => isValidNumber(kf[field]));
+      
+      // Add bookend keyframes if they have a value for this field (implying none were present in the original keyframes)
+      if (isValidNumber(bookendKeyFrames.first[field])) {
+        filtered.unshift(bookendKeyFrames.first);
+      }
+      if (isValidNumber(bookendKeyFrames.last[field])) {
+        filtered.push(bookendKeyFrames.last);
+      }
+
       const definedFrames = filtered.map(kf => kf.frame);
-      const definedValues = filtered.map(kf => Number(kf[field]))
+      const definedValues = filtered.map(kf => Number(kf[field]));
       let lastInterpolator = f => defaultInterpolation(definedFrames, definedValues, f);
 
+      let parseResult;
+      let activeKeyframe = 0;
+      let prev_computed_value = 0;
       all_frame_numbers.forEach((frame, i) => {
 
         let declaredRow = gridRef.current.api.getRowNode(frameToRowId(frame));
         let interpolator = lastInterpolator;
-
+        
+        // Is there a new interpolation function to parse?
         if (declaredRow !== undefined) {
+          activeKeyframe = frame;
           var toParse = declaredRow.data[field + '_i'];
-          if (toParse) {
-            let result;
+          if (toParse) {  
             try {
-              result = parse(toParse);
+              parseResult = parse(toParse);
             } catch (error) {
               console.error(error);
               setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
-            }
-            var context = new InterpreterContext({
-              fieldName: field,
-              thisKf: frame,
-              definedFrames: definedFrames,
-              definedValues: definedValues,
-              FPS: options.output_fps,
-              BPM: options.bpm,
-            });
-
-            try {
-              interpolator = interpret(result, context);
-            } catch (error) {
-              console.error(error);
-              setRenderedErrorMessage(`Error interpreting interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
-              interpolator = lastInterpolator;
+              // TODO: consider aborting if there was an issue.
             }
           }
         }
+
+        // Use the last successfully parser result to determine the interpolation function.
+        if (parseResult) {
+          var context = new InterpreterContext({
+            fieldName: field,
+            activeKeyframe: activeKeyframe,
+            definedFrames: definedFrames,
+            definedValues: definedValues,
+            allKeyframes: keyframes,
+            FPS: options.output_fps,
+            BPM: options.bpm,
+            variableMap: {
+              prev_computed_value,
+            }
+          });
+          try {
+            // New: redetermine the function for every row, using a new context. 
+            // Increases CPU and memory usage but allows for different context variables on each invocation, e.g. prev_computed_value.
+            interpolator = interpret(parseResult, context);
+          } catch (error) {
+            console.error(error);
+            setRenderedErrorMessage(`Error interpreting interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
+            interpolator = lastInterpolator;
+          }
+        }
+
+        // invoke the interpolation function
         let computed_value = 0;
         try {
           computed_value = interpolator(frame)
@@ -764,24 +797,49 @@ const ParseqUI = (props) => {
           [field]: computed_value
         }
         lastInterpolator = interpolator;
+        prev_computed_value = computed_value;
       });
     });
 
     // Calculate rendered prompt based on prompts and weights
     all_frame_numbers.forEach((frame) => {
 
-      let positive_prompt = prompts.positive
-        .replace(/\$\{(.*?)\}/g, (_, weight) => rendered_frames[frame][weight])
-        .replace(/(\n)/g, " ");
-      let negative_prompt = prompts.negative
-        .replace(/\$\{(.*?)\}/g, (_, weight) => rendered_frames[frame][weight])
-        .replace(/(\n)/g, " ");
+      let variableMap = {};
+      interpolatable_fields.forEach((field) => {
+        variableMap= {
+            ...variableMap || {},
+            [field]: rendered_frames[frame][field]
+        }
+      });
+      
+      var context = new InterpreterContext({
+        fieldName: "prompt",
+        activeKeyframe: frame,
+        definedFrames: keyframes.map(kf => kf.frame),
+        definedValues: [],
+        FPS: options.output_fps,
+        BPM: options.bpm,
+        allKeyframes: keyframes,
+        variableMap: variableMap
+      });
 
-      rendered_frames[frame] = {
-        ...rendered_frames[frame] || {},
-        positive_prompt: positive_prompt,
-        negative_prompt: negative_prompt,
-        deforum_prompt: `${positive_prompt} --neg ${negative_prompt}`
+      try {
+        let positive_prompt = prompts.positive
+          .replace(/\$\{(.*?)\}/g, (_, weight) => { const result = interpret(parse(weight), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/(\n)/g, " ");
+        let negative_prompt = prompts.negative
+          .replace(/\$\{(.*?)\}/g, (_, weight) =>  { const result = interpret(parse(weight), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/(\n)/g, " ");
+
+        rendered_frames[frame] = {
+          ...rendered_frames[frame] || {},
+          positive_prompt: positive_prompt,
+          negative_prompt: negative_prompt,
+          deforum_prompt: `${positive_prompt} --neg ${negative_prompt}`
+        }
+      } catch (error) {
+        console.error(error);
+        setRenderedErrorMessage(`Error parsing prompt weight value: ` + error);
       }
 
     });
@@ -849,7 +907,7 @@ const ParseqUI = (props) => {
       options
     });
     console.timeEnd('Render')
-  }, [keyframes, prompts, options, getPersistableState, interpolatable_fields, frameToRowId]);
+  }, [keyframes, prompts, options, getPersistableState, interpolatable_fields, frameToRowId, default_keyframes]);
 
   const renderButton = useMemo(() =>
     <Button size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
@@ -860,7 +918,7 @@ const ParseqUI = (props) => {
     <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
       <AgGridReact
         ref={gridRef}
-        rowData={default_keyframes}
+        rowData={deepCopy(default_keyframes)}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         onCellValueChanged={onCellValueChanged}
@@ -1169,7 +1227,7 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <h3>Keyframes for parameter flow</h3>
-        {optionsUI}
+        {optionsUI} 
         <small>Show fields:</small>
         {fieldSelector}
         {grid}
@@ -1232,3 +1290,4 @@ const ParseqUI = (props) => {
 };
 
 export default ParseqUI;
+

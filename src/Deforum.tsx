@@ -37,7 +37,12 @@ const interpolatable_fields = [
   'antiblur_kernel',
   'antiblur_sigma',
   'antiblur_amount',
-  'antiblur_threshold'
+  'antiblur_threshold',
+  'hybrid_comp_alpha',
+  'hybrid_comp_mask_blend_alpha',
+  'hybrid_comp_mask_contrast',
+  'hybrid_comp_mask_auto_contrast_cutoff_low',
+  'hybrid_comp_mask_auto_contrast_cutoff_high'    
 ];
 
 const settings_3d_only = [
@@ -62,9 +67,9 @@ const settings_2d_only = [
 const default_keyframes = [
   {
     "frame": 0,
-    "seed": 909,
+    "seed": 303,
     "seed_i": "L",
-    "scale": 20,
+    "scale": 7,
     "noise": 0.08,
     "noise_i": "L + pulse(pw=1,p=1b,a=0.04)",    
     "strength": 0.6,
@@ -102,7 +107,12 @@ const default_keyframes = [
     'antiblur_kernel':5,
     'antiblur_sigma':1,
     'antiblur_amount':0.2,
-    'antiblur_threshold':0
+    'antiblur_threshold':0,
+    'hybrid_comp_alpha':1,
+    'hybrid_comp_mask_blend_alpha':0.5,
+    'hybrid_comp_mask_contrast':1,
+    'hybrid_comp_mask_auto_contrast_cutoff_low':0,
+    'hybrid_comp_mask_auto_contrast_cutoff_high':100,
   },
   {
     "frame": 40,

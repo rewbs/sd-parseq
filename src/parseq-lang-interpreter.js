@@ -15,6 +15,8 @@ function linear_interpolation(definedFrames, definedValues, frame) {
 }
 
 function cubic_spline_interpolation(definedFrames, definedValues, frame) {
+  // TODO: this is expensive and we recompute it unnecessarily. Consider caching the spline.
+  // We don't currently have a natural scope/context in which to cache it. Consider adding one in next refactor.
   const spline = new Spline(definedFrames, definedValues);
   return spline.at(frame);
 }
@@ -151,14 +153,17 @@ export function interpret(ast, context) {
           let vr2 = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], 0), context);
           return f => toFixedNumber(vr1(f), vr2(f));
         case 'slide':
-            let target = interpret(named_argument_extractor(ast.arguments, ['target', 'to' , 't'], null), context);
+            let start = interpret(named_argument_extractor(ast.arguments, ['start', 'from' , 'f'], getActiveKeyframeValue(context, context.activeKeyframe)), context);
+            let end = interpret(named_argument_extractor(ast.arguments, ['end', 'to' , 't'], getActiveKeyframeValue(context, context.activeKeyframe)), context);
             let span = interpret(named_argument_extractor(ast.arguments, ['span', 'in', 's'], null), context);              
             return f => {
-                if (f - getActiveKeyframe(context, f) >= span(f)) {
-                  return target(f);
+                const distanceFromStart = f-context.activeKeyframe;
+                if (distanceFromStart >= span(f)) {
+                  return end(f);
                 } else {
-                  const slope = (target(f) - getActiveKeyframeValue(context, f))/span(f);
-                  return getActiveKeyframeValue(context, f) + slope * (f - getActiveKeyframe(context, f));
+                  const startPos = start(f);
+                  const slope = (end(f) - startPos)/span(f);
+                  return startPos + slope * distanceFromStart;
                 }
             }          
         default:

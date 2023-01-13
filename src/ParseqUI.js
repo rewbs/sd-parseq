@@ -716,6 +716,7 @@ const ParseqUI = (props) => {
 
     // Calculate actual rendered value for all interpolatable fields
     var rendered_frames = [];
+    var previousContext = {};
     var all_frame_numbers = getAllFrameNumbersToRender();
     interpolatable_fields.forEach((field) => {
       
@@ -757,9 +758,10 @@ const ParseqUI = (props) => {
           }
         }
 
-        // Use the last successfully parser result to determine the interpolation function.
+        // Use the last successfully parsed result to determine the interpolation function.
         if (parseResult) {
           var context = new InterpreterContext({
+            ...previousContext, //ensure any additional values added to the context during compilation are carried over.
             fieldName: field,
             activeKeyframe: activeKeyframe,
             definedFrames: definedFrames,
@@ -1043,6 +1045,7 @@ const ParseqUI = (props) => {
     style={{ marginBottom: '10px', marginLeft: '10px' }}
     input={<OutlinedInput id="select-display-fields" label="Chip" />}
     size="small"
+    SelectProps={{ style: {  fontSize: '0.75em' } }}
     renderValue={(selected) => (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.1 }}>
         {selected.map((value) => (
@@ -1061,12 +1064,7 @@ const ParseqUI = (props) => {
     }}
   >
     {interpolatable_fields.map((field) => (
-      <MenuItem
-        key={field}
-        value={field}
-      >
-        {field}
-      </MenuItem>
+      <MenuItem key={field} value={field} style={{ fontSize: '1em' }}>{field}</MenuItem>
     ))}
   </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields])
 

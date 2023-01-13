@@ -219,7 +219,6 @@ export function interpret(ast, context) {
           case 'info_match_last':
             let patt = interpret(ast.arguments[0], context) // HACK, need to split this monster switch....
             return f => context.allKeyframes
-              .findLast
               .findLast((kf) => kf.frame <= f && kf.info?.match(patt(f)))
               .frame             
           default:

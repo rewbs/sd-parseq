@@ -66,7 +66,7 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 <img width="300" alt="image" src="https://i.imgur.com/YqJZrCZ.png">
 
-* New functions and variables available in your formula: `prev_calculated_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
+* New functions and variables available in your formula: `prev_computed_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
 
 <img width="300" alt="image" src="https://i.imgur.com/zx4MKhm.jpg">
 
@@ -209,6 +209,7 @@ Lastly, Parseq can generate keyframes and values directly from an audio file. Se
 | `next_keyframe`  	| The frame number of the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APZUpufADXZJP55Z0jsDzFYZxvo-XKwPcicB/image.png" />  |
 | `active_keyframe_value`  	| The value set at the currently active keyframe for this field. Equivalent to `S` (step interpolation). 	| <img width="360" src="https://www.evernote.com/l/APZv89DKzZpPna9s8O1w-5bYeCobsYl9GiEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 | `next_keyframe_value`  	| The value set at the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APakRylM_mdLcK-MZcKm4wmEL7AEJfuzddoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
+| `prev_computed_value`  	| The value calculated at the previous frame for this field, or 0 for the first frame. 	| <img src="https://www.evernote.com/l/APaAsSyhbg5AZofq4JLUNFHLvY0N7NjwjEEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 
 #### Functions
 

@@ -742,10 +742,9 @@ const ParseqUI = (props) => {
 
         let declaredRow = gridRef.current.api.getRowNode(frameToRowId(frame));
         let interpolator = lastInterpolator;
-        
+
         // Is there a new interpolation function to parse?
         if (declaredRow !== undefined) {
-          activeKeyframe = frame;
           var toParse = declaredRow.data[field + '_i'];
           if (toParse) {  
             try {
@@ -756,6 +755,10 @@ const ParseqUI = (props) => {
               // TODO: consider aborting if there was an issue.
             }
           }
+        }
+
+        if (definedFrames.includes(frame)) {
+          activeKeyframe = frame;
         }
 
         // Use the last successfully parsed result to determine the interpolation function.
@@ -1229,29 +1232,31 @@ const ParseqUI = (props) => {
         <small>Show fields:</small>
         {fieldSelector}
         {grid}
-        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
-        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenMergeKeyframesDialog}>🌪️ Merge keyframes</Button>
-        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
-        {renderButton}
-        <FormControlLabel control={
-          <Checkbox defaultChecked={true}
-            id={"auto_render"}
-            onChange={(e) => setAutoRender(e.target.checked)}
-          />}
-          style={{ marginLeft: '0.75em' }}
-          label={<Box component="div" fontSize="0.75em">Render on every edit</Box>}
-        />
-        <FormControlLabel control={
-          <Checkbox defaultChecked={false}
-            id={"auto_render"}
-            onChange={(e) => setAutoUpload(e.target.checked)}
-          />}
-          style={{ marginLeft: '0.75em' }}
-          label={<Box component="div" fontSize="0.75em">Upload output after every render</Box>}
-        />
-        {addRowDialog}
-        {mergeKeyframesDialog}
-        {deleteRowDialog}
+        <span id='gridControls'>
+          <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
+          <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenMergeKeyframesDialog}>🌪️ Merge keyframes</Button>
+          <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
+          {renderButton}
+          <FormControlLabel control={
+            <Checkbox defaultChecked={true}
+              id={"auto_render"}
+              onChange={(e) => setAutoRender(e.target.checked)}
+            />}
+            style={{ marginLeft: '0.75em' }}
+            label={<Box component="div" fontSize="0.75em">Render on every edit</Box>}
+          />
+          <FormControlLabel control={
+            <Checkbox defaultChecked={false}
+              id={"auto_render"}
+              onChange={(e) => setAutoUpload(e.target.checked)}
+            />}
+            style={{ marginLeft: '0.75em' }}
+            label={<Box component="div" fontSize="0.75em">Upload output after every render</Box>}
+          />
+          {addRowDialog}
+          {mergeKeyframesDialog}
+          {deleteRowDialog}
+        </span>
       </Grid>
       <Grid xs={12}>
         <h3>Visualised parameter flow</h3>
@@ -1289,3 +1294,7 @@ const ParseqUI = (props) => {
 
 export default ParseqUI;
 
+/*
+// Prep for screenshot:
+['p', 'h3', '#gridControls', 'label'].forEach((n)=>$$(n).forEach((e) => e.style.display='none')); $$('.ag-theme-alpine')[0].style.height='110px'
+*/

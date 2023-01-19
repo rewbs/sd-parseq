@@ -218,9 +218,11 @@ export function interpret(ast, context) {
               .length
           case 'info_match_last':
             let patt = interpret(ast.arguments[0], context) // HACK, need to split this monster switch....
-            return f => context.allKeyframes
+            return f => {
+              const lastMatch = context.allKeyframes
               .findLast((kf) => kf.frame <= f && kf.info?.match(patt(f)))
-              .frame             
+              return lastMatch ? lastMatch.frame : -1;
+            }
           default:
             throw new Error(`Unrecognised function ${ast.fun_name.value} at ${ast.start.line}:${ast.start.col}`);
         }
@@ -254,8 +256,7 @@ export function interpret(ast, context) {
 }
 
 function getActiveKeyframe(context, f) {
-  let idx = context.definedFrames.findLastIndex(v => v <= f);
-  return idx !== -1 ? context.definedFrames[idx] : context.definedFrames.at(0);
+  return context.activeKeyframe;
 }
 
 function getNextKeyframe(context, f) {

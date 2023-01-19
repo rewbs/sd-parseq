@@ -14,40 +14,66 @@
 
 ## What is this?
 
-For context: 
+For context:
 
 * [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool.
 * [Deforum](https://github.com/deforum-art/deforum-stable-diffusion) is a notebook-based UI for Stable Diffusion that is geared towards creating videos.
 * [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is a Web UI for Stable Diffusion (but not for Deforum).
 * The [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui) is an extention to the Automatic1111 Web UI that integrates the functionality of the Deforum notebook.
 
-With all that defined, Parseq (this tool) is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
+Parseq (this tool) is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
 <img  width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213244-b768437a-a260-4448-b8c1-3a832091241b.png">
 
 You can jump straight into the UI here: https://sd-parseq.web.app/ . 
 
-For now Parseq is fully front-end and stores all state in browser local storage (there is no backend).
+For now Parseq is almost entirely front-end and stores all state in browser local storage by default. Signed-in users can optionally upload their work from the UI for easier sharing.
 
 ## What's new?
 
-* 🎉 You no longer need to use a branch of the A1111 Deforum extension. Parseq integration is now avialable in the official release. 🎉* 
+### Version 0.1.22
 
-### Version 0.1.4
+* Added an audio analyser. Generate keyframes and values based on beats, events and pitch of an input audio file. Experimental! Details in documentation.
+
+<img width="300" alt="image" src="https://i.imgur.com/MBSrpQV.png">
+
+
+* Added an "info" field on keyframes so you can keep track of what each keyframe represents.
+
+<img width="300" alt="image" src="https://i.imgur.com/YqJZrCZ.png">
+
+* New functions and variables available in your formula: `prev_calculated_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
+
+<img width="300" alt="image" src="https://i.imgur.com/zx4MKhm.jpg">
+
+* Blank values are now permitted on the first and last frames (will use closest value or default value if none specified).
+* Oscillator functions can now all take a `limit` (`li`) argument to limit the number of repeated periods.
+* Support for new Deforum A1111 schedules (antiblur, hybrid comp). Sampler schedule is not available for now in Parseq (but you can use it directly in Deforum alongside your Parseq manifest).
+
+
+
+
+
+### Version 0.1.14
 
 * If you sign in at the top right (only Google sign-in supported for now, raise a feature request if this is too limiting), you can use 2 new upload features.
+
 <img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209023672-70969c67-b80e-4aa1-95f5-470ff42574c8.png">
 
 * Once signed in, you can now easily create a sharable URL for your parseq doc from the `Share...` dialog.
+
 <img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024021-a5051ff7-6bfd-43c5-b15b-eda8da6e8078.png">
 
 * Also once signed in, you can upload the rendered output to a URL. With the latest version of the A1111 extension, you can refer to this URL in the Parseq manifest textbox, so you don't have to keep copying the full JSON data back and forth.
+
 <img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024413-231231a3-6626-4055-9017-ea70db3d6089.png"><img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024824-71454cde-256e-4deb-8134-9e133bbda1b9.png">
 
 * Sparklines are now clickable, so you can show/hide data more easily.
+
 <img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024185-6ee11a71-614f-4bb9-b02e-6e3fe0cc1d91.png">
 
 * A simple Parseq document "Browser" is accessible from the `Load...` dialog that lets you see all the docs and versions in your local storage a bit more easily.
+
 <img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209025568-ddaa5dee-1514-4908-b3ed-cd2d8302d6a7.png">
 
 
@@ -66,19 +92,6 @@ For now Parseq is fully front-end and stores all state in browser local storage 
 – You should now see a `Parseq` section right at the bottom for the `keyframes` tab under the `Deforum` extension (click to expand it):
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/200856608-d90762f4-b682-4b79-88ff-e8b3fa90813d.png">
-
-
-### Alternative: Parseq Script installation (deprecated)
-
-This is a legacy step: Deforum is by far a more powerful animation back-end. Use this approach if you don't want to use Deforum for some reason, and would prefer to use Parseq's own back-end integration with A1111. 
-
-- Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-- [Install ffmpeg](https://ffmpeg.org/download.html)
-- Ensure A1111 can resolve the python library `ffmpeg-python`:
-   - On Windows: edit `requirements_versions.txt` in the top level directory of A111, and add the line: `ffmpeg-python==0.2.0`.
-   - On Mac/Linux: edit `requirements.txt` in the top level directory of A111, and add the line: `ffmpeg-python`.   
-- From this repository, copy `scripts/parseq_script.py` and `scripts/parseq_core.py` to the `/scripts` subdirectory in your SD webui installation.
-- Restart the webui (or do a full Gradio reload from the settings screen). You should now see `SD Parseq <version>` as a script available in the img2img section.
 
 
 ## Examples
@@ -123,7 +136,7 @@ https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
 
 
-## UI Features
+## Features
 
 ### Keyframed parameter values with scriptable interpolation
 
@@ -160,10 +173,11 @@ Furthermore, your interpolation formulae can reference beats and seconds by usin
 | `C`  	| Cubic spline interpolation betwen the last and next keyframed value  	| <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226043-13796fa8-8b76-4360-841c-a7f25835d224.png">|
 | `P`  	| Polinomial interpolation betwen the last and next keyframed value. Very similar to Cubic spline. | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226091-09958f94-25fa-4646-944e-a3f07ad8d214.png"> |
 | `f`  	| The frame number. Not very useful alone, but can be used to reference the overall video position in your interpolation algoritm. For example, add it to your seed value to increment the seed on every frame. |  <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226179-ff524dfa-aa40-4491-b4c1-2be56f7dda5a.png"> |
-| `prev_keyframe`  	| Previous keyframe number for this column 	|    |
-| `next_keyframe`  	| Next keyframe number for this column 	|  |
-| `prev_keyframe_value`  	| Previous keyframed value for this column 	|  |
-| `next_keyframe_value`  	| Next keyframed value for this column 	|   |
+| `k`  	| The number of frames elapsed since the active keyframe started for this field |  <img width="360"  src="https://www.evernote.com/l/APZb70iFBttLsK4ioqLTDV-UF5rxaLUy2tcB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `active_keyframe`  	| The frame number of the currently active keyframe for this field 	| <img  width="360" src="https://www.evernote.com/l/APY-jH_C5AJIUYipUAU_REuR6bq6jvkBY6sB/image.png" />    |
+| `next_keyframe`  	| The frame number of the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APZUpufADXZJP55Z0jsDzFYZxvo-XKwPcicB/image.png" />  |
+| `active_keyframe_value`  	| The value set at the currently active keyframe for this field. Equivalent to `S` (step interpolation). 	| <img width="360" src="https://www.evernote.com/l/APZv89DKzZpPna9s8O1w-5bYeCobsYl9GiEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
+| `next_keyframe_value`  	| The value set at the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APakRylM_mdLcK-MZcKm4wmEL7AEJfuzddoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 
 #### Functions
 
@@ -179,17 +193,29 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | `saw()`  	| Sawtooth wave oscillator.  	| <img width="722" alt="image" src="https://user-images.githubusercontent.com/74455/205227988-0c1e6fec-1a3d-438d-9f1a-a3cc685483bd.png"> |
 | `pulse()`  	| Pulse wave oscillator.  	| <img width="727" alt="image" src="https://user-images.githubusercontent.com/74455/205228355-863dcf8d-3d10-4d63-9c5f-32ce75e7b8b3.png"> |
 | `bez()`  	| Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`  	| <img width="724" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png"> |
+| `slide()` | | |
 | `min()`  	| Return the minimum of 2 argument  	|   	|
 | `max()`  	| Return the maximum of 2 argument  	|   	|
 | `abs()`  	| Return the asolute value of the argument |   	|
 | `round()`  	| Return the rounded value of the argument |   	|
+| `info_match()` | | |
+| `info_match_count()` | | |
+| `info_match_last()` | | |
 
 Oscillator arguments: 
 * Period `p` *required*:  The period of the oscillation. By default the unit is frames, but you can specify seconds or beats by appending the appropriate suffix (e.g. `sin(p=4b)` or `sin(p=5s)`).
 * Amplitude `a` (default: `1`): The amplitude of the oscillation. `sin(p=4b, a=2)` is equivalent to `sin(p=4b)*2`.
-* Phase shift `ps` (default: `0`): The x-axis offset of the oscillation.
+* Phase shift `ps` (default: `0`): The x-axis offset of the oscillation, i.e. how much to subtract from the frame number to get the frame's oscillation x position. A useful value is `-active_keyframe`, which will make the period start from the keyframe position. See below for an illustration.
 * Centre `c` (default: `0`): The y-axis offset of the oscillation. `sin(p=4b, c=2)` is equivalent to `sin(p=4b)+2`
+* Limit `li` (default: `0`): If >0, limits the number of periods repeated
 * Pulse width `pw` (default: `5`): *pulse() function only* The pulse width. 
+
+Examples:
+| | |
+|---|---
+| <img src="https://www.evernote.com/l/APbLSplqegdC77U_AJhyWz977bhQdFscYgUB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />| Defining a sine wave with linearly increasing amplitude using `sin(p=2b, a=L)`, meaning the amplitude is the linear interpolation of the keyframe values.|
+| <img src="https://www.evernote.com/l/APZxcomc6UpL0q2HLBC78cwhZjwRHyokJcYB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> | Limiting to 1 period at each keyframe with `li=1`. Notice how the phase is maintained relative to the full sinewave, so the period does not start with the keyframe.|
+|<img src="https://www.evernote.com/l/APacHmL0zHtGK6xWrzQKFFLkTSwlAzBzQDwB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />| By setting the phase shift to the negative offset of the active keyframe with `ps=-active_keyframe`, we can ensure the period starts at the keyframe point. |
 
 
 #### Units
@@ -197,9 +223,9 @@ Oscillator arguments:
 Units can be used to modify numbers representing frame ranges to match second of beat offsets calculated using the FPS and BPM values. This is particularly useful when specifying the period of an oscillator.
 
 | unit  	|  description 	| example  	|
-|---	    |---	|---	|
+|---	   |---	|---	|
 | `f`   	| (default) frames 	|   	|
-| `s` 	  | seconds |   	|
+| `s` 	| seconds |   	|
 | `b`  	| beats  	|   	|
 
 #### Other operators and expressions:
@@ -225,6 +251,13 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
 
 
+### Audio analyser for automatic keyframe creation from audio data
+
+Parseq now includes a 
+
+
+
+
 ## Deforum integration features
 
 Parseq can be used with all Deforum animation modes.
@@ -240,7 +273,7 @@ Stable diffusion generation parameters:
 * noise: additional noise to add during generation, can help
 * strength: how much the last generated image should influence the current generation
 
-2D animation parameters :
+2D animation parameters:
 
 * angle (ignored in 3D animation mode, use rotation 3D z axis)
 * zoom (ignored in 3D animation mode, use rotation translation z)
@@ -254,7 +287,7 @@ Pseudo-3D animation parameters (ignored in 3D animation mode):
 * perspective gamma angle
 * perspective field of view
 
-3D animation parameters (all ignored in 2D animation mode):   
+3D animation parameters (all ignored in 2D animation mode): 
 
 * translation z axis
 * rotation 3d x axis
@@ -263,6 +296,14 @@ Pseudo-3D animation parameters (ignored in 3D animation mode):
 * field of view
 * near point
 * far point
+
+Anti-blur parameters:
+
+
+
+Hybrid video parameters:
+
+
 
 Other parameters:
    
@@ -298,7 +339,7 @@ Note that the results of seed travelling are best seen with no input image (Inte
 Otherwise it's best to change the seed by at least 1 on each frame (you can also experiment with seed oscillation, for less variation).
 
 
-### Delta values
+### Delta values (aka absolute vs relative motion parameters)
 
 **Parseq aims to let you set absolute values for all parameters.**   So if you want to progressively rotate 180 degrees over 4 frames, you specify the following values for each frame: 45, 90, 135, 180.
 
@@ -313,7 +354,9 @@ For most parameters the delta value for a given field is simply the difference b
 
 ## Development
 
-Parseq is currently a front-end only React app. It is part way through a conversion from Javascript to Typescript. There is currently no back-end: persistence is entirely in browser indexdb storage via [Dexie.js](https://dexie.org/). You'll need `node` and `npm` on your system before you get started.
+Parseq is currently a front-end React app. It is part way through a conversion from Javascript to Typescript. There is currently very little back-end: by default, persistence is entirely in browser indexdb storage via [Dexie.js](https://dexie.org/). Signed-in users can optionally upload data to a Firebase-backed datastore.
+
+You'll need `node` and `npm` on your system before you get started.
 
 There is a severe lack of tests, which I will remedy one day. :)
 

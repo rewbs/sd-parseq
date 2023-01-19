@@ -711,13 +711,13 @@ export default function Analyser() {
             </Grid>
             <Grid xs={4}>
                 <AnalyserInput
-                    label="Tempo Buffer"
+                    label="Tempo buffer"
                     value={tempoBuffer}
                     onChange={(e) => setTempoBuffer(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
                 />
                 <AnalyserInput
-                    label="Tempo Hop"
+                    label="Tempo hop"
                     value={tempoHop}
                     onChange={(e) => setTempoHop(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
@@ -725,37 +725,37 @@ export default function Analyser() {
             </Grid>
             <Grid xs={4}>
                 <AnalyserInput
-                    label="Onset Buffer"
+                    label="Onset buffer"
                     value={onsetBuffer}
                     onChange={(e) => setOnsetBuffer(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
                 />
                 <AnalyserInput
-                    label="Onset Hop"
+                    label="Onset hop"
                     value={onsetHop}
                     onChange={(e) => setOnsetHop(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
                 />
                 <AnalyserInput
-                    label="Onset Threshold"
+                    label="Onset threshold"
                     value={onsetThreshold}
                     onChange={(e) => setOnsetThreshold(Number.parseFloat(e.target.value))}
                     disabled={isAnalysing}
                 />
                 <AnalyserInput
-                    label="Onset Min Interval"
+                    label="Onset min interval"
                     value={onsetMinoi}
                     onChange={(e) => setOnsetMinoi(Number.parseFloat(e.target.value))}
                     disabled={true}
                 />
                 <AnalyserInput
-                    label="Onset Whitening"
+                    label="Onset whitening"
                     value={onsetWhitening}
                     onChange={(e) => setOnsetWhitening(Number.parseInt(e.target.value))}
                     disabled={true}
                 />
                 <AnalyserInput
-                    label="Onset Silence"
+                    label="Onset silence"
                     value={onsetSilence}
                     onChange={(e) => setOnsetSilence(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
@@ -786,19 +786,19 @@ export default function Analyser() {
             </Grid>
             <Grid xs={4}>
                 <AnalyserInput
-                    label="Pitch Buffer"
+                    label="Pitch buffer"
                     value={pitchBuffer}
                     onChange={(e) => setPitchBuffer(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
                 />
                 <AnalyserInput
-                    label="Pitch Hop"
+                    label="Pitch hop"
                     value={pitchHop}
                     onChange={(e) => setPitchHop(Number.parseInt(e.target.value))}
                     disabled={isAnalysing}
                 />
                 <AnalyserInput
-                    label="Pitch Tolerance"
+                    label="Pitch tolerance"
                     value={pitchTolerance}
                     onChange={(e) => setPitchTolerance(Number.parseFloat(e.target.value))}
                     disabled={true}

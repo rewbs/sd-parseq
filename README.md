@@ -70,12 +70,13 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 <img width="300" alt="image" src="https://i.imgur.com/zx4MKhm.jpg">
 
+* Full parseq expressions can now be used directly in the prompts:
+
+<img src="https://www.evernote.com/l/APbG8dF2-GxGNoJnCyxvfmtObQIvlH7eUEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
 * Blank values are now permitted on the first and last frames (will use closest value or default value if none specified).
 * Oscillator functions can now all take a `limit` (`li`) argument to limit the number of repeated periods.
 * Support for new Deforum A1111 schedules (antiblur, hybrid comp). Sampler schedule is not available for now in Parseq (but you can use it directly in Deforum alongside your Parseq manifest).
-
-
-
 
 
 ### Version 0.1.14

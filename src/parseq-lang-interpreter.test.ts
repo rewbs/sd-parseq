@@ -1,7 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
 //@ts-ignore
-import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
+import { interpret, parse } from './parseq-lang-interpreter';
 
 const basicContext =  {
   definedVariables: {},
@@ -26,6 +24,7 @@ const runParseq = (formula: string) => {
 
 const runTest = (label:string, formula: string, expected: number[]) => {
   const testTag = label + ': ' + formula;
+  //  eslint-disable-next-line jest/valid-title
   test(testTag, () => {
     const results = runParseq(formula);
     expect(JSON.stringify(results))

@@ -268,10 +268,10 @@ Units can be used to modify numbers representing frame ranges to match second of
 
 | operator  	|  description 	| example  	|
 |---	   |---	|---	|
-| `<expr1> + <expr2>`   	| Add two expressions. 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
-| `<expr1> - <expr2>` 	| Subtract two expressions |   	|
-| `<expr1> * <expr2>`  	| Multiply two expressions |   	|
-| `<expr1> / <expr2>`  	| Divide two expressions  	|   	|
+| `<expr1> + <expr2>`   	| Add two expressions. Also acts as string concatenation if either expression is a string (with the same type conversion semantics as Javascript string concatenation). 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
+| `<expr1> - <expr2>` 	| Subtract two expressions. |   	|
+| `<expr1> * <expr2>`  	| Multiply two expressions. |   	|
+| `<expr1> / <expr2>`  	| Divide two expressions. 	|   	|
 | `<expr1> % <expr2>`  	| Modulus  |  Reset the seed every 4 beats: <img width="802" alt="image" src="https://user-images.githubusercontent.com/74455/205402901-52f78382-b36a-403a-a6d9-6277af0c758f.png"> |
 | `<expr1> != <expr2>`  	| 1 if expressions are not equal, 0 otherwise.       	      |   	|
 | `<expr1> == <expr2>`  	| 1 if expressions are equal, 0 otherwise.   	            |   	|

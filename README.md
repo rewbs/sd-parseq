@@ -3,14 +3,38 @@
 # Stable Diffusion Parseq
 
   * [What is this?](#what-is-this)
-  * [What's new?](#whats-new)
+  * [What's new?](#what-s-new)
+    + [Version 0.1.22](#version-0122)
+    + [Version 0.1.14](#version-0114)
+    + [Version 0.1.0](#version-010)
   * [Installation](#installation)
   * [Examples](#examples)
   * [Usage](#usage)
-  * [UI Features](#ui-features)
+    + [Step 1: Create your parameter manifest](#step-1-create-your-parameter-manifest)
+    + [Step 2: Generate the video](#step-2-generate-the-video)
+  * [Features](#features)
+    + [Keyframed parameter values with scriptable interpolation](#keyframed-parameter-values-with-scriptable-interpolation)
+    + [Beat and time sync'ing](#beat-and-time-syncing)
+    + [Interpolation modifiers](#interpolation-modifiers)
+      - [Values](#values)
+      - [Functions](#functions)
+      - [Units](#units)
+      - [Other operators and expressions](#other-operators-and-expressions)
+    + [Audio analyser for automatic keyframe creation from audio data](#audio-analyser-for-automatic-keyframe-creation-from-audio-data)
+      - [Audio analyer general info (read this first)](#audio-analyer-general-info-read-this-first)
+      - [Using the Audio analyser](#using-the-audio-analyser)
+        * [Audio Analysis](#audio-analysis)
+        * [Visualisation & playback](#visualisation--playback)
+        * [Conversion to Parseq keyframes](#conversion-to-parseq-keyframes)
   * [Deforum integration features](#deforum-integration-features)
+    + [Keyframable parameters](#keyframable-parameters)
+    + [Prompt interpolation](#prompt-interpolation)
+    + [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
+    + [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
   * [Development](#development)
+    + [Deployment](#deployment)
   * [Credits](#credits)
+
 
 ## What is this?
 
@@ -42,16 +66,17 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 <img width="300" alt="image" src="https://i.imgur.com/YqJZrCZ.png">
 
-* New functions and variables available in your formula: `prev_calculated_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
+* New functions and variables available in your formula: `prev_computed_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
 
 <img width="300" alt="image" src="https://i.imgur.com/zx4MKhm.jpg">
+
+* Full parseq expressions can now be used directly in the prompts:
+
+<img src="https://www.evernote.com/l/APbG8dF2-GxGNoJnCyxvfmtObQIvlH7eUEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
 
 * Blank values are now permitted on the first and last frames (will use closest value or default value if none specified).
 * Oscillator functions can now all take a `limit` (`li`) argument to limit the number of repeated periods.
 * Support for new Deforum A1111 schedules (antiblur, hybrid comp). Sampler schedule is not available for now in Parseq (but you can use it directly in Deforum alongside your Parseq manifest).
-
-
-
 
 
 ### Version 0.1.14
@@ -117,6 +142,11 @@ https://user-images.githubusercontent.com/74455/199890420-9c939e3a-ae8e-4262-980
 https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91f-8e9e89e252dc.mp4
 
 
+- Using pitch to influence prompt weight. A higher pitch generates a more luxurious house, and a lower pitch a more decrepit house. The audio analyser was used to to autodetect the notes, create keyframes for each note, and assign the pitch to a prompt weight value. Because Parseq support expression evaluation directly in the prompt, we can then have a positive prompt like: `Photo of the outside of a (${if prompt_weight_1>=0 "modern:"  else "crumbling old:"} ${abs(prompt_weight_1)}) realistic house. <rest of your positive prompt>` and a negative prompt like `(${if prompt_weight_1<0 "modern:"  else "crumbling old:"} ${abs(prompt_weight_1)}) <rest of your negative prompt>`.
+
+https://user-images.githubusercontent.com/74455/213343711-c66c25d6-9ad1-4070-950f-7122db7a1a07.mp4
+
+
 ## Usage
 
 ### Step 1: Create your parameter manifest
@@ -161,6 +191,7 @@ Furthermore, your interpolation formulae can reference beats and seconds by usin
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205224573-9f89518b-a4a8-4a71-86f9-388d0f65c2db.png">
 
+Lastly, Parseq can generate keyframes and values directly from an audio file. See the [Audio analyser](#audio-analyser-for-automatic-keyframe-creation-from-audio-data) documentation for details.
 
 ### Interpolation modifiers
 
@@ -178,6 +209,7 @@ Furthermore, your interpolation formulae can reference beats and seconds by usin
 | `next_keyframe`  	| The frame number of the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APZUpufADXZJP55Z0jsDzFYZxvo-XKwPcicB/image.png" />  |
 | `active_keyframe_value`  	| The value set at the currently active keyframe for this field. Equivalent to `S` (step interpolation). 	| <img width="360" src="https://www.evernote.com/l/APZv89DKzZpPna9s8O1w-5bYeCobsYl9GiEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 | `next_keyframe_value`  	| The value set at the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APakRylM_mdLcK-MZcKm4wmEL7AEJfuzddoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
+| `prev_computed_value`  	| The value calculated at the previous frame for this field, or 0 for the first frame. 	| <img src="https://www.evernote.com/l/APaAsSyhbg5AZofq4JLUNFHLvY0N7NjwjEEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 
 #### Functions
 
@@ -228,7 +260,7 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `s` 	| seconds |   	|
 | `b`  	| beats  	|   	|
 
-#### Other operators and expressions:
+#### Other operators and expressions
 
 | if expression  	|  description 	| example  	|
 |---	    |---	|---	|
@@ -420,6 +452,7 @@ Jude Law, centered, high detail studio photo portrait :${prompt_weight_8}
 ```
 
 A corresponding parameter flow could look like this:
+
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205405460-2f9ed10c-0df4-4e4e-8c4f-d68c1c6ceccf.png">
    
 ### Subseed control for seed travelling

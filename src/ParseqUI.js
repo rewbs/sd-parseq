@@ -41,7 +41,10 @@ const default_prompts = {
   // eslint-disable-next-line no-template-curly-in-string
   positive: `A lone white (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:\${prompt_weight_1} AND
   A lone black (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midnight, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography :\${prompt_weight_2}`,
-  negative: "low quality, artefacts, watermark, logo, signature"
+  negative: `watermark, logo, text, signature, copyright, writing, letters,
+  low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,
+  cartoon, computer game, video game, painting, drawing, sketch,
+  disfigured, deformed, ugly`
 }
 const default_options = {
   input_fps: "",
@@ -830,10 +833,10 @@ const ParseqUI = (props) => {
 
       try {
         let positive_prompt = prompts.positive
-          .replace(/\$\{(.*?)\}/g, (_, weight) => { const result = interpret(parse(weight), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/\$\{(.*?)\}/s, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
           .replace(/(\n)/g, " ");
         let negative_prompt = prompts.negative
-          .replace(/\$\{(.*?)\}/g, (_, weight) =>  { const result = interpret(parse(weight), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/\$\{(.*?)\}/s, (_, expr) =>  { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
           .replace(/(\n)/g, " ");
 
         rendered_frames[frame] = {

@@ -126,7 +126,7 @@ export function interpret(ast, context) {
         case 'tri':          
         case 'saw':
         case 'pulse':
-          let [period, phase, amp, centre, pulse, limit] = get_oscillator_named_arguments(ast.arguments).map(arg => interpret(arg, context));
+          let [period, phase, amp, centre, limit, pulse] = get_oscillator_named_arguments(ast.arguments).map(arg => interpret(arg, context));
           return f => {
             if (limit(f) > 0 &&  (f - getActiveKeyframe(context, f)) > limit(f)*period(f) ) {
               return 0;
@@ -176,7 +176,7 @@ export function interpret(ast, context) {
           case 'tri':          
           case 'saw':
           case 'pulse':  
-            let [period, phase = _ => 0, amp = _ => 1, centre = _ => 0, pulse = _ => 5, limit = _ => 0] = ast.arguments.map(arg => interpret(arg, context));
+            let [period, phase = _ => 0, amp = _ => 1, centre = _ => 0, limit = _ => 0, pulse = _ => 5] = ast.arguments.map(arg => interpret(arg, context));
             return f => {
               if (limit(f) > 0 &&  (f - getActiveKeyframe(context, f)) > limit(f)*period(f) ) {
                 return 0;

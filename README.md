@@ -33,7 +33,7 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 ### Version 0.1.22
 
-* Added an audio analyser. Generate keyframes and values based on beats, events and pitch of an input audio file. Experimental! Details in documentation.
+* Added an [audio analyser](https://sd-parseq.web.app/analyser). Use it to generate keyframes and values based on beats, events and pitch of an input audio file. Experimental! Details in documentation.
 
 <img width="300" alt="image" src="https://i.imgur.com/MBSrpQV.png">
 
@@ -188,19 +188,19 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | function  	|  description 	| example  	|
 |---	         |---	            |---        |
 | `sin()`   	| Sine wave oscillator. See below for arguments (only period is required). 	| <img width="724" alt="image" src="https://user-images.githubusercontent.com/74455/205226860-26d6f424-db93-4b83-be69-5fa193a73d66.png"> |
-| `sq()` 	  | Square wave oscillator | <img width="728" alt="image" src="https://user-images.githubusercontent.com/74455/205227751-b173dc97-f97d-44e2-a208-6e22a344b835.png"> | 
-| `tri()`  	| Triangle wave oscillator.  	| <img width="722" alt="image" src="https://user-images.githubusercontent.com/74455/205227903-2c7ebdda-981c-4a78-9a82-7b75ef014499.png"> |
-| `saw()`  	| Sawtooth wave oscillator.  	| <img width="722" alt="image" src="https://user-images.githubusercontent.com/74455/205227988-0c1e6fec-1a3d-438d-9f1a-a3cc685483bd.png"> |
-| `pulse()`  	| Pulse wave oscillator.  	| <img width="727" alt="image" src="https://user-images.githubusercontent.com/74455/205228355-863dcf8d-3d10-4d63-9c5f-32ce75e7b8b3.png"> |
-| `bez()`  	| Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`  	| <img width="724" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png"> |
-| `slide()` | | |
-| `min()`  	| Return the minimum of 2 argument  	|   	|
-| `max()`  	| Return the maximum of 2 argument  	|   	|
-| `abs()`  	| Return the asolute value of the argument |   	|
-| `round()`  	| Return the rounded value of the argument |   	|
-| `info_match()` | | |
-| `info_match_count()` | | |
-| `info_match_last()` | | |
+| `sq()` 	  | Square wave oscillator | <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205227751-b173dc97-f97d-44e2-a208-6e22a344b835.png"> | 
+| `tri()`  	| Triangle wave oscillator.  	| <img width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205227903-2c7ebdda-981c-4a78-9a82-7b75ef014499.png"> |
+| `saw()`  	| Sawtooth wave oscillator.  	| <img  width="512" src="https://www.evernote.com/l/APbDR-xZ779Jh431tTc2qEc56-EoMETlb2QB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `pulse()`  	| Pulse wave oscillator.  	| <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228355-863dcf8d-3d10-4d63-9c5f-32ce75e7b8b3.png"> |
+| `bez()`  	| Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`  	| <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png"> |
+| `slide()` | Linear slide over a fixed time period. Requires at least one of `to` or `from` parameters (frame value will be used if missing), and `in` parameter defines how long the slide should last. See image for 3 examples. | <img width="512" src="https://www.evernote.com/l/APazj_b3MGRHBbDNHi30Imb-ZnCubVFGI7YB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `min()`  	| Return the minimum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APZX1k4fvOlJP6eyrKSFaw-9KeonwNkS7tEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `max()`  	| Return the maximum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APb9CEaqhEhF6L0FRWovG2Rt-qacyphjc_cB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />	|
+| `abs()`  	| Return the asolute value of the argument | <img src="https://www.evernote.com/l/APar6IXJsoxK6LDrTeyeHr9c-42Cnrk05qgB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `round()`  	| Return the rounded value of the argument | <img src="https://www.evernote.com/l/APZWLyA1YPVMWao-Zke_v7X2adVxjk_0rEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `info_match()` | Takes a **regular expression** as an argument. Returns 1 if the info label of the current active kefframe matches the regex, 0 otherwise.  | <img src="https://www.evernote.com/l/APbS0YKyh2ZHw7ZKEIwCvRTyjIMGL5h2ZNkB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `info_match_count()` | Takes a **regular expression** as an argument. Returns the number of keyframes that have info labels that matched the regex so far. | <img src="https://www.evernote.com/l/APaln7KfMdNNwI1I6vKNwORBzE0Br_BfTxYB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `info_match_last()` | Takes a **regular expression** as an argument. Returns the frame number of the last keyframe that matched the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 
 Oscillator arguments: 
 * Period `p` *required*:  The period of the oscillation. By default the unit is frames, but you can specify seconds or beats by appending the appropriate suffix (e.g. `sin(p=4b)` or `sin(p=5s)`).
@@ -253,14 +253,103 @@ Units can be used to modify numbers representing frame ranges to match second of
 
 ### Audio analyser for automatic keyframe creation from audio data
 
-Parseq now includes a 
+Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to 
 
+#### Audio analyer general info (read this first)
+* ⚠️ This feature is experimental. That's why it's quite separate from the main Parseq UI for now. The keyframes it generates can be merged into an existing Parseq document using the "Merge keyframes" button in the main UI.
+* Tempo, onset event and pitch detection use [Aubio](https://aubio.org/), via [AubioJS](https://github.com/qiuxiang/aubiojs). See the [Aubio CLI documentation](https://aubio.org/manual/latest/cli.html) for the meaning of analysis parameters.
+* Not all parameters are exposed by AubioJS. Some look like they should be, but aren't (those are grayed out in the UI).
+* All processing runs in the browser, using web workers. This seems to be faster in Chrome and Safari compared to Firefox. You can speed things up by increasing the hop sizes to larger multiples of 2 (trading off accuracy).
+* Parseq generally expects audio with a constant Tempo (shuffles and other changign tempos are not yet supported). Also, tempo detection is not perfect, so you can override it before generating keyframes. If the first beat is not at the very beginning of the track, you will need to enter a manual offset for now.
+* Pitch detection is sketchy with beats in the mix. You may want to run this multiple times on different audio layers and do multiple merges.
+* The frame-per-second (FPS) specified in the analyser must match the parseq doc you're merging with, or you'll be out-of-sync.
+
+
+#### Using the Audio analyser
+
+The audio analyser UI is split into 3 parts: 
+* **Audio analysis** where you load an audio file, and run algorithms on it for tempo, onset event and pitch detection.
+* **Visualisation & playback** where you can see your audio wave, spectrogram, detected pitch and beat & event positions, as well as play the audio file. 
+* **Conversion to Parseq keyframes** where you define how the result of the audio analysis will be mapped to Parseq keyframes.
+
+Digging into each section:
+
+
+##### Audio Analysis
+
+<img width="720" src="https://www.evernote.com/l/APYsXAZGTmxJ2bLc7uLdOgzyyjDV4vyInc4B/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
+Parseq performs 3 types of analysis on your audio file:
+* Tempo detection: attempts to identify the overall number of beats per minute in the audio file.
+* Onset (event) detection: attempts to identify the moments where meaningful changes occur in the audio file. These could be drum beats, new instruments being introduced, etc...
+* Pitch detection: attempts to identify the dominant frequency at each moment of your audio file.
+
+Here are the settings you can tweak for this analysis:
+
+* File: opens a file browser for you to select an audio file. Most audio formats are supported.
+* Sample rate: the samples per second to use for processing.
+* Tempo detection settings:
+   * Tempo buffer: number of samples used for each analysis. Recommend to leave as is.
+   * Tempo hop: number of samples between two consecutive analysis parsses. Lower values increase precision at the exepense of increased CPU time, but going too low will result in invalid results.
+* Onset event detection settings (see the [aubioonset CLI docs](https://aubio.org/manual/latest/cli.html#aubioonset)  for more complete definitions).
+   * Onset buffer: number of samples used for each analysis. Recommend to leave as is.
+   * Onset hop: number of samples between two consecutive analysis parsses. Lower values increase precision at the exepense of increased CPU time, but going too low will result in invalid results.
+   * Onset threshold: defines how picky to be when identifying onset events. Lower threshold values result in more events, high values result in fewer events.
+   * Onset silence: from aubio docs: "volume in dB under which the onset will not be detected. A value of -20.0 would eliminate most onsets but the loudest ones. A value of -90.0 would select all onsets."
+   * Onset method: a selction of onset detection algorithms to choose from. Experiment with these, as they can produce vastly different results.
+* Pitch detection settings (see the [aubiopitch CLI docs](https://aubio.org/manual/latest/cli.html#aubiopitch) for more complete definitions):
+   * Pitch buffer: number of samples used for each analysis. Recommend to leave as is.
+   * Pitch hop: number of samples between two consecutive analysis parsses. Lower values increase precision at the exepense of increased CPU time, but going too low will result in invalid results.
+   * Pitch method: a selction of pitch detection algorithms to choose from. Experiment with these, as they can produce vastly different results.
+
+##### Visualisation & playback
+
+<img width="720"  src="https://www.evernote.com/l/APYyk-gfAYJHw4MQXIbKhg8T8jrMfG6FUbgB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
+The top section shows the waveform and, after running the analysis, will include markers for beats in blue at the bottom, and for onset events in red at the top. Onset markers can be dragged, but beat markers cannot. The waveform can be zoomed with the slider at the bottom. Beneath that is a simple spectrogram view.
+
+Next is a graph showing detected pitch values over time in light purple. Typically, the pitch detection is quite "jagged", i.e. the values might include undesirable spikes. After you generate keyframes, you will see 2 additonal curves appear, which should be smoother: the normalised values in dark purple which has had filtering and normalisation applied to it as per your settings (see next section), and the keyframed values in red which are the actual values that will be used in Parseq keyframes.
+
+
+##### Conversion to Parseq keyframes
+
+<img width="720"  src="https://www.evernote.com/l/APZqnCDTIkxNxbmC7u_q76JIZyf7LVkk-icB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
+Beats and Onset events can be converted to keyframes with custom values and interpolation functions for any Parseq-controllable field.  Pitch data can be used to set a value at each generated keyframe.
+
+There are a range of settings that help define how the audio analysis data will be converted to Parseq keyframes:
+
+* Tempo settings: 
+   * Filtering:
+      * *Include every Nth beat* and *Starting from* allow you to pick a subset of beats to convert to keyframes. You can set either one of these to a ridiculously high value to skip generating keyframes for beats altogether.
+      * Custom label: include custom text in the "info" field for these keyframes.
+   * Correction:
+      * BPM override: ignore the detected BPM and use this value instead. Defaults to a rounded version of the detected BPM
+      * First beat offset: the time of the first beat in seconds. Useful if the song does not start immediately.
+   * Set value: the value data to include in the generated keyframes
+* Onset settings: 
+   * Filtering:
+      * *Include every Nth event* and *Starting from* allow you to pick a subset of onset events to convert to keyframes. You can set either one of these to a ridiculously high value to skip generating keyframes for onset events altogether.
+      * Custom label: include custom text in the "info" field for these keyframes.
+   * Set value: the value data to include in the generated keyframes
+* Pitch settings:
+   * Filtering: 
+      * Outlier tolerance: parseq uses a Median Differencing algorithm to try to remove unwanted outliers from the pitch detection data. Higher values means allow more outliers, lower values (above 0) means cut out more outliers, or -1 to disable outlier elimination completely.
+      * Discard above / discard below: a more brute-force way of removing pitch detection glitches: ignore any pitch data points outside of these thresholds.
+   * Normalisation: you'll usually want to map the pitch data to a different range for the values to make sense in deforum. For example, if you're using pitch to set a prompt weight, you'll want to normalise the pitch data to a min of 0 and a max of 1. For a rotation, you might want a min of -45 and a max of 45.
+   * Set value: unlike beats and onset events, pitch data points do not create keyframes because it is a continuous data stream rather than discrete events. Therefore, the normalised pitch value is assigned to the keyframes generated from the beat and onset events. Here you can set the field and interpolation that should be used (the value is the pitch value itself).
+
+Once you are happy with your generated keyframes, hit `Copy Keyframes` and merge them into your Parseq Doc with the `Merge Keyframes` button beneath the grid in the main Parseq UI. 
+
+<img  width="360" src="https://www.evernote.com/l/APaHqp1Qfu1GXIvc4aC-42lFAIs3k83_0nEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
+Note that you can run multiple merges if you with to set multiple different values on each keyframe.
 
 
 
 ## Deforum integration features
 
-Parseq can be used with all Deforum animation modes.
+Parseq can be used with **all** Deforum animation modes (2D, 3D, prompt interpolation, video etc...). You don't need to do anything special in Parseq to switch between modes: simply tweak the parameters you're interested in. 
 
 ### Keyframable parameters
 
@@ -299,11 +388,18 @@ Pseudo-3D animation parameters (ignored in 3D animation mode):
 
 Anti-blur parameters:
 
-
+* antiblur_kernel
+* antiblur_sigma
+* antiblur_amount
+* antiblur_threshold
 
 Hybrid video parameters:
 
-
+* hybrid_comp_alpha
+* hybrid_comp_mask_blend_alpha
+* hybrid_comp_mask_contrast
+* hybrid_comp_mask_auto_contrast_cutoff_low
+* hybrid_comp_mask_auto_contrast_cutoff_high
 
 Other parameters:
    
@@ -386,6 +482,7 @@ firebase hosting:clone sd-parseq:staging sd-parseq:live
 This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of inspiration:
 
 * Everyone behind Deforum: https://github.com/deforum-art/
+* Everyone behind Aubio, AubioJS and Wavesurfer.
 * Filarus for their vid2vid script: https://github.com/Filarius/stable-diffusion-webui/blob/master/scripts/vid2vid.py .  
 * Animator-Anon for their animation script: https://github.com/Animator-Anon/Animator/blob/main/animation.py . I picked up some good ideas from this.
 * Yownas for their seed travelling script: https://github.com/yownas/seed_travel . sd-parsec can only travel between consecutive seeds so only offers a fraction of the possible seed variations that Yownas's script does.

@@ -114,9 +114,9 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - Install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
 - Relaunch the Automatic1111 UI.
-– You should now see a `Parseq` section right at the bottom for the `init` tab under the `Deforum` extension (click to expand it):
+– You should now see a `Parseq` section right at the bottom for the `Init` tab under the `Deforum` extension (click to expand it):
 
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/200856608-d90762f4-b682-4b79-88ff-e8b3fa90813d.png">
+<img width="500" alt="image" src="https://i.imgur.com/pGC8im8.png">
 
 
 ## Examples

@@ -279,7 +279,7 @@ function oscillator(osc, period, pos, amp, centre, pulsewidth) {
     case 'sin': return centre + Math.sin(pos * Math.PI * 2 / period) * amp;
     case 'tri': return centre + Math.asin(Math.sin(pos * Math.PI * 2 / period)) * (2 * amp) / Math.PI;
     case 'saw': return centre + (pos % period) * amp / period
-    case 'sq':  return centre + (Math.sin(pos * Math.PI * 2 / period) >= 0 ? 1 : -1) * amp;    
+    case 'sq':  return centre + (Math.sin(pos * Math.PI * 2 / period) >= 0 ? 1 : -1) * amp;
     case 'pulse':  return centre + amp *((pos%period) < pulsewidth ? 1 : 0);
     default:  throw new Error(`Unrecognised oscillator ${osc}`);
   }
@@ -316,8 +316,8 @@ function get_oscillator_named_arguments(args) {
     named_argument_extractor(args, ['phase', 'ps'],  0),
     named_argument_extractor(args, ['amp', 'a'],  1),
     named_argument_extractor(args, ['centre', 'c'], 0),
-    named_argument_extractor(args, ['pulsewidth', 'pulse', 'pw'], 5),
-    named_argument_extractor(args, ['limit', 'li'], 0)
+    named_argument_extractor(args, ['limit', 'li'], 0),
+    named_argument_extractor(args, ['pulsewidth', 'pulse', 'pw'], 5),    
   ]
 }
 

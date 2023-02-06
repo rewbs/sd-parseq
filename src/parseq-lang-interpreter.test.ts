@@ -26,6 +26,7 @@ const runTest = (label:string, formula: string, expected: number[]) => {
   const testTag = label + ': ' + formula;
   //  eslint-disable-next-line jest/valid-title
   test(testTag, () => {
+    console.log(testTag);
     const results = runParseq(formula);
     expect(JSON.stringify(results))
       .toEqual(JSON.stringify(expected));
@@ -80,6 +81,48 @@ runTest('saw-unnamed-args', 'round(saw(10, 1, 2, 10),2)', [10.2,10.4,10.6,10.8,1
 runTest('saw-unnamed-args', 'round(saw(5, 1, 2, 10, 0.5),2)', [10.4,10.8,11.2,0,0,10.4,10.8,11.2,0,0,10.4]); // fractional limit
 runTest('saw-unnamed-args', 'round(saw(5, 1, 2, 10, 0.5, 99),2)', [10.4,10.8,11.2,0,0,10.4,10.8,11.2,0,0,10.4]);  //pulse should be ignored
 
+runTest('pulse-unnamed-args', 'round(pulse(10),2)', [1,1,1,1,1,0,0,0,0,0,1]);
+runTest('pulse-unnamed-args', 'round(pulse(10, 1),2)', [1,1,1,1,0,0,0,0,0,1,1]);  //phase shift
+runTest('pulse-unnamed-args', 'round(pulse(10, 1, 2),2)', [2,2,2,2,0,0,0,0,0,2,2]); //amplitude
+runTest('pulse-unnamed-args', 'round(pulse(10, 1, 2, 10),2)', [12,12,12,12,10,10,10,10,10,12,12]); //centre
+runTest('pulse-unnamed-args', 'round(pulse(5, 0, 2, 10, 0.5, 1),2)', [12,10,10,0,0,12,10,10,0,0,12]); // limit
+runTest('pulse-unnamed-args', 'round(pulse(5, 0, 2, 10, 0, 2),2)', [12,12,10,10,10,12,12,10,10,10,12]);  //pulse width
+
+
+runTest('sin-named-args', 'round(sin(p=10),2)', [0,0.59,0.95,0.95,0.59,0,-0.59,-0.95,-0.95,-0.59,-0]);
+runTest('sin-named-args', 'round(sin(p=10, ps=1),2)', [0.59,0.95,0.95,0.59,0,-0.59,-0.95,-0.95,-0.59, -0, 0.59]); //phase shift
+runTest('sin-named-args', 'round(sin(p=10, ps=1, a=2),2)', [1.18,1.9,1.9,1.18, 0,-1.18,-1.9,-1.9,-1.18, -0,1.18]); //amplitude
+runTest('sin-named-args', 'round(sin(p=10, ps=1, a=2, c=10),2)', [11.18,11.9,11.9,11.18,10,8.82,8.1,8.1,8.82,10,11.18]); //centre
+runTest('sin-named-args', 'round(sin(p=5, ps=1, a=2, c=10, li=0.5),2)', [11.9,11.18,8.82,0,0,11.9,11.18,8.82,0,0,11.9]); // fractional limit
+runTest('sin-named-args', 'round(sin(p=5, ps=1, a=2, c=10, li=0.5, pw=99),2)', [11.9,11.18,8.82,0,0,11.9,11.18,8.82,0,0,11.9]);  //pulse should be ignored
+
+runTest('sq-named-args', 'round(sq(p=10),2)', [1,1,1,1,1,1,-1,-1,-1,-1,-1]);
+runTest('sq-named-args', 'round(sq(p=10, ps=1),2)', [1,1,1,1,1,-1,-1,-1,-1,-1,1]);  //phase shift
+runTest('sq-named-args', 'round(sq(p=10, ps=1, a=2),2)', [2,2,2,2,2,-2,-2,-2,-2,-2,2]); //amplitude
+runTest('sq-named-args', 'round(sq(p=10, ps=1, a=2, c=10),2)', [12,12,12,12,12,8,8,8,8,8,12]); //centre
+runTest('sq-named-args', 'round(sq(p=5, ps=1, a=2, c=10, li=0.5),2)', [12,12,8,0,0,12,12,8,0,0,12]); // fractional limit
+runTest('sq-named-args', 'round(sq(p=5, ps=1, a=2, c=10, li=0.5, pw=99),2)', [12,12,8,0,0,12,12,8,0,0,12]);  //pulse should be ignored
+
+runTest('tri-named-args', 'round(tri(p=10),2)', [0,0.4,0.8,0.8,0.4,0,-0.4,-0.8,-0.8,-0.4,-0]);
+runTest('tri-named-args', 'round(tri(p=10, ps=1),2)', [0.4,0.8,0.8,0.4,0,-0.4,-0.8,-0.8,-0.4,0,0.4]);  //phase shift
+runTest('tri-named-args', 'round(tri(p=10, ps=1, a=2),2)', [0.8,1.6,1.6,0.8,0,-0.8,-1.6,-1.6,-0.8,0,0.8]); //amplitude
+runTest('tri-named-args', 'round(tri(p=10, ps=1, a=2, c=10),2)', [10.8,11.6,11.6,10.8,10,9.2,8.4,8.4,9.2,10,10.8]); //centre
+runTest('tri-named-args', 'round(tri(p=5, ps=1, a=2, c=10, li=0.5),2)', [11.6,10.8,9.2,0,0,11.6,10.8,9.2,0,0,11.6]); // fractional limit
+runTest('tri-named-args', 'round(tri(p=5, ps=1, a=2, c=10, li=0.5, pw=99),2)', [11.6,10.8,9.2,0,0,11.6,10.8,9.2,0,0,11.6]);  //pulse should be ignored
+
+runTest('saw-named-args', 'round(saw(p=10),2)', [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0]);
+runTest('saw-named-args', 'round(saw(p=10, ps=1),2)', [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0,0.1]);  //phase shift
+runTest('saw-named-args', 'round(saw(p=10, ps=1, a=2),2)', [0.2,0.4,0.6,0.8,1,1.2,1.4,1.6,1.8,0,0.2]); //amplitude
+runTest('saw-named-args', 'round(saw(p=10, ps=1, a=2, c=10),2)', [10.2,10.4,10.6,10.8,11,11.2,11.4,11.6,11.8,10,10.2]); //centre
+runTest('saw-named-args', 'round(saw(p=5, ps=1, a=2, c=10, li=0.5),2)', [10.4,10.8,11.2,0,0,10.4,10.8,11.2,0,0,10.4]); // fractional limit
+runTest('saw-named-args', 'round(saw(p=5, ps=1, a=2, c=10, li=0.5, pw=99),2)', [10.4,10.8,11.2,0,0,10.4,10.8,11.2,0,0,10.4]);  //pulse should be ignored
+
+runTest('pulse-named-args', 'round(pulse(p=10),2)', [1,1,1,1,1,0,0,0,0,0,1]);
+runTest('pulse-named-args', 'round(pulse(p=10, ps=1),2)', [1,1,1,1,0,0,0,0,0,1,1]);  //phase shift
+runTest('pulse-named-args', 'round(pulse(p=10, ps=1, a=2),2)', [2,2,2,2,0,0,0,0,0,2,2]); //amplitude
+runTest('pulse-named-args', 'round(pulse(p=10, ps=1, a=2, c=10),2)', [12,12,12,12,10,10,10,10,10,12,12]); //centre
+runTest('pulse-named-args', 'round(pulse(p=5, ps=0, a=2, c=10, li=0.5, pw=1),2)', [12,10,10,0,0,12,10,10,0,0,12]); // limit
+runTest('pulse-named-args', 'round(pulse(p=5, ps=0, a=2, c=10, li=0, pw=2),2)', [12,12,10,10,10,12,12,10,10,10,12]);  //pulse width
 
 runTest('addition', '1+1', [2,2,2,2,2,2,2,2,2,2,2]);
 

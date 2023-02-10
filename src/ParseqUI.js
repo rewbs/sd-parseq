@@ -833,10 +833,10 @@ const ParseqUI = (props) => {
 
       try {
         let positive_prompt = prompts.positive
-          .replace(/\$\{(.*?)\}/s, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
           .replace(/(\n)/g, " ");
         let negative_prompt = prompts.negative
-          .replace(/\$\{(.*?)\}/s, (_, expr) =>  { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
+          .replace(/\$\{(.*?)\}/sg, (_, expr) =>  { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
           .replace(/(\n)/g, " ");
 
         rendered_frames[frame] = {

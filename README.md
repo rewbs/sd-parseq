@@ -149,6 +149,10 @@ https://user-images.githubusercontent.com/74455/213343711-c66c25d6-9ad1-4070-950
 
 ## Usage
 
+For a video tutorial on getting started with Parseq, see:  https://www.youtube.com/watch?v=MXRjTOE2v64
+
+In summary, there are 2 steps to perform:
+
 ### Step 1: Create your parameter manifest
 
 * Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)

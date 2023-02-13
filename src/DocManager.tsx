@@ -97,7 +97,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                 return doc;
             } else {
                 let newDoc = { name: generateDocName(), docId: docId };
-                console.log(`Creating new ${docId}: `, newDoc);                
+                //console.log(`Creating new ${docId}: `, newDoc);                
                 await db.parseqDocs.put(newDoc, docId);
                 setActiveDoc(newDoc);
                 return newDoc;
@@ -247,13 +247,15 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                                 } else {
                                     return 0;
                                 }
-                            }).map((d) => (
-                            d ? <option key={d.docId} value={d.docId}>
+                            })
+                            .map((d) => (
+                            d ? 
+                            <option key={d.docId} value={d.docId}>
                                 {d.name 
                                     + " (saves: " + d.versionCount.toString()
                                     + ", last saved: " + ((d.lastModified) ?  new TimeAgo("en-US").format(d.lastModified) + ")" : "never)")}
                             </option>
-                            : <></>
+                            : null
                         ))
                     }
                 </TextField>

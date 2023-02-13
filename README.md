@@ -114,9 +114,9 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 - Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - Install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
 - Relaunch the Automatic1111 UI.
-– You should now see a `Parseq` section right at the bottom for the `keyframes` tab under the `Deforum` extension (click to expand it):
+– You should now see a `Parseq` section right at the bottom for the `Init` tab under the `Deforum` extension (click to expand it):
 
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/200856608-d90762f4-b682-4b79-88ff-e8b3fa90813d.png">
+<img width="500" alt="image" src="https://i.imgur.com/pGC8im8.png">
 
 
 ## Examples
@@ -158,7 +158,7 @@ https://user-images.githubusercontent.com/74455/213343711-c66c25d6-9ad1-4070-950
 
 ### Step 2: Generate the video
 
-* Head to the SD web UI go to the Deforum tab and then the Keyframes tab.
+* Head to the SD web UI go to the Deforum tab and then the Init tab.
 * Paste the JSON you copied in step 1 into the Parseq section at the bottom of the page.
 * Fiddle with any other Deforum / Stable Diffusion settings you want to tweak.
 * Click generate.
@@ -268,10 +268,10 @@ Units can be used to modify numbers representing frame ranges to match second of
 
 | operator  	|  description 	| example  	|
 |---	   |---	|---	|
-| `<expr1> + <expr2>`   	| Add two expressions. 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
-| `<expr1> - <expr2>` 	| Subtract two expressions |   	|
-| `<expr1> * <expr2>`  	| Multiply two expressions |   	|
-| `<expr1> / <expr2>`  	| Divide two expressions  	|   	|
+| `<expr1> + <expr2>`   	| Add two expressions. Also acts as string concatenation if either expression is a string (with the same type conversion semantics as Javascript string concatenation). 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
+| `<expr1> - <expr2>` 	| Subtract two expressions. |   	|
+| `<expr1> * <expr2>`  	| Multiply two expressions. |   	|
+| `<expr1> / <expr2>`  	| Divide two expressions. 	|   	|
 | `<expr1> % <expr2>`  	| Modulus  |  Reset the seed every 4 beats: <img width="802" alt="image" src="https://user-images.githubusercontent.com/74455/205402901-52f78382-b36a-403a-a6d9-6277af0c758f.png"> |
 | `<expr1> != <expr2>`  	| 1 if expressions are not equal, 0 otherwise.       	      |   	|
 | `<expr1> == <expr2>`  	| 1 if expressions are equal, 0 otherwise.   	            |   	|
@@ -285,7 +285,7 @@ Units can be used to modify numbers representing frame ranges to match second of
 
 ### Audio analyser for automatic keyframe creation from audio data
 
-Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to 
+Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to generate keyframes and values based on beats, events and pitch of an input audio file.
 
 #### Audio analyer general info (read this first)
 * ⚠️ This feature is experimental. That's why it's quite separate from the main Parseq UI for now. The keyframes it generates can be merged into an existing Parseq document using the "Merge keyframes" button in the main UI.

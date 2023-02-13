@@ -26,7 +26,7 @@ import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager'
 import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import { UserAuthContextProvider } from "./UserAuthContext";
-import { fieldNametoRGBa, frameToBeats, frameToSeconds, isValidNumber } from './utils';
+import { fieldNametoRGBa, frameToBeats, frameToSeconds, isValidNumber, getUTCTimeStamp } from './utils';
 import { deepCopy } from '@firebase/util';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
@@ -239,7 +239,7 @@ const ParseqUI = (props) => {
       const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
       if (qsLegacyContent) {
         // Attempt to load content from querystring 
-        // This is to support *LEGACY* parsrq URLs. Doesn't in all browsers with large data.
+        // This is to support *LEGACY* parsrq URLs. Doesn't work in all browsers with large data.
         freshLoadContentToState(JSON.parse(qsLegacyContent));
         setInitStatus({ severity: "success", message: "Successfully imported legacy Parseq data from query string." });
         const url = new URL(window.location);
@@ -649,7 +649,7 @@ const ParseqUI = (props) => {
     "meta": {
       "generated_by": "sd_parseq",
       "version": version,
-      "generated_at": new Date().toUTCString(),
+      "generated_at": getUTCTimeStamp(),
     },
     prompts: prompts,
     options: options,
@@ -706,13 +706,13 @@ const ParseqUI = (props) => {
       if (!isValidNumber(firstKeyFrame[field])) {
         const firstKeyFrameWithValueForField = sortedKeyframes.find((kf) => isValidNumber(kf[field]));
         const substituteValue = firstKeyFrameWithValueForField ? firstKeyFrameWithValueForField[field] : default_keyframes[0][field];
-        console.log(`No value found for ${field} on the first keyframe, using: ${substituteValue}`);
+        //console.log(`No value found for ${field} on the first keyframe, using: ${substituteValue}`);
         bookendKeyFrames.first = { ...bookendKeyFrames.first, [field]: substituteValue };
       }
       if (!isValidNumber(lastKeyFrame[field])) {
         const lastKeyFrameWithValueForField = sortedKeyframes.findLast((kf) => isValidNumber(kf[field]));
         const substituteValue = lastKeyFrameWithValueForField ? lastKeyFrameWithValueForField[field] : default_keyframes[0][field];
-        console.log(`No value found for ${field} on the final keyframe, using: ${substituteValue}`);
+        //console.log(`No value found for ${field} on the final keyframe, using: ${substituteValue}`);
         bookendKeyFrames.last = { ...bookendKeyFrames.last, [field]: substituteValue };
       }
     });
@@ -837,13 +837,13 @@ const ParseqUI = (props) => {
           .replace(/(\n)/g, " ");
         let negative_prompt = prompts.negative
           .replace(/\$\{(.*?)\}/sg, (_, expr) =>  { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
-          .replace(/(\n)/g, " ");
+           .replace(/(\n)/g, " ");
 
         rendered_frames[frame] = {
           ...rendered_frames[frame] || {},
           positive_prompt: positive_prompt,
           negative_prompt: negative_prompt,
-          deforum_prompt: `${positive_prompt} --neg ${negative_prompt}`
+          deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
         }
       } catch (error) {
         console.error(error);
@@ -918,7 +918,7 @@ const ParseqUI = (props) => {
   }, [keyframes, prompts, options, getPersistableState, interpolatable_fields, frameToRowId, default_keyframes]);
 
   const renderButton = useMemo(() =>
-    <Button size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
+    <Button data-testid="render-button" size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
     [needsRender, enqueuedRender]);
 
 
@@ -1051,7 +1051,6 @@ const ParseqUI = (props) => {
     style={{ marginBottom: '10px', marginLeft: '10px' }}
     input={<OutlinedInput id="select-display-fields" label="Chip" />}
     size="small"
-    SelectProps={{ style: {  fontSize: '0.75em' } }}
     renderValue={(selected) => (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.1 }}>
         {selected.map((value) => (
@@ -1063,8 +1062,7 @@ const ParseqUI = (props) => {
       PaperProps: {
         style: {
           maxHeight: 48 * 10 + 8, //item high * 4.5 + padding
-          width: 250,
-          fontSize: "0.75em"
+          width: 250
         }
       }
     }}
@@ -1168,7 +1166,7 @@ const ParseqUI = (props) => {
     <Grid container>
       {
         interpolatable_fields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
-          <Grid xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
+          <Grid key={"sparkline_"+field} xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
             <Typography style={{ fontSize: "0.5em" }}>{(displayFields.includes(field) ? "✔️" : "") + field}</Typography>
             {props.settings_2d_only.includes(field) ?
               <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
@@ -1189,7 +1187,7 @@ const ParseqUI = (props) => {
   </>, [displayFields, showFlatSparklines, renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only, handleClickedSparkline]);
 
   const renderedOutput = useMemo(() => <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
-    <pre>{renderedDataJsonString}</pre>
+    <pre data-testid="output">{renderedDataJsonString}</pre>
   </div>, [renderedDataJsonString]);
 
 

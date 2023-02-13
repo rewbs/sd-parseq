@@ -7,9 +7,19 @@ import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
 import { faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons'
 import { UserAuthContextProvider } from "../UserAuthContext";
 import Login from "../Login";
-import { auth, app, analytics } from '../firebase-config';
+import { auth, app} from '../firebase-config';
 import GitInfo from 'react-git-info/macro';
 import '../robin.css';
+import {isSupported, getAnalytics} from "firebase/analytics";
+
+var analytics: any;
+isSupported().then((isSupported) => { 
+    if (isSupported) { 
+        analytics = getAnalytics(app); 
+    } else {
+        analytics = null;
+    }
+});
 
 const gitInfo = GitInfo();
 const GIT_BRANCH = gitInfo.branch;

@@ -1,4 +1,5 @@
-import Dexie, { Table } from 'dexie';
+import Dexie from 'dexie';
+import { Table } from 'dexie';
 
 export class ParseqDexie extends Dexie {
     parseqVersions!: Table<ParseqDocVersion>;

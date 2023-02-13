@@ -16,7 +16,9 @@ jobs:
         with:
           version-type:  'patch'
       - name: Build
-        run: npm ci && npm run build
+      - run: npm ci 
+      - run: npm run build
+      - run: npm test
       - name: Firebase deploy to staging
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

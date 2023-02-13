@@ -52,3 +52,7 @@ export function isValidNumber(toTest : any) {
     && toTest !== ""
     && !isNaN(toTest);
 }
+
+export function getUTCTimeStamp() {
+  return new Date().toUTCString();
+}

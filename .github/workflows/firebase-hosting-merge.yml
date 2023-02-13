@@ -16,7 +16,7 @@ jobs:
         with:
           version-type:  'patch'
       - name: Build
-      - uses: actions/setup-node@v3
+        uses: actions/setup-node@v3
         with:
           node-version: 19
         - run: npm ci

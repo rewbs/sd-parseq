@@ -23,12 +23,12 @@ jest.mock('react-chartjs-2', () => ({
   Line: () => null
 }));
 
-const constantDate = new Date('2023-01-01T12:00:00')
+const constantDate = new Date('2023-01-01T12:00:00Z')
 beforeAll(() => {
   //@ts-ignore
   global.Date = class extends Date {
     constructor () {
-      super(constantDate.getTime())
+      super(constantDate)
     }
   }
 })

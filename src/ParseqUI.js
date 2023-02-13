@@ -19,14 +19,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import useDebouncedEffect from 'use-debounced-effect';
-import packageJson from '../package.json';
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { UploadButton } from "./components/UploadButton";
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import { UserAuthContextProvider } from "./UserAuthContext";
-import { fieldNametoRGBa, frameToBeats, frameToSeconds, isValidNumber, getUTCTimeStamp } from './utils';
+import { fieldNametoRGBa, frameToBeats, frameToSeconds, isValidNumber, getUTCTimeStamp, getVersionNumber } from './utils';
 import { deepCopy } from '@firebase/util';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
@@ -35,8 +34,6 @@ import './robin.css';
 
 //////////////////////////////////////////
 // Config
-const version = packageJson.version;
-
 const default_prompts = {
   // eslint-disable-next-line no-template-curly-in-string
   positive: `A lone white (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:\${prompt_weight_1} AND
@@ -648,7 +645,7 @@ const ParseqUI = (props) => {
   const getPersistableState = useCallback(() => ({
     "meta": {
       "generated_by": "sd_parseq",
-      "version": version,
+      "version": getVersionNumber(),
       "generated_at": getUTCTimeStamp(),
     },
     prompts: prompts,

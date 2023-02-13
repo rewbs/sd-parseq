@@ -12,6 +12,7 @@ import {
 } from "react-router-dom";
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en.json';
+import * as utils from './utils';
 
 //@ts-ignore
 Dexie.dependencies.indexedDB = indexedDB;
@@ -23,20 +24,14 @@ jest.mock('react-chartjs-2', () => ({
   Line: () => null
 }));
 
-const constantDate = new Date('2023-01-01T12:00:00Z')
-beforeAll(() => {
-  //@ts-ignore
-  global.Date = class extends Date {
-    constructor () {
-      super(constantDate)
-    }
-  }
-})
-
 async function loadAndRender(fixture: {}) {
-  
-  // TODO this overrides all query param lookups, when we really only want to override when the 
-  // key is "parseq".
+
+  // Mock version number and timestamp to ensure consistent snapshots.
+  jest.spyOn(utils, 'getUTCTimeStamp').mockReturnValue('0.0.test');
+  jest.spyOn(utils, 'getVersionNumber').mockReturnValue('Sun, 01 Jan 2023 14:00:00 GMT');
+
+  // Mock query params with test fixture.
+  // TODO this overrides all query param lookups, when we really only want to override when the key is "parseq".
   jest.spyOn(URLSearchParams.prototype, 'get').mockImplementation((key) => JSON.stringify(fixture));
 
   render(<BrowserRouter><Routes><Route path="*" element={<Deforum />} /></Routes></BrowserRouter>);
@@ -45,6 +40,7 @@ async function loadAndRender(fixture: {}) {
   await waitFor(() => {
     expect(screen.getAllByTestId("render-button")[0]).toHaveTextContent("Force");
   }, { timeout: 5000 });
+  
 }
 
 

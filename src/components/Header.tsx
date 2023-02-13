@@ -1,6 +1,5 @@
 import * as React from 'react';
 import Grid from '@mui/material/Unstable_Grid2';
-import packageJson from '../../package.json';
 import { Chip, Typography, Box } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
@@ -11,6 +10,7 @@ import { auth, app} from '../firebase-config';
 import GitInfo from 'react-git-info/macro';
 import '../robin.css';
 import {isSupported, getAnalytics} from "firebase/analytics";
+import { getVersionNumber } from '../utils';
 
 var analytics: any;
 isSupported().then((isSupported) => { 
@@ -43,7 +43,7 @@ export default function Header({ title }: MyProps) {
         <Grid container paddingLeft={5} paddingRight={5}>
             <Grid xs={6}>
                 <h2>
-                    {title} <small>v{packageJson.version}</small>
+                    {title} <small>v{getVersionNumber()}</small>
                     <Typography fontSize='0.4em'>
                         [{process.env.NODE_ENV}] {displayBranch} Built {displayDate} ({commitLink} - {changeLogLink})
                     </Typography>

@@ -1,3 +1,4 @@
+import packageJson from '../package.json';
 
 export const fieldNametoRGBa = (str: string, alpha: number): string => {
   switch (str) {
@@ -55,4 +56,8 @@ export function isValidNumber(toTest : any) {
 
 export function getUTCTimeStamp() {
   return new Date().toUTCString();
+}
+
+export function getVersionNumber() {
+  return packageJson.version;
 }

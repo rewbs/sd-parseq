@@ -26,7 +26,6 @@ const runTest = (label:string, formula: string, expected: number[]) => {
   const testTag = label + ': ' + formula;
   //  eslint-disable-next-line jest/valid-title
   test(testTag, () => {
-    console.log(testTag);
     const results = runParseq(formula);
     expect(JSON.stringify(results))
       .toEqual(JSON.stringify(expected));

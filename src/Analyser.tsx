@@ -768,7 +768,7 @@ export default function Analyser() {
                             label="Onset method"
                             disabled={isAnalysing}
                             InputLabelProps={{ shrink: true, }}
-                            SelectProps={{ style: {  fontSize: '0.75em' } }}
+                            InputProps={{ style: {  fontSize: '0.75em' } }}
                             value={onsetMethod}
                             onChange={(e) => setOnsetMethod(e.target.value)}        
                             select
@@ -811,7 +811,7 @@ export default function Analyser() {
                             label="Pitch method"
                             disabled={isAnalysing}
                             InputLabelProps={{ shrink: true, }}
-                            SelectProps={{ style: {  fontSize: '0.75em' } }}
+                            InputProps={{ style: {  fontSize: '0.75em' } }}
                             value={pitchMethod}
                             onChange={(e) => setPitchMethod(e.target.value as PitchMethod)}        
                             select

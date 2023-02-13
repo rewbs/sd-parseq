@@ -17,11 +17,14 @@ p {
   margin-block-end: 0.5em;
 }
 
+.MuiMenuItem-root {
+  font-size: 0.75em !important;
+}
+
 #waveform .marker-label span  {
   font-size: 0.2em !important;
 }
 
 #waveform .marker-label span:hover  {
-  
   font-size: 0.5em !important;
 }

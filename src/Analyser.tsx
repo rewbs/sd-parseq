@@ -774,14 +774,14 @@ export default function Analyser() {
                             select
                         >    
                     <MenuItem value={"default"}>default</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"energy"}>energy</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"hfc"}>hfc</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"complex"}>complex</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"phase"}>phase</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"specdiff"}>specdiff</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"kl"}>kl</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"mkl"}>mkl</MenuItem>
-                    <MenuItem style={{  fontSize: '0.75em' }} value={"specflux"}>specflux</MenuItem>
+                    <MenuItem value={"energy"}>energy</MenuItem>
+                    <MenuItem value={"hfc"}>hfc</MenuItem>
+                    <MenuItem value={"complex"}>complex</MenuItem>
+                    <MenuItem value={"phase"}>phase</MenuItem>
+                    <MenuItem value={"specdiff"}>specdiff</MenuItem>
+                    <MenuItem value={"kl"}>kl</MenuItem>
+                    <MenuItem value={"mkl"}>mkl</MenuItem>
+                    <MenuItem value={"specflux"}>specflux</MenuItem>
                 </TextField>   
             </Grid>
             <Grid xs={4}>

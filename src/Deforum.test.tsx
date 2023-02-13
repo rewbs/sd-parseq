@@ -3,7 +3,7 @@
 import 'jest-canvas-mock'
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
-import { render, screen, act, waitFor, } from '@testing-library/react';
+import { render, screen, waitFor, } from '@testing-library/react';
 import Deforum from './Deforum';
 import {
   BrowserRouter,

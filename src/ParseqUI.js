@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, FormControlLabel, Tooltip as Tooltip2, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, rgbToHex, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -20,6 +20,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import useDebouncedEffect from 'use-debounced-effect';
 import { InitialisationStatus } from "./components/InitialisationStatus";
+import { Prompts } from "./components/Prompts";
 import { UploadButton } from "./components/UploadButton";
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
@@ -119,6 +120,7 @@ const ParseqUI = (props) => {
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
   const [lastRenderedState, setlastRenderedState] = useState("");
   const [graphAsPercentages, setGraphAsPercentages] = useState(false);
+  const [graphPromptMarkers, setGraphPromptMarkers] = useState(false);
   const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
   const [displayFields, setDisplayFields] = useState();
@@ -1069,55 +1071,53 @@ const ParseqUI = (props) => {
     ))}
   </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields])
 
-  const promptsUI = useMemo(() => prompts && <>
-    <Grid xs={12} container style={{ margin: 0, padding: 0 }}>
-      <Grid xs={6} style={{ marginTop: 0, paddingTop: 0 }}>
-        <TextField
-          fullWidth={true}
-          id={"positive_prompt"}
-          label={"Positive prompt"}
-          multiline
-          minRows={2}
-          maxRows={16}
-          value={prompts.positive}
-          onBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
-          InputProps={{ style: { fontSize: '0.75em', color: 'DarkGreen' } }}
-          onChange={(e) => setPrompts({ ...prompts, positive: e.target.value })}
-          size="small"
-          variant="standard" />
-      </Grid>
-      <Grid xs={6} style={{ marginTop: 0, paddingTop: 0 }}>
-        <TextField
-          fullWidth={true}
-          id={"negative_prompt"}
-          label={"Negative prompt"}
-          multiline
-          minRows={2}
-          maxRows={16}
-          onBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
-          value={prompts.negative}
-          InputProps={{ style: { fontSize: '0.75em', color: 'Firebrick' } }}
-          onChange={(e) => setPrompts({ ...prompts, negative: e.target.value })}
-          size="small"
-          variant="standard" />
-      </Grid>
-    </Grid>
-
-  </>, [prompts, autoRender, needsRender]);
+  console.log(prompts);
+  const promptsUI = useMemo(() => prompts ? <Prompts
+      initialPrompts={prompts}
+      lastFrame={keyframes[keyframes.length - 1].frame}
+      afterBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true) }}
+      //afterChange={(p) =>{ console.log("changed to: ", p)}}
+      afterChange={(p) => setPrompts(p)}
+    /> : <></>, [prompts, autoRender, needsRender, keyframes]);
 
   const editableGraph = useMemo(() => renderedData && <div>
     <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
     <FormControlLabel control={
-      <Checkbox defaultChecked={false}
+      <Checkbox
+        checked={graphAsPercentages}
         id={"graph_as_percent"}
         onChange={(e) => setGraphAsPercentages(e.target.checked)}
       />}
       label={<Box component="div" fontSize="0.75em">Show as % of max</Box>} />
-
+    <FormControlLabel control={
+      <Checkbox
+        checked={graphPromptMarkers}
+        id={"graph_as_percent"}
+        onChange={(e) => setGraphPromptMarkers(e.target.checked)}
+      />}
+      label={<Box component="div" fontSize="0.75em">Show prompt markers</Box>} />
     <Editable
       renderedData={renderedData}
       displayFields={displayFields}
       as_percents={graphAsPercentages}
+      markers={
+        (prompts && graphPromptMarkers ) ?
+          prompts.flatMap((p, idx) => [{
+              x: p.from,
+              color: 'rgba(50,200,50, 0.8)',
+              label: 'p' + (idx+1) + ' start',
+              display: !p.allFrames,
+              top: true
+            },
+            {
+              x: p.to,
+              color: 'rgba(200,50,50, 0.8)',
+              label: 'p' + (idx+1) + ' end',
+              display: !p.allFrames,
+              top: false
+            }
+          ])
+        : []}
       updateKeyframe={(field, index, value) => {
         let rowId = frameToRowId(index)
         gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
@@ -1140,7 +1140,7 @@ const ParseqUI = (props) => {
         }
       }}
     />
-  </div>, [renderedData, displayFields, graphAsPercentages, addRow, frameToRowId]);
+  </div>, [renderedData, displayFields, graphAsPercentages, graphPromptMarkers, addRow, frameToRowId]);
 
   const handleClickedSparkline = useCallback((e) => {
     let field = e.currentTarget.id.replace("sparkline_", "");

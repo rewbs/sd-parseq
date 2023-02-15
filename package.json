@@ -24,6 +24,7 @@
     "aubiojs": "^0.2.1",
     "bezier-easing": "^2.1.0",
     "chart.js": "^3.9.1",
+    "chartjs-plugin-annotation": "^2.1.2",
     "chartjs-plugin-crosshair": "^1.2.0",
     "chartjs-plugin-dragdata": "^2.2.5",
     "chartjs-plugin-zoom": "^2.0.0",
@@ -99,6 +100,7 @@
     ]
   },
   "devDependencies": {
+    "@types/react-copy-to-clipboard": "^5.0.4",
     "@types/uuid": "^9.0.0",
     "@types/wavesurfer.js": "^6.0.3",
     "@welldone-software/why-did-you-render": "^7.0.1",

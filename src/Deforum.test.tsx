@@ -40,7 +40,6 @@ async function loadAndRender(fixture: {}) {
   await waitFor(() => {
     expect(screen.getAllByTestId("render-button")[0]).toHaveTextContent("Force");
   }, { timeout: 5000 });
-  
 }
 
 

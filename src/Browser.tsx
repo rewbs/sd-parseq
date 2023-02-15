@@ -24,6 +24,7 @@ export default function Browser() {
     );
     const showBorders = { border: '1px solid', borderColor: 'divider' };
 
+
     return <>
         <Header title="Parseq - local storage browser" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2}>
@@ -51,8 +52,8 @@ export default function Browser() {
                                 </Typography>
                             </Grid>,
                             <Grid xs={8} sx={showBorders}>
-                                <p style={{ fontSize: '0.75em', color: 'DarkGreen', whiteSpace: 'pre-line' }} >{v.prompts.positive}</p>
-                                <p style={{ fontSize: '0.75em', color: 'Firebrick', whiteSpace: 'pre-line'  }} >{v.prompts.negative}</p>
+                                <p style={{ fontSize: '0.75em', color: 'DarkGreen', whiteSpace: 'pre-line' }} >{getPromptSummary(v.prompts, true)}</p>
+                                <p style={{ fontSize: '0.75em', color: 'Firebrick', whiteSpace: 'pre-line'  }} >{getPromptSummary(v.prompts, false)}</p>
                                 <Button id={'toggle_' + v.versionId} variant='outlined' style={{ fontSize: '0.75em' }} onClick={(e) => {
                                     const pre = e.currentTarget.parentElement?.querySelector('pre');
                                     if (pre) {
@@ -70,4 +71,12 @@ export default function Browser() {
         </Grid>
     </>;
 
+}
+
+function getPromptSummary(prompts: ParseqPrompts, positive: boolean): string {
+    if (Array.isArray(prompts)) {
+        return positive ? prompts[0].positive : prompts[0].negative;
+    } else {
+        return positive ? prompts.positive : prompts.negative;
+    }
 }

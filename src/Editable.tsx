@@ -4,12 +4,15 @@ import {
     Tooltip, LegendItem
 } from 'chart.js';
 //disabling crosshair plugin because it seems to cause errors on some systems.
-//import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
+import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
+//@ts-ignore
+import annotationPlugin from 'chartjs-plugin-annotation';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
 import 'chart.js/auto';
+import { fontSize } from '@mui/system';
 
 const ChartJSAddPointPlugin = {
     id: 'click',
@@ -31,7 +34,8 @@ ChartJS.register(
     Tooltip,
     Legend,
     ChartJSAddPointPlugin,
-    //CrosshairPlugin
+    CrosshairPlugin,
+    annotationPlugin 
 );
 
 //@ts-ignore
@@ -44,6 +48,7 @@ export class Editable extends React.Component<{
     updateKeyframe: (field: string, index: number, value: number) => void;
     addKeyframe: (index: number) => void;
     clearKeyframe: (field: string, index: number) => void;
+    markers: {x: number, label: string, color: string, top: boolean}[];
 }> {
 
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
@@ -59,6 +64,33 @@ export class Editable extends React.Component<{
     }
 
     render() {
+
+        const annotations =  this.props.markers.reduce((acc: any, marker: {x: number, label: string, color: string, top: boolean}, idx: number) => {
+            return {
+                ...acc,
+                ['line' + idx]: {
+                    xMin: marker.x,
+                    xMax: marker.x,
+                    borderColor: marker.color,
+                    borderDash: [5, 5],
+                    borderWidth: 1,
+                    label: {
+                        display:true,
+                        content: marker.label,
+                        ...(marker.top ? {position: 'end', yAdjust: -5} : {position: 'start', yAdjust: 5}),
+                        font : { size: '8' },
+                        backgroundColor: 'rgba(0,0,0,0.6)',
+                        padding: 3
+                    },
+                    callout: {
+                        display: true, 
+                    }
+                }
+            }
+        }, {});
+
+        console.log(annotations);
+
         if ((!this.props.renderedData.rendered_frames)) {
             //log.debug("Editable input not set.")
             return <></>;
@@ -97,7 +129,14 @@ export class Editable extends React.Component<{
                     intersect: false,
                     callbacks: {
                         label: function(context) {
-                            let label = `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`;
+                            const field : string = context.dataset.label || '';
+                            const frame = capturedThis.props.renderedData.rendered_frames[context.parsed.x];
+                            const value = frame[field].toFixed(3);
+                            //@ts-ignore
+                            const maxValue = capturedThis.props.renderedData.rendered_frames_meta[field].max;
+                            const pcOfMax = (frame[field]/maxValue*100).toFixed(2)
+                            const label = `${context.dataset.label}: ${value} (${pcOfMax}% of max) `;
+                            
                             return label;
                         },
                         title: function(items) {
@@ -161,7 +200,10 @@ export class Editable extends React.Component<{
                             this.props.addKeyframe(index);
                         }
                     }
-                }
+                },
+                annotation: {
+                    annotations
+                  }                
             },
         };
 

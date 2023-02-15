@@ -3,7 +3,6 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "firebase/storage";
-import * as React from 'react';
 import { useState } from 'react';
 //@ts-ignore
 import { useUserAuth } from "../UserAuthContext";
@@ -19,7 +18,8 @@ let _lastUploadAttempt = '';
 
 export function UploadButton({ docId, renderedJson, autoUpload }: MyProps) {
 
-    const [uploadStatus, setUploadStatus] = useState(<></>);
+    const [uploadStatus, setUploadStatus] = useState(<></>); 
+    
     //@ts-ignore
     const { user } = useUserAuth();
     

@@ -42,10 +42,22 @@ type ParseqOptions = {
     cc_use_input: boolean;
 };
 
-type ParseqPrompts = {
+type SimpleParseqPrompts = {
     positive: string;
     negative: string;
 };
+
+type AdvancedParseqPrompts = {
+    positive:string;
+    negative:string;    
+    allFrames:boolean;
+    from:number;
+    to:number;
+    weight:string;
+}[];
+
+type ParseqPrompts = SimpleParseqPrompts | AdvancedParseqPrompts;
+
 
 type ParseqKeyframes = [{
     frame: number;

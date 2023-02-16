@@ -1,10 +1,8 @@
-import { Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Slider, Tooltip, Typography } from "@mui/material";
-import Button from '@mui/material/Button';
+import { Slider, Typography } from "@mui/material";
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
-import { Stack } from '@mui/system';
-import { useCallback, useEffect, useState } from 'react';
-import {percentageToColor} from "../utils";
+import { useState } from 'react';
+import { percentageToColor } from "../utils";
 
 interface PreviewProps {
     data: RenderedData
@@ -61,7 +59,7 @@ export function Preview(props: PreviewProps) {
                             <div style={{
                                  float:'none',
                                  overflow:'visible',
-                                 backgroundColor: percentageToColor(valueAsPercent/100, 160, 0, 0.5),
+                                 backgroundColor: percentageToColor(valueAsPercent/100, 100, 0, 0.5),
                                  width: (valueAsPercent +'%') }} >
                                 {field.name}&nbsp;:&nbsp;{renderedFrames[frame][field.name].toFixed(4)}
                             </div>

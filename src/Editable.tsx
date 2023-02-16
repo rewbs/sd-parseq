@@ -1,18 +1,18 @@
 import type { ChartData, ChartOptions, ScriptableContext } from 'chart.js';
 import {
-    CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Title,
-    Tooltip, LegendItem
+    CategoryScale, Chart as ChartJS, Legend, LegendItem, LinearScale, LineElement, PointElement, Title,
+    Tooltip
 } from 'chart.js';
 //disabling crosshair plugin because it seems to cause errors on some systems.
-import { CrosshairPlugin, Interpolate } from 'chartjs-plugin-crosshair';
+import { CrosshairPlugin } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
+//@ts-ignore
+import 'chart.js/auto';
 //@ts-ignore
 import annotationPlugin from 'chartjs-plugin-annotation';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
-import {fieldNametoRGBa, frameToBeats, frameToSeconds} from './utils';
-import 'chart.js/auto';
-import { fontSize } from '@mui/system';
+import { fieldNametoRGBa, frameToBeats, frameToSeconds } from './utils';
 
 const ChartJSAddPointPlugin = {
     id: 'click',

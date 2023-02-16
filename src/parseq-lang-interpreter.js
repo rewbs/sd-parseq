@@ -251,7 +251,7 @@ export function interpret(ast, context) {
       let alternate = ast.alternate ? interpret(ast.alternate, context) : f => 0;
       return f => (condition(f)>0) ? consequent(f) : alternate(f)
     default:
-      throw new Error(`Unrecognised expression ${ast.type} at ${ast.start.line}:${ast.start.col}`);
+      throw new Error(`Unrecognised expression ${ast.type} at ${ast?.start?.line}:${ast?.start?.col}`);
   }
 }
 

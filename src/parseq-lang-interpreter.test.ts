@@ -125,5 +125,13 @@ runTest('pulse-named-args', 'round(pulse(p=5, ps=0, a=2, c=10, li=0, pw=2),2)', 
 
 runTest('addition', '1+1', [2,2,2,2,2,2,2,2,2,2,2]);
 
-runTest('precedence', '1+1*5', [6,6,6,6,6,6,6,6,6,6,6]);
+runTest('condtional', 'if (1 ) 2', [2,2,2,2,2,2,2,2,2,2,2]);
+runTest('condtional', 'if (0 ) 2', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('condtional', 'if (0) 2 else 3', [3,3,3,3,3,3,3,3,3,3,3]);
+ runTest('condtional', 'if (0 or 1) 2', [2,2,2,2,2,2,2,2,2,2,2]);
+runTest('condtional', 'if (0 and 1) 2', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('condtional', 'if (0 or 1 ) 2', [2,2,2,2,2,2,2,2,2,2,2]);
+runTest('condtional', 'if ( 0 or 1) 2', [2,2,2,2,2,2,2,2,2,2,2]);
+runTest('condtional', 'if ( 0 or 1 ) 2', [2,2,2,2,2,2,2,2,2,2,2]);
 
+runTest('precedence', '1+1*5', [6,6,6,6,6,6,6,6,6,6,6]);

@@ -89,6 +89,7 @@ const ParseqUI = (props) => {
   const interpolatable_fields = props.interpolatable_fields;
   const default_keyframes = props.default_keyframes;
   const default_displayFields = props.default_displayFields;
+  const preventInitialRender = new URLSearchParams(window.location.search).get("noRender") === "true" || false;
 
   const fillWithDefaults = useCallback((possiblyIncompleteContent) => {
     if (!possiblyIncompleteContent.prompts) {
@@ -131,13 +132,12 @@ const ParseqUI = (props) => {
   const [prompts, setPrompts] = useState();
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [enqueuedRender, setEnqueuedRender] = useState(false);
-  const [autoRender, setAutoRender] = useState(true);
+  const [autoRender, setAutoRender] = useState(!preventInitialRender);
   const [autoUpload, setAutoUpload] = useState(false);
   const [initStatus, setInitStatus] = useState({});
   const [uploadStatus, setUploadStatus] = useState(<></>);
   const [lastRenderTime, setLastRenderTime] = useState(0);
-  
-
+  const [gridCursorPos, setGridCursorPos] = useState(0);
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
 
@@ -178,6 +178,11 @@ const ParseqUI = (props) => {
             params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
           },
           suppressMovable: true,
+          cellStyle: params => ({
+            backgroundColor: fieldNametoRGBa(field, 0.1),
+            borderRight: '1px solid lightgrey'
+          })
+          
         },
         {
           headerName: '➟' + field,
@@ -193,6 +198,10 @@ const ParseqUI = (props) => {
             params.data[field + '_i'] = params.newValue;
           },
           suppressMovable: true,
+          cellStyle: params => ({
+            backgroundColor: fieldNametoRGBa(field, 0.1),
+            borderRight: '1px solid black'
+          })
         }
       ])
     ]
@@ -252,7 +261,9 @@ const ParseqUI = (props) => {
         url.searchParams.delete('parseq');
         window.history.replaceState({}, '', url);
         setAutoSaveEnabled(true);
-        setEnqueuedRender(true);
+        if (!preventInitialRender) {
+          setEnqueuedRender(true);
+        }
       } else if (qsImportRemote && qsRemoteImportToken) {
         setInitStatus({ severity: "warning", message: "Importing remote document..." });
         // Attempt to load content from remote URL
@@ -267,7 +278,9 @@ const ParseqUI = (props) => {
               url.searchParams.delete('token');
               window.history.replaceState({}, '', url);
               setAutoSaveEnabled(true);
-              setEnqueuedRender(true);
+              if (!preventInitialRender) {
+                setEnqueuedRender(true);
+              }
             }).catch((error) => {
               console.error(error);
               setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
@@ -284,7 +297,9 @@ const ParseqUI = (props) => {
         loadVersion(activeDocId).then((loadedContent) => {
           freshLoadContentToState(loadedContent);
           setAutoSaveEnabled(true);
-          setEnqueuedRender(true);
+          if (!preventInitialRender) {
+            setEnqueuedRender(true);
+          }
         });
       }
     }
@@ -671,7 +686,7 @@ const ParseqUI = (props) => {
     interpolatableFields: interpolatable_fields.map(s => ({name: s })),
     displayFields: displayFields,
     keyframes: keyframes,
-  }), [prompts, options, displayFields, keyframes]);
+  }), [prompts, options, displayFields, keyframes, interpolatable_fields]);
 
   const needsRender = useMemo(() => {
     return !lastRenderedState
@@ -688,33 +703,38 @@ const ParseqUI = (props) => {
     setRenderedErrorMessage("");
     setEnqueuedRender(false);
     try {
-      const data = parseqRender(getPersistableState());
-      if (data.errorMessage) {
-        setRenderedErrorMessage(data.errorMessage);
+      const data = parseqRender(getPersistableState());      
+      setRenderedData(data);
+      setlastRenderedState({
+        // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
+        // So if we want to compare a future grid state to the last rendered state, we need to
+        // do a deep copy.
+        keyframes: clonedeep(keyframes),
+        prompts,
+        options
+      });
+      setLastRenderTime(Date.now());
+    } catch (e) {
+      console.error("Parseq renderer error: ", e);
+      let errorMessage;
+      if (e.message.length>300) {
+        errorMessage = e.message.substring(0, 300) + '... [See Javascript console for full error message].';
       } else {
-        setRenderedData(data);
-        setlastRenderedState({
-          // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
-          // So if we want to compare a future grid state to the last rendered state, we need to
-          // do a deep copy.
-          keyframes: clonedeep(keyframes),
-          prompts,
-          options
-        });
-        setLastRenderTime(Date.now());
+        errorMessage = e.message;
       }
+      setRenderedErrorMessage(errorMessage);
     } finally {
       console.timeEnd('Render');
     }
     
-  }, [keyframes, prompts, options, getPersistableState, interpolatable_fields, frameToRowId, default_keyframes]);
+  }, [keyframes, prompts, options, getPersistableState]);
 
   const renderButton = useMemo(() =>
     <Stack>
       <Button data-testid="render-button" size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Re-render'}</Button>
       {lastRenderTime ? <Typography fontSize='0.7em' >Last rendered: <ReactTimeAgo date={lastRenderTime} locale="en-US" />.</Typography> : <></>}
     </Stack>
-    , [needsRender, enqueuedRender]);
+    , [needsRender, enqueuedRender, lastRenderTime]);
 
 
   const grid = useMemo(() => <>
@@ -733,6 +753,9 @@ const ParseqUI = (props) => {
         undoRedoCellEditingLimit={0}
         enableCellChangeFlash={true}
         tooltipShowDelay={0}
+        onCellMouseOver={(e) => {
+          setGridCursorPos(e.data.frame);
+        }}
       />
     </div>
   </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, default_keyframes]);
@@ -790,7 +813,7 @@ const ParseqUI = (props) => {
       {errorMessage}
       {statusMessage}
     </div>
-  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender, renderButton, renderedDataJsonString, props.settings_2d_only, props.settings_3d_only]);
+  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender, props.settings_2d_only, props.settings_3d_only]);
 
   const docManager = useMemo(() => <UserAuthContextProvider>
     <DocManagerUI
@@ -799,11 +822,13 @@ const ParseqUI = (props) => {
         console.log("Loading version", content);
         if (content) {
           freshLoadContentToState(content);
-          setEnqueuedRender(true);
+          if (!preventInitialRender) {
+            setEnqueuedRender(true);
+          }
         }
       }}
     />
-  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
+  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState, preventInitialRender]);
 
   const optionsUI = useMemo(() => options && <span>
     <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
@@ -892,18 +917,28 @@ const ParseqUI = (props) => {
           prompts.flatMap((p, idx) => [{
               x: p.from,
               color: 'rgba(50,200,50, 0.8)',
-              label: 'p' + (idx+1) + ' start',
+              label: p.name + 'start',
               display: !p.allFrames,
               top: true
             },
             {
               x: p.to,
               color: 'rgba(200,50,50, 0.8)',
-              label: 'p' + (idx+1) + ' end',
+              label: p.name + ' end',
               display: !p.allFrames,
               top: false
             }
           ])
+          .concat(
+            [
+              {
+                x: gridCursorPos,
+                color: 'rgba(0, 0, 100, 1)',
+                label: 'Grid cursor',
+                top: true
+              }
+            ]
+          )
         : []}
       updateKeyframe={(field, index, value) => {
         let rowId = frameToRowId(index)
@@ -927,7 +962,7 @@ const ParseqUI = (props) => {
         }
       }}
     />
-  </div>, [renderedData, displayFields, graphAsPercentages, graphPromptMarkers, addRow, frameToRowId]);
+</div>, [renderedData, displayFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId]);
 
   const handleClickedSparkline = useCallback((e) => {
     let field = e.currentTarget.id.replace("sparkline_", "");
@@ -1038,7 +1073,7 @@ const ParseqUI = (props) => {
       </Grid>
     </Grid>
 
-  </Paper>, [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender, autoUpload]);
+  </Paper>, [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender]);
 
 
 
@@ -1065,10 +1100,10 @@ const ParseqUI = (props) => {
       <Grid xs={4}>
       <Box display='flex' justifyContent="right" gap={1} alignItems='center' paddingTop={1}>
         <Tooltip2 title="Generate Parseq keyframes from audio (⚠️ experimental).">
-          <Button color="success" variant="outlined" size="small" href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">Audio Analyzer...</Button>
+          <Button color="success" variant="outlined" size="small" href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">🎧 Audio Analyzer</Button>
         </Tooltip2>
         <Tooltip2 title="Explore your Parseq documents.">
-          <Button color="success" variant="outlined" size="small" href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">Doc Browser...</Button>
+          <Button color="success" variant="outlined" size="small" href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">🔎 Doc Browser</Button>
         </Tooltip2>
       </Box>  
       </Grid>      

@@ -30,6 +30,9 @@ type ParseqPersistableState = {
 
 type interpolatableField = {
     name: string;
+    //defaultValue
+    //type
+    //colour?
 }
 
 type ParseqDocVersion = ParseqPersistableState & {
@@ -75,7 +78,7 @@ type ParseqKeyframes = ParseqKeyframe[] | [];
 
 type ParseqRenderedFrames = [{
     frame: number;
-    // TODO: make this stricter    
+    // TODO: make this stricter
     deforum_prompt: string;
     [key: string]: number;
 }] | [];
@@ -94,7 +97,3 @@ type RenderedData = ParseqPersistableState & {
     rendered_frames: ParseqRenderedFrames;
     rendered_frames_meta: ParseqRenderedFramesMeta;
 };
-
-type RendererError = {
-    errorMessage: string
-}

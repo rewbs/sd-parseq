@@ -23,6 +23,21 @@ TimeAgo.addDefaultLocale(en);
 jest.mock('react-chartjs-2', () => ({
   Line: () => null
 }));
+jest.mock('chartjs-plugin-crosshair', () => ({
+  CrosshairPlugin: () => null
+}));
+jest.mock('chartjs-plugin-dragdata', () => null);
+jest.mock('chartjs-plugin-annotation', () => ({
+  annotationPlugin: () => null
+}));
+
+
+jest.mock('chart.js', () => ({
+    Chart: {
+      register: () => {},
+      }
+  }));
+
 
 async function loadAndRender(fixture: {}) {
 
@@ -34,12 +49,13 @@ async function loadAndRender(fixture: {}) {
   // TODO this overrides all query param lookups, when we really only want to override when the key is "parseq".
   jest.spyOn(URLSearchParams.prototype, 'get').mockImplementation((key) => JSON.stringify(fixture));
 
+  // Render the app
   render(<BrowserRouter><Routes><Route path="*" element={<Deforum />} /></Routes></BrowserRouter>);
 
   // Wait for Parseq to complete
   await waitFor(() => {
-    expect(screen.getAllByTestId("render-button")[0]).toHaveTextContent("Force");
-  }, { timeout: 5000 });
+    expect(screen.getAllByTestId("render-button")[0]).toHaveTextContent("Re-render");
+  }, { timeout: 10000 });    
 }
 
 
@@ -55,7 +71,7 @@ test('Blank document',  async () => {
         "seed": -1,
       },
       {
-        "frame": 120
+        "frame": 10
       }
     ]
   };

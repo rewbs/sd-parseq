@@ -3,14 +3,19 @@ import { isValidNumber } from "./utils";
 import { defaultValues } from './data/defaultValues';
 //@ts-ignore
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
-import { areArraysEqual } from "@mui/base";
 
+export class ParseqRendererException {
+    message: string;
+    name = "ParseqRendererException";
+    
+    constructor(message: string) {
+        this.message = message;
+    }
+}
 
 function getDefaultValue(field: string) {
-
     //@ts-ignore
     const candidateDefaultValue: any = defaultValues[field];
-
     if (candidateDefaultValue === undefined) {
         return 0;
     } else {
@@ -18,8 +23,7 @@ function getDefaultValue(field: string) {
     }
 }
 
-
-export const parseqRender = (input: ParseqPersistableState): RenderedData | RendererError => {
+export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
     const keyframes = input.keyframes;
     const options = input.options;
@@ -29,10 +33,10 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData | Rend
 
     // Validation
     if (!keyframes) {
-        return { errorMessage: "No keyframes found." };
+        throw new ParseqRendererException("No keyframes found.");
     }
     if (keyframes.length < 2) {
-        return { errorMessage: "There must be at least 2 keyframes to render." };
+        throw new ParseqRendererException("There must be at least 2 keyframes to render.");
     }
     let sortedKeyframes: ParseqKeyframes = keyframes.sort((a, b) => a.frame - b.frame);
 
@@ -98,7 +102,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData | Rend
                     try {
                         parseResult = parse(toParse);
                     } catch (error) {
-                        return { errorMessage: `Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error }
+                        throw new ParseqRendererException(`Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
                     }
                 }
             }
@@ -127,7 +131,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData | Rend
                     // Increases CPU and memory usage but allows for different context variables on each invocation, e.g. prev_computed_value.
                     interpolator = interpret(parseResult, context);
                 } catch (error) {
-                    return { errorMessage: `Error interpreting interpolation for ${field} at frame ${frame} (${toParse}): ` + error }
+                    throw new ParseqRendererException(`Error interpreting interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
                 }
             }
 
@@ -136,7 +140,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData | Rend
             try {
                 computed_value = interpolator(frame)
             } catch (error) {
-                return { errorMessage: `Error evaluating interpolation for ${field} at frame ${frame} (${toParse}): ` + error }
+                throw new ParseqRendererException(`Error evaluating interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
             }
 
             rendered_frames[frame] = {
@@ -189,7 +193,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData | Rend
             }
         } catch (error) {
             console.error(error);
-            return { errorMessage: `Error parsing prompt weight value: ` + error }
+            throw new ParseqRendererException(`Error parsing prompt weight value: ` + error);
         }
 
     });
@@ -266,14 +270,14 @@ function composePromptAtFrame(prompts: AdvancedParseqPrompts, frame: number, pos
         .filter(p => p.allFrames || (frame >= p.from && frame <= p.to));
 
     let prompt;
-    if (activePrompts.length == 0) {
+    if (activePrompts.length === 0) {
         prompt = '';
-    } else if (activePrompts.length == 1) {
+    } else if (activePrompts.length === 1) {
         prompt = positive ? activePrompts[0].positive : activePrompts[0].negative;
     } else {
         prompt = activePrompts.map(p => {
             const prompt = positive ? p.positive : p.negative;
-            return `${prompt} : \$\{${p.weight}}`
+            return `${prompt} : $\{${p.weight}}`
         }).join(' AND ');
     }
     return prompt;

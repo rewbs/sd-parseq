@@ -26,15 +26,7 @@ export function UploadButton({ docId, renderedJson, autoUpload, onNewUploadStatu
     //@ts-ignore
     const { user } = useUserAuth();
 
-
-    // useEffect(() => {
-    //     if (!user) {
-    //         setUploadStatus(<Alert severity="error">Sign in above to upload.</Alert>);
-    //     } else {
-    //         setUploadStatus(<></>);
-    //     }
-    // }, []);
-    useEffect(() => onNewUploadStatus(uploadStatus), [uploadStatus]);
+    useEffect(() => onNewUploadStatus(uploadStatus), [uploadStatus, onNewUploadStatus]);
 
     function upload(): void {
         if (!user) {
@@ -51,13 +43,12 @@ export function UploadButton({ docId, renderedJson, autoUpload, onNewUploadStatu
                 getDownloadURL(sRef).then((url) => {
                     const matchRes = url.match(/rendered%2F(doc-.*?\.json)/);
                     if (matchRes && matchRes[1]) {
-                        //setUploadStatus(<Alert severity="success">Rendered output <a href={url}>available here</a>. </Alert>);
                         setUploadStatus(
                             <Stack direction={'column'}>
                              <CopyToClipboard text={url}>
                                   <Button size="small"  variant="outlined">✅ Copy URL</Button>
                               </CopyToClipboard>
-                                <Typography fontSize={'0.7em'}><a target={'_blank'} href={url}>See uploaded file</a></Typography>
+                                <Typography fontSize={'0.7em'}><a rel="noreferrer" target={'_blank'} href={url}>See uploaded file</a></Typography>
                             </Stack>);
                         setLastUploadTime(Date.now());
                     } else {

@@ -1,10 +1,9 @@
+import { Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Slider, Tooltip } from "@mui/material";
+import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
-import Button from '@mui/material/Button';
-import { Box, Tooltip, Slider, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Checkbox } from "@mui/material";
-import { useEffect, useMemo, useCallback, useState } from 'react';
-import { act } from 'react-dom/test-utils';
 import { Stack } from '@mui/system';
+import { useCallback, useEffect, useState } from 'react';
 
 interface PromptsProps {
     initialPrompts: ParseqPrompts,
@@ -68,6 +67,33 @@ export function Prompts(props: PromptsProps) {
             size="small"
             variant="outlined" />
     }, [prompts, props]);
+
+    const addPrompt = useCallback(() => {
+        const newIndex = prompts.length;
+        let nameNumber = newIndex + 1;
+        //eslint-disable-next-line no-loop-func
+        while (prompts.some(prompt => prompt.name === 'Prompt ' + nameNumber)) {
+            nameNumber++;
+        }
+
+        setPrompts([
+            ...prompts,
+            {
+                positive: "",
+                negative: "",
+                from: prompts[newIndex - 1].to + 1,
+                to: prompts[newIndex - 1].to + 50,
+                allFrames: false,
+                weight: 'prompt_weight_' + nameNumber,
+                name: 'Prompt ' + nameNumber
+            }
+        ]);
+    }, [prompts]);
+
+    const delPrompt = useCallback((idxToDelete: number) => {
+        setPrompts(prompts.filter((_, idx) => idx !== idxToDelete));
+    }, [prompts]);
+
 
     const displayPrompts = useCallback((advancedPrompts: AdvancedParseqPrompts) =>
         <>
@@ -153,7 +179,7 @@ export function Prompts(props: PromptsProps) {
                                         ❌ Delete prompt
                                     </Button>
                                 </Box>
-                            </Box>
+                            </Box> 
                         </Grid>
                         <Grid container xs={12} style={{ margin: 0, padding: 0 }}>
                             <Grid xs={6} style={{ margin: 0, padding: 0 }}>
@@ -167,33 +193,7 @@ export function Prompts(props: PromptsProps) {
                 </>)
             }
         </>
-        , [props]);
-
-
-    const addPrompt = useCallback(() => {
-        const newIndex = prompts.length;
-        let nameNumber = newIndex + 1;
-        while (prompts.some(prompt => prompt.name === 'Prompt ' + nameNumber)) {
-            nameNumber++;
-        }
-
-        setPrompts([
-            ...prompts,
-            {
-                positive: "",
-                negative: "",
-                from: prompts[newIndex - 1].to + 1,
-                to: prompts[newIndex - 1].to + 50,
-                allFrames: false,
-                weight: 'prompt_weight_' + nameNumber,
-                name: 'Prompt ' + nameNumber
-            }
-        ]);
-    }, [prompts]);
-
-    const delPrompt = useCallback((idxToDelete: number) => {
-        setPrompts(prompts.filter((_, idx) => idx !== idxToDelete));
-    }, [prompts]);
+        , [delPrompt, promptInput, prompts]);
 
 
     const [openSpacePromptsDialog, setOpenSpacePromptsDialog] = useState(false);
@@ -219,7 +219,7 @@ export function Prompts(props: PromptsProps) {
         });
         setPrompts(newPrompts);
 
-    }, [prompts, spacePromptsLastFrame, spacePromptsOverlap, props]);
+    }, [prompts, spacePromptsLastFrame, spacePromptsOverlap]);
     const spacePromptsDialog = <Dialog open={openSpacePromptsDialog} onClose={handleCloseSpacePromptsDialog}>
         <DialogTitle>↔️ Evenly space prompts </DialogTitle>
         <DialogContent>
@@ -267,9 +267,9 @@ export function Prompts(props: PromptsProps) {
             .filter(p => p.allFrames || (quickPreviewPosition >= p.from && quickPreviewPosition <= p.to));
 
         let preview = '';
-        if (activePrompts.length == 0) {
+        if (activePrompts.length === 0) {
             preview = '⚠️ No prompt';
-        } else if (activePrompts.length == 1) {
+        } else if (activePrompts.length === 1) {
             preview = activePrompts[0].name;
         } else {
             preview = activePrompts.map(p => `${p.name} : <${p.weight}>`).join(' AND ');

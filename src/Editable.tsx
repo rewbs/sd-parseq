@@ -89,8 +89,6 @@ export class Editable extends React.Component<{
             }
         }, {});
 
-        console.log(annotations);
-
         if ((!this.props.renderedData.rendered_frames)) {
             //log.debug("Editable input not set.")
             return <></>;

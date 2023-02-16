@@ -23,8 +23,13 @@ type ParseqPersistableState = {
     meta: ParseqMetadata;
     options: ParseqOptions;
     displayFields?: string[];
+    interpolatableFields: interpolatableField[];
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
+}
+
+type interpolatableField = {
+    name: string;
 }
 
 type ParseqDocVersion = ParseqPersistableState & {
@@ -54,22 +59,26 @@ type AdvancedParseqPrompts = {
     from:number;
     to:number;
     weight:string;
+    name:string;
 }[];
 
 type ParseqPrompts = SimpleParseqPrompts | AdvancedParseqPrompts;
 
 
-type ParseqKeyframes = [{
+type ParseqKeyframe = {
     frame: number;
     // TODO: make this stricter
     [key: string]: string | number;
-}] | [];
+}
+
+type ParseqKeyframes = ParseqKeyframe[] | [];
 
 type ParseqRenderedFrames = [{
     frame: number;
     // TODO: make this stricter    
+    deforum_prompt: string;
     [key: string]: number;
-}];
+}] | [];
 
 // Min, max, isAnimated... for each field.
 type ParseqRenderedFramesMeta = [{
@@ -79,9 +88,13 @@ type ParseqRenderedFramesMeta = [{
         max: number;
         isFlat: boolean;
     };
-}];
+}] | [];
 
 type RenderedData = ParseqPersistableState & {
     rendered_frames: ParseqRenderedFrames;
     rendered_frames_meta: ParseqRenderedFramesMeta;
 };
+
+type RendererError = {
+    errorMessage: string
+}

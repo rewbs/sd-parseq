@@ -1,4 +1,5 @@
-import { Alert, Button, Checkbox, FormControlLabel, rgbToHex, Tooltip as Tooltip2, Typography } from '@mui/material';
+import { deepCopy } from '@firebase/util';
+import { Alert, Button, Checkbox, FormControlLabel, Tooltip as Tooltip2, Typography, Stack } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -9,6 +10,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
+import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
@@ -21,13 +23,14 @@ import { Sparklines, SparklinesLine } from 'react-sparklines';
 import useDebouncedEffect from 'use-debounced-effect';
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { Prompts } from "./components/Prompts";
+import { Preview } from "./components/Preview";
 import { UploadButton } from "./components/UploadButton";
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
-import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 import { UserAuthContextProvider } from "./UserAuthContext";
-import { fieldNametoRGBa, frameToBeats, frameToSeconds, isValidNumber, getUTCTimeStamp, getVersionNumber } from './utils';
-import { deepCopy } from '@firebase/util';
+import { fieldNametoRGBa, frameToBeats, frameToSeconds, getUTCTimeStamp, getVersionNumber } from './utils';
+import ReactTimeAgo from 'react-time-ago';
+import { parseqRender } from './parseq-renderer';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -131,6 +134,9 @@ const ParseqUI = (props) => {
   const [autoRender, setAutoRender] = useState(true);
   const [autoUpload, setAutoUpload] = useState(false);
   const [initStatus, setInitStatus] = useState({});
+  const [uploadStatus, setUploadStatus] = useState(<></>);
+  const [lastRenderTime, setLastRenderTime] = useState(0);
+  
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -361,6 +367,16 @@ const ParseqUI = (props) => {
 
   }, [keyframes, autoRender]);
 
+
+  // Resize grid to fit content
+  useEffect(() => {
+    if (keyframes) {
+      const gridContainer = document.querySelector(".ag-theme-alpine");
+      if (gridContainer) {
+        gridContainer.style.height = 24*keyframes.length + "px";
+      }
+    }
+  }, [keyframes]);
 
   const deleteRow = useCallback((frame) => {
     //console.log(_frameToRowId_cache);
@@ -652,6 +668,7 @@ const ParseqUI = (props) => {
     },
     prompts: prompts,
     options: options,
+    interpolatableFields: interpolatable_fields.map(s => ({name: s })),
     displayFields: displayFields,
     keyframes: keyframes,
   }), [prompts, options, displayFields, keyframes]);
@@ -666,263 +683,42 @@ const ParseqUI = (props) => {
   //////////////////////////////////////////
   // Main render action callback
 
-  // Returns array of every frame number to render, i.e. [startFrame, ..., endFrame]
-  function getAllFrameNumbersToRender() {
-    var declaredFrames = [];
-    gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
-      declaredFrames.push(rowNode.data.frame);
-    });
-
-    var minFrame = Math.min(...declaredFrames);
-    var maxFrame = Math.max(...declaredFrames);
-    return Array.from(Array(maxFrame - minFrame + 1).keys()).map((i) => i + minFrame);
-  }
-
   const render = useCallback(() => {
     console.time('Render');
     setRenderedErrorMessage("");
     setEnqueuedRender(false);
-
-    // Validation
-    if (!keyframes) {
-      //log.debug("render called before initialisation complete.")
+    try {
+      const data = parseqRender(getPersistableState());
+      if (data.errorMessage) {
+        setRenderedErrorMessage(data.errorMessage);
+      } else {
+        setRenderedData(data);
+        setlastRenderedState({
+          // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
+          // So if we want to compare a future grid state to the last rendered state, we need to
+          // do a deep copy.
+          keyframes: clonedeep(keyframes),
+          prompts,
+          options
+        });
+        setLastRenderTime(Date.now());
+      }
+    } finally {
       console.timeEnd('Render');
-      return;
     }
-    if (keyframes.length < 2) {
-      setRenderedErrorMessage("There must be at least 2 keyframes to render.")
-      console.timeEnd('Render');
-      return;
-    }
-    let sortedKeyframes = keyframes.sort((a, b) => a.frame - b.frame);    
-    let firstKeyFrame = sortedKeyframes[0];
-    let lastKeyFrame = sortedKeyframes[keyframes.length - 1];
-
-    // Create implicit bookend keyframes to use any first or last values are missing.
-    const bookendKeyFrames = { first: { frame: firstKeyFrame.frame }, last: { frame: lastKeyFrame.frame } };
-    (interpolatable_fields.concat(['frame'])).forEach((field) => {
-      let firstKeyFrame = sortedKeyframes[0];
-      if (!isValidNumber(firstKeyFrame[field])) {
-        const firstKeyFrameWithValueForField = sortedKeyframes.find((kf) => isValidNumber(kf[field]));
-        const substituteValue = firstKeyFrameWithValueForField ? firstKeyFrameWithValueForField[field] : default_keyframes[0][field];
-        //console.log(`No value found for ${field} on the first keyframe, using: ${substituteValue}`);
-        bookendKeyFrames.first = { ...bookendKeyFrames.first, [field]: substituteValue };
-      }
-      if (!isValidNumber(lastKeyFrame[field])) {
-        const lastKeyFrameWithValueForField = sortedKeyframes.findLast((kf) => isValidNumber(kf[field]));
-        const substituteValue = lastKeyFrameWithValueForField ? lastKeyFrameWithValueForField[field] : default_keyframes[0][field];
-        //console.log(`No value found for ${field} on the final keyframe, using: ${substituteValue}`);
-        bookendKeyFrames.last = { ...bookendKeyFrames.last, [field]: substituteValue };
-      }
-    });
-
-    // Calculate actual rendered value for all interpolatable fields
-    var rendered_frames = [];
-    var previousContext = {};
-    var all_frame_numbers = getAllFrameNumbersToRender();
-    interpolatable_fields.forEach((field) => {
-      
-      // Get all keyframes that have a value for this field
-      const filtered = sortedKeyframes.filter(kf => isValidNumber(kf[field]));
-      
-      // Add bookend keyframes if they have a value for this field (implying none were present in the original keyframes)
-      if (isValidNumber(bookendKeyFrames.first[field])) {
-        filtered.unshift(bookendKeyFrames.first);
-      }
-      if (isValidNumber(bookendKeyFrames.last[field])) {
-        filtered.push(bookendKeyFrames.last);
-      }
-
-      const definedFrames = filtered.map(kf => kf.frame);
-      const definedValues = filtered.map(kf => Number(kf[field]));
-      let lastInterpolator = f => defaultInterpolation(definedFrames, definedValues, f);
-
-      let parseResult;
-      let activeKeyframe = 0;
-      let prev_computed_value = 0;
-      all_frame_numbers.forEach((frame, i) => {
-
-        let declaredRow = gridRef.current.api.getRowNode(frameToRowId(frame));
-        let interpolator = lastInterpolator;
-
-        // Is there a new interpolation function to parse?
-        if (declaredRow !== undefined) {
-          var toParse = declaredRow.data[field + '_i'];
-          if (toParse) {  
-            try {
-              parseResult = parse(toParse);
-            } catch (error) {
-              console.error(error);
-              setRenderedErrorMessage(`Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
-              // TODO: consider aborting if there was an issue.
-            }
-          }
-        }
-
-        if (definedFrames.includes(frame)) {
-          activeKeyframe = frame;
-        }
-
-        // Use the last successfully parsed result to determine the interpolation function.
-        if (parseResult) {
-          var context = new InterpreterContext({
-            ...previousContext, //ensure any additional values added to the context during compilation are carried over.
-            fieldName: field,
-            activeKeyframe: activeKeyframe,
-            definedFrames: definedFrames,
-            definedValues: definedValues,
-            allKeyframes: keyframes,
-            FPS: options.output_fps,
-            BPM: options.bpm,
-            variableMap: {
-              prev_computed_value,
-            }
-          });
-          try {
-            // New: redetermine the function for every row, using a new context. 
-            // Increases CPU and memory usage but allows for different context variables on each invocation, e.g. prev_computed_value.
-            interpolator = interpret(parseResult, context);
-          } catch (error) {
-            console.error(error);
-            setRenderedErrorMessage(`Error interpreting interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
-            interpolator = lastInterpolator;
-          }
-        }
-
-        // invoke the interpolation function
-        let computed_value = 0;
-        try {
-          computed_value = interpolator(frame)
-        } catch (error) {
-          console.error(error);
-          setRenderedErrorMessage(`Error evaluating interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
-        }
-
-        rendered_frames[frame] = {
-          ...rendered_frames[frame] || {},
-          frame: frame,
-          [field]: computed_value
-        }
-        lastInterpolator = interpolator;
-        prev_computed_value = computed_value;
-      });
-    });
-
-    // Calculate rendered prompt based on prompts and weights
-    all_frame_numbers.forEach((frame) => {
-
-      let variableMap = {};
-      interpolatable_fields.forEach((field) => {
-        variableMap= {
-            ...variableMap || {},
-            [field]: rendered_frames[frame][field]
-        }
-      });
-      
-      var context = new InterpreterContext({
-        fieldName: "prompt",
-        activeKeyframe: frame,
-        definedFrames: keyframes.map(kf => kf.frame),
-        definedValues: [],
-        FPS: options.output_fps,
-        BPM: options.bpm,
-        allKeyframes: keyframes,
-        variableMap: variableMap
-      });
-
-      try {
-        let positive_prompt = prompts.positive
-          .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
-          .replace(/(\n)/g, " ");
-        let negative_prompt = prompts.negative
-          .replace(/\$\{(.*?)\}/sg, (_, expr) =>  { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; } )
-           .replace(/(\n)/g, " ");
-
-        rendered_frames[frame] = {
-          ...rendered_frames[frame] || {},
-          positive_prompt: positive_prompt,
-          negative_prompt: negative_prompt,
-          deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
-        }
-      } catch (error) {
-        console.error(error);
-        setRenderedErrorMessage(`Error parsing prompt weight value: ` + error);
-      }
-
-    });
-
-    // Calculate subseed & subseed strength based on fractional part of seed.
-    all_frame_numbers.forEach((frame) => {
-      let subseed = Math.ceil(rendered_frames[frame]['seed'])
-      let subseed_strength = rendered_frames[frame]['seed'] % 1
-
-      rendered_frames[frame] = {
-        ...rendered_frames[frame] || {},
-        subseed: subseed,
-        subseed_strength: subseed_strength
-      }
-    });
-
-    var rendered_frames_meta = []
-    interpolatable_fields.forEach((field) => {
-      let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
-      let minValue = Math.min(...rendered_frames.map(rf => rf[field]))
-      rendered_frames_meta = {
-        ...rendered_frames_meta || {},
-        [field]: {
-          'max': maxValue,
-          'min': minValue,
-          'isFlat': minValue === maxValue,
-        }
-      }
-    });
-
-    // Calculate delta variants
-    all_frame_numbers.forEach((frame) => {
-      interpolatable_fields.forEach((field) => {
-        let maxValue = rendered_frames_meta[field].max;
-
-        if (frame === 0) {
-          rendered_frames[frame] = {
-            ...rendered_frames[frame] || {},
-            [field + '_delta']: rendered_frames[0][field],
-            [field + "_pc"]: (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field],
-          }
-        } else {
-          rendered_frames[frame] = {
-            ...rendered_frames[frame] || {},
-            [field + '_delta']: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame - 1][field] : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
-            [field + "_pc"]: (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field],
-          }
-        }
-      });
-    });
-
-    const data = {
-      ...getPersistableState(),
-      "rendered_frames": rendered_frames,
-      "rendered_frames_meta": rendered_frames_meta
-    }
-
-    setRenderedData(data);
-    setlastRenderedState({
-      // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
-      // So if we want to compare a future grid state to the last rendered state, we need to
-      // do a deep copy.
-      keyframes: clonedeep(keyframes),
-      prompts,
-      options
-    });
-    console.timeEnd('Render')
+    
   }, [keyframes, prompts, options, getPersistableState, interpolatable_fields, frameToRowId, default_keyframes]);
 
   const renderButton = useMemo(() =>
-    <Button data-testid="render-button" size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Force re-render'}</Button>,
-    [needsRender, enqueuedRender]);
+    <Stack>
+      <Button data-testid="render-button" size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Re-render'}</Button>
+      {lastRenderTime ? <Typography fontSize='0.7em' >Last rendered: <ReactTimeAgo date={lastRenderTime} locale="en-US" />.</Typography> : <></>}
+    </Stack>
+    , [needsRender, enqueuedRender]);
 
 
   const grid = useMemo(() => <>
-    <div className="ag-theme-alpine" style={{ width: '100%', height: 200 }}>
+    <div className="ag-theme-alpine" style={{ width: '100%', minHeight:'150px',  maxHeight:'1150px', height:'150px'}}>
       <AgGridReact
         ref={gridRef}
         rowData={deepCopy(default_keyframes)}
@@ -982,19 +778,11 @@ const ParseqUI = (props) => {
     } else if (renderedErrorMessage || needsRender) {
       statusMessage = <Alert severity="info">
         Please render to update the output.
-        <span style={{ float: 'right' }}>
-          {renderButton}
-        </span>
         <p><small>{message}</small></p>
       </Alert>
     } else {
       statusMessage = <Alert severity="success">
         Output is up-to-date.
-        <span style={{ float: 'right' }}>
-          <CopyToClipboard text={renderedDataJsonString}>
-            <Button size="small" disabled={needsRender} style={{ marginLeft: '1em' }} variant="outlined">📋 Copy</Button>
-          </CopyToClipboard>
-        </span>
         <p><small>{message}</small></p>
       </Alert>;
     }
@@ -1071,7 +859,6 @@ const ParseqUI = (props) => {
     ))}
   </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields])
 
-  console.log(prompts);
   const promptsUI = useMemo(() => prompts ? <Prompts
       initialPrompts={prompts}
       lastFrame={keyframes[keyframes.length - 1].frame}
@@ -1183,9 +970,76 @@ const ParseqUI = (props) => {
     </Grid>
   </>, [displayFields, showFlatSparklines, renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only, handleClickedSparkline]);
 
-  const renderedOutput = useMemo(() => <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
-    <pre data-testid="output">{renderedDataJsonString}</pre>
-  </div>, [renderedDataJsonString]);
+  const renderedOutput = useMemo(() => <>
+    <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
+      <pre data-testid="output">{renderedDataJsonString}</pre>
+    </div></>, [renderedDataJsonString]);
+
+  const stickyFooter = useMemo(() => <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(200,200,200,0.85)', opacity: '99%' }} elevation={3}>
+    <Grid container>
+      <Grid xs={6}>
+        <InitialisationStatus status={initStatus} />
+        {renderStatus}
+      </Grid>
+      <Grid xs={6}>
+        <Grid container>
+          <Grid xs={4}>
+            {renderButton}
+          </Grid>
+          <Grid xs={4}>
+            <FormControlLabel control={
+              <Checkbox
+                checked={autoRender}
+                id={"auto_render"}
+                onChange={(e) => setAutoRender(e.target.checked)}
+              />}
+              style={{ marginLeft: '0.75em' }}
+              label={<Box component="div" fontSize="0.75em">Auto-render</Box>}
+            />
+          </Grid>
+          <Grid xs={4}>
+            <Stack direction={'column'}>
+              <CopyToClipboard text={renderedDataJsonString}>
+                <Button size="small" disabled={needsRender} variant="outlined">📋 Copy output</Button>
+              </CopyToClipboard>
+              <Typography fontSize={'0.7em'}>Size: {(renderedDataJsonString.length/1024).toFixed(2)}kB</Typography>
+            </Stack>
+          </Grid>    
+          <Grid xs={4}>
+            <UserAuthContextProvider>
+              <UploadButton
+                docId={activeDocId}
+                renderedJson={renderedDataJsonString}
+                autoUpload={autoUpload}
+                onNewUploadStatus={(status)=>setUploadStatus(status)}
+              />
+            </UserAuthContextProvider>
+          </Grid>    
+          <Grid xs={4}>
+          <Stack>
+            <FormControlLabel control={
+              <Checkbox
+                checked={autoUpload}
+                id={"auto_render"}
+                onChange={(e) => setAutoUpload(e.target.checked)}
+              />}
+              style={{ marginLeft: '0.75em' }}
+              label={<Box component="div" fontSize="0.75em">Auto-upload</Box>}
+            />
+            </Stack>
+          </Grid>
+          <Grid xs={4} sx={{float: "right"}}>
+            <Stack direction={'column'} justifyContent={'right'} justifyItems={'right'} justifySelf={'right'} >
+            {uploadStatus}
+
+            </Stack>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Grid>
+
+  </Paper>, [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender, autoUpload]);
+
 
 
 
@@ -1205,21 +1059,19 @@ const ParseqUI = (props) => {
       },
     }}>
       <CssBaseline />
-      <Grid xs={6}>
-        <InitialisationStatus
-          status={initStatus}
-        />
-        {renderStatus}
-        <small>
-          <ul>
-            <li><a href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">Browser</a>: explore your Parseq documents</li>
-            <li><a href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">Analyser</a>: generate Parseq keyframes from audio (⚠️ experimental).</li>
-          </ul>
-        </small>
-      </Grid>
-      <Grid xs={6}>
+      <Grid xs={8}>
         {docManager}
       </Grid>
+      <Grid xs={4}>
+      <Box display='flex' justifyContent="right" gap={1} alignItems='center' paddingTop={1}>
+        <Tooltip2 title="Generate Parseq keyframes from audio (⚠️ experimental).">
+          <Button color="success" variant="outlined" size="small" href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">Audio Analyzer...</Button>
+        </Tooltip2>
+        <Tooltip2 title="Explore your Parseq documents.">
+          <Button color="success" variant="outlined" size="small" href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">Doc Browser...</Button>
+        </Tooltip2>
+      </Box>  
+      </Grid>      
       <Grid xs={12}>
         <h3>Prompts</h3>
         {promptsUI}
@@ -1234,23 +1086,6 @@ const ParseqUI = (props) => {
           <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
           <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenMergeKeyframesDialog}>🌪️ Merge keyframes</Button>
           <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
-          {renderButton}
-          <FormControlLabel control={
-            <Checkbox defaultChecked={true}
-              id={"auto_render"}
-              onChange={(e) => setAutoRender(e.target.checked)}
-            />}
-            style={{ marginLeft: '0.75em' }}
-            label={<Box component="div" fontSize="0.75em">Render on every edit</Box>}
-          />
-          <FormControlLabel control={
-            <Checkbox defaultChecked={false}
-              id={"auto_render"}
-              onChange={(e) => setAutoUpload(e.target.checked)}
-            />}
-            style={{ marginLeft: '0.75em' }}
-            label={<Box component="div" fontSize="0.75em">Upload output after every render</Box>}
-          />
           {addRowDialog}
           {mergeKeyframesDialog}
           {deleteRowDialog}
@@ -1265,27 +1100,19 @@ const ParseqUI = (props) => {
         {renderSparklines()}
       </Grid>
       <Grid xs={12}>
-        <h3>Output <small><small> - copy this manifest and paste into the Parseq field in the Stable Diffusion Web UI</small></small></h3>
-        <Grid container>
-          <Grid xs={6}>
-            {renderStatus}
-          </Grid>
-          <Grid xs={6}>
-            {renderButton}<br />
-            <UserAuthContextProvider>
-              <UploadButton
-                docId={activeDocId}
-                renderedJson={renderedDataJsonString}
-                autoUpload={autoUpload}
-              />
-            </UserAuthContextProvider>
-          </Grid>
-          <Grid xs={12}>
-            {renderedOutput}
-          </Grid>
-        </Grid>
+        <h3>Preview</h3>    
+        <Preview data={renderedData} />
+      </Grid>      
+      <Grid xs={12}>
+        <h3>Output</h3>
+        <Box sx={{ paddingBottom: '150px' }}>
+           {renderedOutput}
+        </Box>
       </Grid>
-    </Grid>
+    {stickyFooter}
+  </Grid>
+    
+
   );
 
 };

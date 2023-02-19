@@ -1,9 +1,11 @@
-import { Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Slider, Tooltip } from "@mui/material";
+import { Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Tooltip, Typography } from "@mui/material";
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
 import { Stack } from '@mui/system';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+//@ts-ignore
+import { Timeline, TimelineEffect, TimelineRow } from '@xzdarcy/react-timeline-editor';
 
 interface PromptsProps {
     initialPrompts: ParseqPrompts,
@@ -81,14 +83,14 @@ export function Prompts(props: PromptsProps) {
             {
                 positive: "",
                 negative: "",
-                from: prompts[newIndex - 1].to + 1,
-                to: prompts[newIndex - 1].to + 50,
+                from: Math.min(props.lastFrame, prompts[newIndex - 1].to + 1),
+                to: Math.min(props.lastFrame, prompts[newIndex - 1].to + 50),
                 allFrames: false,
                 weight: 'prompt_weight_' + nameNumber,
                 name: 'Prompt ' + nameNumber
             }
         ]);
-    }, [prompts]);
+    }, [prompts, props.lastFrame]);
 
     const delPrompt = useCallback((idxToDelete: number) => {
         setPrompts(prompts.filter((_, idx) => idx !== idxToDelete));
@@ -130,8 +132,20 @@ export function Prompts(props: PromptsProps) {
                                         onChange={(e) => {
                                             const newPrompts = prompts.slice(0);
                                             newPrompts[idx].from = parseInt(e.target.value);
-                                            setPrompts(newPrompts);
+                                            setPrompts(newPrompts);                                            
                                         }}
+                                        onBlur={(e) => {
+                                            if (parseInt(e.target.value) >= prompts[idx].to) {
+                                                const newPrompts = prompts.slice(0);
+                                                newPrompts[idx].from = newPrompts[idx].to;
+                                                setPrompts(newPrompts);
+                                            }
+                                            if (parseInt(e.target.value) > props.lastFrame) {
+                                                const newPrompts = prompts.slice(0);
+                                                newPrompts[idx].to = props.lastFrame;
+                                                setPrompts(newPrompts);
+                                            }                                            
+                                        }}                                        
                                     />
                                     <TextField
                                         type="number"
@@ -147,6 +161,18 @@ export function Prompts(props: PromptsProps) {
                                             const newPrompts = prompts.slice(0);
                                             newPrompts[idx].to = parseInt(e.target.value);
                                             setPrompts(newPrompts);
+                                        }}
+                                        onBlur={(e) => {
+                                            if (parseInt(e.target.value) <= prompts[idx].from) {
+                                                const newPrompts = prompts.slice(0);
+                                                newPrompts[idx].to = newPrompts[idx].from;
+                                                setPrompts(newPrompts);
+                                            }
+                                            if (parseInt(e.target.value) > props.lastFrame) {
+                                                const newPrompts = prompts.slice(0);
+                                                newPrompts[idx].to = props.lastFrame;
+                                                setPrompts(newPrompts);
+                                            }                                            
                                         }}
                                     />
                                     <Tooltip title="If this prompt's frame range overlaps with another prompt, they will be combined with Composable Diffusion (AND syntax), with the weight determined by the parseq variable you specify here.">
@@ -193,7 +219,7 @@ export function Prompts(props: PromptsProps) {
                 </>)
             }
         </>
-        , [delPrompt, promptInput, prompts]);
+        , [delPrompt, promptInput, prompts, props.lastFrame]);
 
 
     const [openSpacePromptsDialog, setOpenSpacePromptsDialog] = useState(false);
@@ -260,6 +286,85 @@ export function Prompts(props: PromptsProps) {
         props.afterChange(prompts);
     }, [prompts, props]);
 
+    const [timelineWidth, setTimelineWidth] = useState(600);
+    useEffect(() => {
+        console.log("got new timeline width: ", timelineWidth);
+    }, [timelineWidth]);
+
+    const timelineRef = useRef<any>(null);
+    const timeline = useMemo(() => {
+        const data: TimelineRow[] = prompts.map((p, idx) => ({
+            id: idx.toString(),
+            actions: [
+              {
+                id: p.name,
+                start: p.allFrames ? 0 : p.from,
+                end: p.allFrames ? props.lastFrame : p.to,
+                effectId: "effect0",
+              },
+            ],            
+
+        }));
+        
+        const effects: Record<string, TimelineEffect> = {
+            effect0: {
+                id: "effect0",
+                name: "Zero",
+              },
+              effect1: {
+                id: "effect1",
+                name: "One",
+              },
+        };
+        
+       // scale to 1/25th of frame length and round to nearest 5 
+       const scale = Math.ceil(props.lastFrame/25/5)*5;
+       const scaleWidth = timelineWidth / ((props.lastFrame*1.1) / scale);
+       //console.log("re-rendering with", timelineWidth, scale, scaleWidth);
+
+        return (
+            <span ref={timelineRef}>
+                <Timeline
+                    style={{ height: (50 + Math.min(prompts.length, 4) * 25) + 'px', width: '100%' }}
+                    editorData={data}
+                    effects={effects}
+                    scale={scale}
+                    scaleWidth={scaleWidth}
+                    rowHeight={15}
+                    gridSnap={true}
+                    //hideCursor={true}
+                    disableDrag={true}
+                    getActionRender={(action, row) => {
+                        return <div style={{ borderRadius:'5px', marginTop:'1px', overflow: 'hidden', maxHeight: '15px', backgroundColor: 'rgba(125,125,250,0.5)' }}>
+                            <Typography paddingLeft={'5px'} color={'white'} fontSize='0.7em'>
+                                {`${action.id}: ${action.start.toFixed(0)}-${action.end.toFixed(0)}`}
+                            </Typography>
+                        </div>
+                    }}
+                    getScaleRender={(scale) => scale < props.lastFrame ? <Typography fontSize={'0.75em'}>{scale}</Typography> : <Typography  fontSize={'0.75em'} color='red'>{scale}</Typography>}
+                   onCursorDrag={(e: any) => {
+                        setQuickPreviewPosition(Math.round(e));
+                   }}
+                   onClickRow={(e: any) => {
+                    setQuickPreviewPosition(Math.round(e.time));
+                    }}
+                />
+            </span>
+        );
+
+    }, [prompts, props, timelineWidth]);
+
+    useEffect((): any => {
+        function handleResize() {
+            setTimelineWidth(timelineRef.current.offsetWidth);
+            //console.log("resized to", timelineRef.current.offsetWidth);
+        }
+        window.addEventListener('resize', handleResize)
+
+        return (_:any) => window.removeEventListener('resize', handleResize);
+
+    }, []);
+
 
     // update the quick preview if prompts, 
     useEffect(() => {
@@ -281,11 +386,11 @@ export function Prompts(props: PromptsProps) {
     return <Grid xs={12} container style={{ margin: 0, padding: 0 }}>
         {displayPrompts(prompts)}
         {spacePromptsDialog}
-        <Grid xs={3}>
+        <Grid xs={12}>
             <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
             <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
         </Grid>
-        <Grid xs={9} sx={{ paddingRight: '15px' }} >
+        <Grid xs={4} sx={{ paddingRight: '15px' }} >
             <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >
                 <Stack>
                     <TextField
@@ -300,16 +405,11 @@ export function Prompts(props: PromptsProps) {
                         label={`Quick preview [frame ${quickPreviewPosition}]`}
                         variant="outlined"
                     />
-                    <Slider
-                        size="small"
-                        step={1}
-                        value={quickPreviewPosition}
-                        min={0}
-                        max={props.lastFrame}
-                        onChange={(e: any) => setQuickPreviewPosition(e.target?.value)}
-                        valueLabelDisplay="auto" />
                 </Stack>
             </Tooltip>
+        </Grid>        
+        <Grid xs={8}>
+            {timeline}
         </Grid>
     </Grid>
 

@@ -42,7 +42,7 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
         && Object.keys(content)
             .filter((k) => k !== 'meta') // exclude this field because it has a timestamp that is expected to change.
             .every((k) => equal(content[k as keyof ParseqPersistableState], lastVersion[k as keyof ParseqPersistableState]))) {
-        console.log("Not saving, would be identical to previous version.");
+        //console.log("Not saving, would be identical to previous version.");
     } else {
         content.meta.docName = document?.name ?? "Untitled";
         const version: ParseqDocVersion = {
@@ -51,7 +51,7 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
             timestamp: Date.now(),
             ...content
         }
-        console.log("Saving...");
+        //console.log("Saving...");
         db.parseqDocs.update(docId, { lastModified: version.timestamp });
         return db.parseqVersions.add(version, version.versionId);
     }
@@ -96,7 +96,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
         async () => {
             const doc = await db.parseqDocs.get(docId)
             if (doc) {
-                console.log(`Doc ${docId} loaded: `, doc);
+                //console.log(`Doc ${docId} loaded: `, doc);
                 setActiveDoc(doc);
                 return doc;
             } else {

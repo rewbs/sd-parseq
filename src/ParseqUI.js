@@ -252,7 +252,6 @@ const ParseqUI = (props) => {
       const qps = new URLSearchParams(window.location.search);
       const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
       const qsTemplate = qps.get("templateId");
-      console.log("templateId", qsTemplate)
       const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
       if (qsLegacyContent) {
         // Attempt to load content from querystring 
@@ -470,7 +469,6 @@ const ParseqUI = (props) => {
 
   // Update displayed columns when displayFields changes.
   useEffect(() => {
-    console.log("displayFields", displayFields)
     if (displayFields && gridRef.current.columnApi) {
       let columnsToShow = displayFields.flatMap(c => [c, c + '_i']);
       let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
@@ -839,7 +837,7 @@ const ParseqUI = (props) => {
     <DocManagerUI
       docId={activeDocId}
       onLoadContent={(content) => {
-        console.log("Loading version", content);
+        //console.log("Loading version", content);
         if (content) {
           freshLoadContentToState(content);
           if (!preventInitialRender) {

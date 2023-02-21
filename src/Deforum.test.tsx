@@ -38,6 +38,12 @@ jest.mock('chart.js', () => ({
       }
   }));
 
+  jest.mock('@xzdarcy/react-timeline-editor', () => ({
+    Timeline: () => null,
+    TimelineEffect: () => null,
+    TimelineRow: () => null,
+  }));
+
 
 async function loadAndRender(fixture: {}) {
 

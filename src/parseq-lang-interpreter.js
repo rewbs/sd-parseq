@@ -209,7 +209,7 @@ export function interpret(ast, context) {
           case 'info_match':
             let pattern = interpret(ast.arguments[0], context)
             return f => context.allKeyframes
-              .findLast((kf) => {console.log(kf, f, kf.frame, kf.info); return kf.frame <= f})
+              .findLast((kf) => kf.frame <= f)
               .info?.match(pattern(f)) ? 1 : 0
           case 'info_match_count':
             let pat = interpret(ast.arguments[0], context)
@@ -251,7 +251,7 @@ export function interpret(ast, context) {
       let alternate = ast.alternate ? interpret(ast.alternate, context) : f => 0;
       return f => (condition(f)>0) ? consequent(f) : alternate(f)
     default:
-      throw new Error(`Unrecognised expression ${ast.type} at ${ast.start.line}:${ast.start.col}`);
+      throw new Error(`Unrecognised expression ${ast.type} at ${ast?.start?.line}:${ast?.start?.col}`);
   }
 }
 

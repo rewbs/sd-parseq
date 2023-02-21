@@ -30,7 +30,6 @@ onmessage = (e) => {
         //@ts-ignore - typechecker thinks onset() only takes 3 args, but it needs 4. Possile bug in aubiojs typedefs?
         const onset = new aubio.Onset(e.data.method, e.data.bufferSize, e.data.hopSize, e.data.sampleRate);
         onset.setSilence(e.data.silence);
-        console.log(e.data.threshold);
         onset.setThreshold(e.data.threshold);
         
         //@ts-ignore - TODO: this method is not exposed. Possibly a bug in aubiojs?

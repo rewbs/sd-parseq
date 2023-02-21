@@ -26,6 +26,7 @@ import { CartesianGrid, Label, Line, LineChart, ResponsiveContainer, Tooltip, XA
 import { Simplify } from 'simplify-ts';
 
 import { deepCopy } from "@firebase/util";
+//@ts-ignore
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 //@ts-ignore
 import Stats from 'stats-analysis';

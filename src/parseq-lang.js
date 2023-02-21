@@ -226,8 +226,8 @@ let ParserRules = [
     {"name": "unary_expression", "symbols": ["string_literal"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["if_expression"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["boolean_literal"], "postprocess": id},
-    {"name": "unary_expression", "symbols": [{"literal":"("}, "expression", {"literal":")"}], "postprocess": 
-        data => data[1]
+    {"name": "unary_expression", "symbols": [{"literal":"("}, "_", "expression", "_", {"literal":")"}], "postprocess": 
+        data => data[2]
                 },
     {"name": "boolean_literal", "symbols": [{"literal":"true"}], "postprocess": 
         d => ({
@@ -251,7 +251,6 @@ let ParserRules = [
         d => {
             // Putting logic here is nasty, but is necessary to avoid
             // a lookbehind regex in the lexer, which breaks Safari.
-            // eslint-disable-next-line no-unused-vars
             let [_, value, unit] = d[0].text.match(/(.*?)([fsb])?$/);
             if (unit) {
                 return {
@@ -281,5 +280,4 @@ let ParserRules = [
     {"name": "_", "symbols": ["_$ebnf$1"]}
 ];
 let ParserStart = "input";
-// eslint-disable-next-line import/no-anonymous-default-export
 export default { Lexer, ParserRules, ParserStart };

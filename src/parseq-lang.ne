@@ -272,9 +272,9 @@ unary_expression
     |  string_literal       {% id %}
     |  if_expression      {% id %}
     |  boolean_literal      {% id %}
-    |  "(" expression ")"
+    |  "(" _ expression _ ")"
         {%
-            data => data[1]
+            data => data[2]
         %}
 
 boolean_literal

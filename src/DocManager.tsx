@@ -361,13 +361,14 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
         try {
             setUploadStatus(<Alert severity='info'>Upload in progress...<CircularProgress size='1em' /></Alert>);
             const storage = getStorage();
-            const objectPath = `shared/${activeDoc.docId}-${Date.now()}.json`;
+            const objectPath = `shared/${user.uid}/${activeDoc.docId}-${Date.now()}.json`;
             const sRef = storageRef(storage, objectPath);
             uploadString(sRef, exportableDoc, "raw", { contentType: 'application/json' }).then((snapshot) => {
                 getDownloadURL(sRef).then((url) => {
                     const qps = new URLSearchParams(url);
                     const token = qps.get("token");
-                    const matchRes = url.match(/shared%2F(doc-.*?\.json)/);
+                    const matchRes = url.match(/shared%2F(.*\.json)/);
+
                     if (matchRes && matchRes[1]) {
                         setParseqShareUrl(window.location.href.replace(window.location.search, '') + `?importRemote=${matchRes[1]}&token=${token}`);
                         setUploadStatus(<Alert severity="success">
@@ -383,8 +384,6 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
             console.error(e);
             setUploadStatus(<Alert severity="error">Upload failed: {e.toString()}</Alert>);
         }
-
-
     };
     const shareDialog = <Dialog open={openShareDialog} onClose={handleCloseShareDialog} maxWidth='lg'>
         <DialogTitle>Share your Parseq document</DialogTitle>

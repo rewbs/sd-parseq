@@ -33,11 +33,12 @@ export function UploadButton({ docId, renderedJson, autoUpload, onNewUploadStatu
             setUploadStatus(<Alert severity="error">Sign in above to upload.</Alert>);
             return;
         }
+        //console.log(user);
         try {
             _lastUploadAttempt = renderedJson;
             setUploadStatus(<Button size="small" variant="outlined" color='warning' ><CircularProgress size='1em' style={{ marginRight: '0.5em' }} /> Uploading...</Button>)
             const storage = getStorage();
-            const objectPath = `rendered/${docId}.json`;
+            const objectPath = `rendered/${user.uid}/${docId}.json`;
             const sRef = storageRef(storage, objectPath);
             const uploadTask = uploadBytesResumable(sRef, new Blob([renderedJson], { type: 'application/json' }));
             uploadTask.on('state_changed',
@@ -51,20 +52,14 @@ export function UploadButton({ docId, renderedJson, autoUpload, onNewUploadStatu
                 },
                 () => {
                     getDownloadURL(sRef).then((url) => {
-                        const matchRes = url.match(/rendered%2F(doc-.*?\.json)/);
-                        if (matchRes && matchRes[1]) {
-                            setUploadStatus(
-                                <Stack direction={'column'}>
-                                    <CopyToClipboard text={url}>
-                                        <Button size="small" variant="outlined">✅ Copy URL</Button>
-                                    </CopyToClipboard>
-                                    <Typography fontSize={'0.7em'}><a rel="noreferrer" target={'_blank'} href={url}>See uploaded file</a></Typography>
-                                </Stack>);
-                            setLastUploadTime(Date.now());
-                        } else {
-                            setUploadStatus(<Alert severity="error"><Typography fontSize='0.75em' >Unexpected upload path: {url}</Typography></Alert>);
-                            return;
-                        }
+                        setUploadStatus(
+                            <Stack direction={'column'}>
+                                <CopyToClipboard text={url}>
+                                    <Button size="small" variant="outlined">✅ Copy URL</Button>
+                                </CopyToClipboard>
+                                <Typography fontSize={'0.7em'}><a rel="noreferrer" target={'_blank'} href={url}>See uploaded file</a></Typography>
+                            </Stack>);
+                        setLastUploadTime(Date.now());
                     });
                 }
             );

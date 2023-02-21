@@ -282,8 +282,8 @@ const ParseqUI = (props) => {
         }
       } else if (qsImportRemote && qsRemoteImportToken) {
         setInitStatus({ severity: "warning", message: "Importing remote document..." });
-        // Attempt to load content from remote URL
-        const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${qsImportRemote}?alt=media&token=${qsRemoteImportToken}`
+        const encodedImport = encodeURIComponent(qsImportRemote);
+        const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${encodedImport}?alt=media&token=${qsRemoteImportToken}`
         fetch(importUrl).then((response) => {
           if (response.ok) {
             response.json().then((json) => {
@@ -292,7 +292,7 @@ const ParseqUI = (props) => {
               const url = new URL(window.location);
               url.searchParams.delete('importRemote');
               url.searchParams.delete('token');
-              window.history.replaceState({}, '', url);
+              window.history.replaceState({}, '', url); 
               setAutoSaveEnabled(true);
               if (!preventInitialRender) {
                 setEnqueuedRender(true);

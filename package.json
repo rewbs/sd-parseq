@@ -1,6 +1,6 @@
 {
   "name": "sd-parseq",
-  "version": "0.1.36",
+  "version": "0.1.37",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.10.5",

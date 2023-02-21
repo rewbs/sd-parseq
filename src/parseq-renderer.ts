@@ -1,13 +1,16 @@
 import { isValidNumber } from "./utils";
 
+import { calculateWeight } from './components/Prompts';
 import { defaultValues } from './data/defaultValues';
+
+
 //@ts-ignore
 import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
 
 export class ParseqRendererException {
     message: string;
     name = "ParseqRendererException";
-    
+
     constructor(message: string) {
         this.message = message;
     }
@@ -177,10 +180,10 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
         try {
 
-            let positive_prompt = composePromptAtFrame(prompts, frame, true)
+            let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
                 .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
                 .replace(/(\n)/g, " ");
-            let negative_prompt = composePromptAtFrame(prompts, frame, false)
+            let negative_prompt = composePromptAtFrame(prompts, frame, false, lastKeyFrame.frame)
                 .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
                 .replace(/(\n)/g, " ");
 
@@ -260,8 +263,8 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 }
 
 
-// update the quick preview if prompts, 
-function composePromptAtFrame(prompts: AdvancedParseqPrompts, frame: number, positive: boolean) {
+// TODO: some duplication here with quick prompt preview in Prompts.tsx
+function composePromptAtFrame(prompts: AdvancedParseqPrompts, frame: number, positive: boolean, lastFrame: number) {
     const activePrompts = prompts
         .map((p, idx) => ({
             ...p,
@@ -277,7 +280,7 @@ function composePromptAtFrame(prompts: AdvancedParseqPrompts, frame: number, pos
     } else {
         prompt = activePrompts.map(p => {
             const prompt = positive ? p.positive : p.negative;
-            return `${prompt} : $\{${p.weight}}`
+            return `${prompt} : ${calculateWeight(p, frame, lastFrame)}}`
         }).join(' AND ');
     }
     return prompt;

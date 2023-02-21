@@ -1,5 +1,5 @@
 import { deepCopy } from '@firebase/util';
-import { Alert, Button, Checkbox, FormControlLabel, Tooltip as Tooltip2, Typography, Stack } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, Stack, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -20,17 +20,18 @@ import clonedeep from 'lodash.clonedeep';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
+import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
 import { InitialisationStatus } from "./components/InitialisationStatus";
-import { Prompts } from "./components/Prompts";
 import { Preview } from "./components/Preview";
+import { Prompts } from "./components/Prompts";
 import { UploadButton } from "./components/UploadButton";
+import { templates } from './data/templates';
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
+import { parseqRender } from './parseq-renderer';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { fieldNametoRGBa, frameToBeats, frameToSeconds, getUTCTimeStamp, getVersionNumber } from './utils';
-import ReactTimeAgo from 'react-time-ago';
-import { parseqRender } from './parseq-renderer';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -43,9 +44,9 @@ const default_prompts = {
   positive: `A lone white (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:\${prompt_weight_1} AND
   A lone black (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midnight, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography :\${prompt_weight_2}`,
   negative: `watermark, logo, text, signature, copyright, writing, letters,
-  low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,
-  cartoon, computer game, video game, painting, drawing, sketch,
-  disfigured, deformed, ugly`
+low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,
+cartoon, computer game, video game, painting, drawing, sketch,
+disfigured, deformed, ugly`
 }
 const default_options = {
   input_fps: "",
@@ -112,7 +113,7 @@ const ParseqUI = (props) => {
     const filledContent = fillWithDefaults(loadedContent || {});
     setPrompts(filledContent.prompts);
     setOptions(filledContent.options);
-    setDisplayFields(filledContent.displayFields);
+    setDisplayFields([...filledContent.displayFields]);
     setKeyframes(filledContent.keyframes);
     refreshGridFromKeyframes(filledContent.keyframes);
   }, [fillWithDefaults]);
@@ -182,7 +183,7 @@ const ParseqUI = (props) => {
             backgroundColor: fieldNametoRGBa(field, 0.1),
             borderRight: '1px solid lightgrey'
           })
-          
+
         },
         {
           headerName: '➟' + field,
@@ -250,6 +251,8 @@ const ParseqUI = (props) => {
     function runOnce() {
       const qps = new URLSearchParams(window.location.search);
       const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
+      const qsTemplate = qps.get("templateId");
+      console.log("templateId", qsTemplate)
       const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
       if (qsLegacyContent) {
         // Attempt to load content from querystring 
@@ -263,6 +266,20 @@ const ParseqUI = (props) => {
         setAutoSaveEnabled(true);
         if (!preventInitialRender) {
           setEnqueuedRender(true);
+        }
+      } else if (qsTemplate) {
+        if (templates[qsTemplate]) {
+          freshLoadContentToState(templates[qsTemplate].template);
+          setInitStatus({ severity: "success", message: `Started new document from template "${qsTemplate}".` });
+          const url = new URL(window.location);
+          url.searchParams.delete('templateId');
+          window.history.replaceState({}, '', url);
+          setAutoSaveEnabled(true);
+          if (!preventInitialRender) {
+            setEnqueuedRender(true);
+          }
+        } else {
+          setInitStatus({ severity: "error", message: `Could not find template "${qsTemplate}", using default starting document.` });
         }
       } else if (qsImportRemote && qsRemoteImportToken) {
         setInitStatus({ severity: "warning", message: "Importing remote document..." });
@@ -370,8 +387,8 @@ const ParseqUI = (props) => {
       } else {
         return incomingKeyframe;
       }
-    }).concat(keyframes.filter((existingKeyframe) => !incomingKeyframes.find((incomingKeyframe) => incomingKeyframe.frame === existingKeyframe.frame))  )
-    .sort((a, b) => a.frame - b.frame);
+    }).concat(keyframes.filter((existingKeyframe) => !incomingKeyframes.find((incomingKeyframe) => incomingKeyframe.frame === existingKeyframe.frame)))
+      .sort((a, b) => a.frame - b.frame);
 
     setKeyframes(keyframes_local);
 
@@ -388,7 +405,7 @@ const ParseqUI = (props) => {
     if (keyframes) {
       const gridContainer = document.querySelector(".ag-theme-alpine");
       if (gridContainer) {
-        gridContainer.style.height = 24*keyframes.length + "px";
+        gridContainer.style.height = 24 * keyframes.length + "px";
       }
     }
   }, [keyframes]);
@@ -453,6 +470,7 @@ const ParseqUI = (props) => {
 
   // Update displayed columns when displayFields changes.
   useEffect(() => {
+    console.log("displayFields", displayFields)
     if (displayFields && gridRef.current.columnApi) {
       let columnsToShow = displayFields.flatMap(c => [c, c + '_i']);
       let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
@@ -462,10 +480,12 @@ const ParseqUI = (props) => {
       gridRef.current.api.onSortChanged();
       gridRef.current.api.sizeColumnsToFit();
     } else {
+      // TODO: if we need this, we also need to cancel the timer in the good path
+      // to avoid nuking displayFields by mistake. But for now I don't think we need this.
       //log.debug("Couldn't update columns, try again in 100ms.");
-      setTimeout(() => {
-        setDisplayFields(Array.isArray(displayFields) ? [...displayFields] : []);
-      }, 100);
+      // setTimeout(() => {
+      //   setDisplayFields(Array.isArray(displayFields) ? [...displayFields] : []);
+      // }, 100);
     }
   }, [displayFields]);
 
@@ -574,7 +594,7 @@ const ParseqUI = (props) => {
         console.error('Invalid format of keyframes to merge, should have been validated in dialog.');
       }
     }
-  }, [mergeKeyframes, dataToMerge]);  
+  }, [mergeKeyframes, dataToMerge]);
   const mergeKeyframesDialog = useMemo(() =>
     <Dialog open={openMergeKeyframesDialog} onClose={handleCloseMergeKeyframesDialog}>
       <DialogTitle>🌪️ Merge keyframes</DialogTitle>
@@ -582,51 +602,51 @@ const ParseqUI = (props) => {
         <DialogContentText>
           Merge keyframes from another source into the current document. For example:
           <ul>
-            <li>Try the <a href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">browser</a> to find keyframe data from your other documents.</li>
-            <li>⚠️ Experimental: try the <a href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">analyser</a> to generate keyframes from audio.</li>
+            <li>Try the <a href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">browser</a> to find keyframe data from your other documents.</li>
+            <li>⚠️ Experimental: try the <a href={'/analyser?fps=' + (options?.output_fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">analyser</a> to generate keyframes from audio.</li>
           </ul>
         </DialogContentText>
         <TextField
-                style={{ width: '100%', paddingTop: '10px' }}
-                id="merge-data"
-                multiline
-                onFocus={event => event.target.select()}
-                rows={10}
-                InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                placeholder="<Paste your Keyframes JSON here>"
-                value={dataToMerge}
-                onChange={(e) => {
-                  setMergeEnabled(false);
-                  setDataToMerge(e.target.value);
+          style={{ width: '100%', paddingTop: '10px' }}
+          id="merge-data"
+          multiline
+          onFocus={event => event.target.select()}
+          rows={10}
+          InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+          placeholder="<Paste your Keyframes JSON here>"
+          value={dataToMerge}
+          onChange={(e) => {
+            setMergeEnabled(false);
+            setDataToMerge(e.target.value);
 
-                  let newKeyframes;
-                  let json;
-                  
-                  try {
-                    json = JSON.parse(e.target.value);
-                  } catch (e) {
-                    setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON. Got error: {e.message}</Alert>);
-                    return;
-                  }
+            let newKeyframes;
+            let json;
 
-                  if (json['keyframes'] && Array.isArray(json['keyframes'])) {
-                    newKeyframes = json['keyframes'];
-                  } else if (Array.isArray(json)) {
-                    newKeyframes = json;
-                  } else {
-                    setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON array, or JSON object with top-level array named 'keyframes'.</Alert>);
-                    return;
-                  }
+            try {
+              json = JSON.parse(e.target.value);
+            } catch (e) {
+              setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON. Got error: {e.message}</Alert>);
+              return;
+            }
 
-                  if (!newKeyframes.every((kf) => typeof kf.frame === "number" )) {
-                    setKeyFrameMergeStatus(<Alert severity="error">All keyframes must have a numeric 'frame' field.</Alert>);
-                    return;
-                  }
+            if (json['keyframes'] && Array.isArray(json['keyframes'])) {
+              newKeyframes = json['keyframes'];
+            } else if (Array.isArray(json)) {
+              newKeyframes = json;
+            } else {
+              setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON array, or JSON object with top-level array named 'keyframes'.</Alert>);
+              return;
+            }
 
-                  setKeyFrameMergeStatus(<Alert severity="success">Found {newKeyframes.length} keyframes to merge.</Alert>);
-                  setMergeEnabled(true);
-                }}
-          />
+            if (!newKeyframes.every((kf) => typeof kf.frame === "number")) {
+              setKeyFrameMergeStatus(<Alert severity="error">All keyframes must have a numeric 'frame' field.</Alert>);
+              return;
+            }
+
+            setKeyFrameMergeStatus(<Alert severity="success">Found {newKeyframes.length} keyframes to merge.</Alert>);
+            setMergeEnabled(true);
+          }}
+        />
         {keyFrameMergeStatus}
       </DialogContent>
       <DialogActions>
@@ -683,7 +703,7 @@ const ParseqUI = (props) => {
     },
     prompts: prompts,
     options: options,
-    interpolatableFields: interpolatable_fields.map(s => ({name: s })),
+    interpolatableFields: interpolatable_fields.map(s => ({ name: s })),
     displayFields: displayFields,
     keyframes: keyframes,
   }), [prompts, options, displayFields, keyframes, interpolatable_fields]);
@@ -703,21 +723,21 @@ const ParseqUI = (props) => {
     setRenderedErrorMessage("");
     setEnqueuedRender(false);
     try {
-      const data = parseqRender(getPersistableState());      
+      const data = parseqRender(getPersistableState());
       setRenderedData(data);
       setlastRenderedState({
         // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
         // So if we want to compare a future grid state to the last rendered state, we need to
         // do a deep copy.
         keyframes: clonedeep(keyframes),
-        prompts,
-        options
+        prompts: clonedeep(prompts),
+        options: clonedeep(options),
       });
       setLastRenderTime(Date.now());
     } catch (e) {
       console.error("Parseq renderer error: ", e);
       let errorMessage;
-      if (e.message.length>300) {
+      if (e.message.length > 300) {
         errorMessage = e.message.substring(0, 300) + '... [See Javascript console for full error message].';
       } else {
         errorMessage = e.message;
@@ -726,7 +746,7 @@ const ParseqUI = (props) => {
     } finally {
       console.timeEnd('Render');
     }
-    
+
   }, [keyframes, prompts, options, getPersistableState]);
 
   const renderButton = useMemo(() =>
@@ -738,7 +758,7 @@ const ParseqUI = (props) => {
 
 
   const grid = useMemo(() => <>
-    <div className="ag-theme-alpine" style={{ width: '100%', minHeight:'150px',  maxHeight:'1150px', height:'150px'}}>
+    <div className="ag-theme-alpine" style={{ width: '100%', minHeight: '150px', maxHeight: '1150px', height: '150px' }}>
       <AgGridReact
         ref={gridRef}
         rowData={deepCopy(default_keyframes)}
@@ -885,12 +905,11 @@ const ParseqUI = (props) => {
   </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields])
 
   const promptsUI = useMemo(() => prompts ? <Prompts
-      initialPrompts={prompts}
-      lastFrame={keyframes[keyframes.length - 1].frame}
-      afterBlur={(e) => {if (autoRender && needsRender) setEnqueuedRender(true) }}
-      //afterChange={(p) =>{ console.log("changed to: ", p)}}
-      afterChange={(p) => setPrompts(p)}
-    /> : <></>, [prompts, autoRender, needsRender, keyframes]);
+    initialPrompts={prompts}
+    lastFrame={keyframes[keyframes.length - 1].frame}
+    afterBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
+    afterChange={(p) => setPrompts(p)}
+  /> : <></>, [prompts, autoRender, needsRender, keyframes]);
 
   const editableGraph = useMemo(() => renderedData && <div>
     <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
@@ -913,33 +932,33 @@ const ParseqUI = (props) => {
       displayFields={displayFields}
       as_percents={graphAsPercentages}
       markers={
-        (prompts && graphPromptMarkers ) ?
+        (prompts && graphPromptMarkers) ?
           prompts.flatMap((p, idx) => [{
-              x: p.from,
-              color: 'rgba(50,200,50, 0.8)',
-              label: p.name + 'start',
-              display: !p.allFrames,
-              top: true
-            },
-            {
-              x: p.to,
-              color: 'rgba(200,50,50, 0.8)',
-              label: p.name + ' end',
-              display: !p.allFrames,
-              top: false
-            }
+            x: p.from,
+            color: 'rgba(50,200,50, 0.8)',
+            label: p.name + 'start',
+            display: !p.allFrames,
+            top: true
+          },
+          {
+            x: p.to,
+            color: 'rgba(200,50,50, 0.8)',
+            label: p.name + ' end',
+            display: !p.allFrames,
+            top: false
+          }
           ])
-          .concat(
-            [
-              {
-                x: gridCursorPos,
-                color: 'rgba(0, 0, 100, 1)',
-                label: 'Grid cursor',
-                top: true
-              }
-            ]
-          )
-        : []}
+            .concat(
+              [
+                {
+                  x: gridCursorPos,
+                  color: 'rgba(0, 0, 100, 1)',
+                  label: 'Grid cursor',
+                  top: true
+                }
+              ]
+            )
+          : []}
       updateKeyframe={(field, index, value) => {
         let rowId = frameToRowId(index)
         gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
@@ -962,7 +981,7 @@ const ParseqUI = (props) => {
         }
       }}
     />
-</div>, [renderedData, displayFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId]);
+  </div>, [renderedData, displayFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId]);
 
   const handleClickedSparkline = useCallback((e) => {
     let field = e.currentTarget.id.replace("sparkline_", "");
@@ -985,7 +1004,7 @@ const ParseqUI = (props) => {
     <Grid container>
       {
         interpolatable_fields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
-          <Grid key={"sparkline_"+field} xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
+          <Grid key={"sparkline_" + field} xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
             <Typography style={{ fontSize: "0.5em" }}>{(displayFields.includes(field) ? "✔️" : "") + field}</Typography>
             {props.settings_2d_only.includes(field) ?
               <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
@@ -1037,35 +1056,35 @@ const ParseqUI = (props) => {
               <CopyToClipboard text={renderedDataJsonString}>
                 <Button size="small" disabled={needsRender} variant="outlined">📋 Copy output</Button>
               </CopyToClipboard>
-              <Typography fontSize={'0.7em'}>Size: {(renderedDataJsonString.length/1024).toFixed(2)}kB</Typography>
+              <Typography fontSize={'0.7em'}>Size: {(renderedDataJsonString.length / 1024).toFixed(2)}kB</Typography>
             </Stack>
-          </Grid>    
+          </Grid>
           <Grid xs={4}>
             <UserAuthContextProvider>
               <UploadButton
                 docId={activeDocId}
                 renderedJson={renderedDataJsonString}
                 autoUpload={autoUpload}
-                onNewUploadStatus={(status)=>setUploadStatus(status)}
+                onNewUploadStatus={(status) => setUploadStatus(status)}
               />
             </UserAuthContextProvider>
-          </Grid>    
+          </Grid>
           <Grid xs={4}>
-          <Stack>
-            <FormControlLabel control={
-              <Checkbox
-                checked={autoUpload}
-                id={"auto_render"}
-                onChange={(e) => setAutoUpload(e.target.checked)}
-              />}
-              style={{ marginLeft: '0.75em' }}
-              label={<Box component="div" fontSize="0.75em">Auto-upload</Box>}
-            />
+            <Stack>
+              <FormControlLabel control={
+                <Checkbox
+                  checked={autoUpload}
+                  id={"auto_render"}
+                  onChange={(e) => setAutoUpload(e.target.checked)}
+                />}
+                style={{ marginLeft: '0.75em' }}
+                label={<Box component="div" fontSize="0.75em">Auto-upload</Box>}
+              />
             </Stack>
           </Grid>
-          <Grid xs={4} sx={{float: "right"}}>
+          <Grid xs={4} sx={{ float: "right" }}>
             <Stack direction={'column'} justifyContent={'right'} justifyItems={'right'} justifySelf={'right'} >
-            {uploadStatus}
+              {uploadStatus}
 
             </Stack>
           </Grid>
@@ -1098,22 +1117,22 @@ const ParseqUI = (props) => {
         {docManager}
       </Grid>
       <Grid xs={4}>
-      <Box display='flex' justifyContent="right" gap={1} alignItems='center' paddingTop={1}>
-        <Tooltip2 title="Generate Parseq keyframes from audio (⚠️ experimental).">
-          <Button color="success" variant="outlined" size="small" href={'/analyser?fps='+(options?.output_fps||20)+'&refDocId='+activeDocId } target='_blank' rel="noreferrer">🎧 Audio Analyzer</Button>
-        </Tooltip2>
-        <Tooltip2 title="Explore your Parseq documents.">
-          <Button color="success" variant="outlined" size="small" href={'/browser?refDocId='+activeDocId} target='_blank' rel="noreferrer">🔎 Doc Browser</Button>
-        </Tooltip2>
-      </Box>  
-      </Grid>      
+        <Box display='flex' justifyContent="right" gap={1} alignItems='center' paddingTop={1}>
+          <Tooltip2 title="Generate Parseq keyframes from audio (⚠️ experimental).">
+            <Button color="success" variant="outlined" size="small" href={'/analyser?fps=' + (options?.output_fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">🎧 Audio Analyzer</Button>
+          </Tooltip2>
+          <Tooltip2 title="Explore your Parseq documents.">
+            <Button color="success" variant="outlined" size="small" href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">🔎 Doc Browser</Button>
+          </Tooltip2>
+        </Box>
+      </Grid>
       <Grid xs={12}>
         <h3>Prompts</h3>
         {promptsUI}
       </Grid>
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <h3>Keyframes for parameter flow</h3>
-        {optionsUI} 
+        {optionsUI}
         <small>Show fields:</small>
         {fieldSelector}
         {grid}
@@ -1135,18 +1154,18 @@ const ParseqUI = (props) => {
         {renderSparklines()}
       </Grid>
       <Grid xs={12}>
-        <h3>Preview</h3>    
+        <h3>Preview</h3>
         <Preview data={renderedData} />
-      </Grid>      
+      </Grid>
       <Grid xs={12}>
         <h3>Output</h3>
         <Box sx={{ paddingBottom: '150px' }}>
-           {renderedOutput}
+          {renderedOutput}
         </Box>
       </Grid>
-    {stickyFooter}
-  </Grid>
-    
+      {stickyFooter}
+    </Grid>
+
 
   );
 

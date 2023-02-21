@@ -4,7 +4,7 @@ import {
     Tooltip
 } from 'chart.js';
 //disabling crosshair plugin because it seems to cause errors on some systems.
-import { CrosshairPlugin } from 'chartjs-plugin-crosshair';
+//import { CrosshairPlugin } from 'chartjs-plugin-crosshair';
 import 'chartjs-plugin-dragdata';
 //@ts-ignore
 import 'chart.js/auto';
@@ -34,8 +34,8 @@ ChartJS.register(
     Tooltip,
     Legend,
     ChartJSAddPointPlugin,
-    CrosshairPlugin,
-    annotationPlugin 
+    //    CrosshairPlugin,
+    annotationPlugin
 );
 
 //@ts-ignore
@@ -48,7 +48,7 @@ export class Editable extends React.Component<{
     updateKeyframe: (field: string, index: number, value: number) => void;
     addKeyframe: (index: number) => void;
     clearKeyframe: (field: string, index: number) => void;
-    markers: {x: number, label: string, color: string, top: boolean}[];
+    markers: { x: number, label: string, color: string, top: boolean }[];
 }> {
 
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
@@ -65,7 +65,7 @@ export class Editable extends React.Component<{
 
     render() {
 
-        const annotations =  this.props.markers.reduce((acc: any, marker: {x: number, label: string, color: string, top: boolean}, idx: number) => {
+        const annotations = this.props.markers.reduce((acc: any, marker: { x: number, label: string, color: string, top: boolean }, idx: number) => {
             return {
                 ...acc,
                 ['line' + idx]: {
@@ -75,15 +75,15 @@ export class Editable extends React.Component<{
                     borderDash: [5, 5],
                     borderWidth: 1,
                     label: {
-                        display:true,
+                        display: true,
                         content: marker.label,
-                        ...(marker.top ? {position: 'end', yAdjust: -5} : {position: 'start', yAdjust: 5}),
-                        font : { size: '8' },
+                        ...(marker.top ? { position: 'end', yAdjust: -5 } : { position: 'start', yAdjust: 5 }),
+                        font: { size: '8' },
                         backgroundColor: 'rgba(0,0,0,0.6)',
                         padding: 3
                     },
                     callout: {
-                        display: true, 
+                        display: true,
                     }
                 }
             }
@@ -126,18 +126,18 @@ export class Editable extends React.Component<{
                     position: 'nearest',
                     intersect: false,
                     callbacks: {
-                        label: function(context) {
-                            const field : string = context.dataset.label || '';
+                        label: function (context) {
+                            const field: string = context.dataset.label || '';
                             const frame = capturedThis.props.renderedData.rendered_frames[context.parsed.x];
                             const value = frame[field].toFixed(3);
                             //@ts-ignore
                             const maxValue = capturedThis.props.renderedData.rendered_frames_meta[field].max;
-                            const pcOfMax = (frame[field]/maxValue*100).toFixed(2)
+                            const pcOfMax = (frame[field] / maxValue * 100).toFixed(2)
                             const label = `${context.dataset.label}: ${value} (${pcOfMax}% of max) `;
-                            
+
                             return label;
                         },
-                        title: function(items) {
+                        title: function (items) {
                             const frame = items[0].parsed.x;
                             const fps = capturedThis.props.renderedData.options.output_fps;
                             const bpm = capturedThis.props.renderedData.options.bpm;
@@ -149,21 +149,21 @@ export class Editable extends React.Component<{
                 //@ts-ignore - additional plugin config data is not declated in type.
                 crosshair: {
                     line: {
-                      color: '#F66',  // crosshair line color
-                      width: 1        // crosshair line width
+                        color: '#F66',  // crosshair line color
+                        width: 1        // crosshair line width
                     },
                     sync: {
-                      enabled: false,            // enable trace line syncing with other charts
+                        enabled: false,            // enable trace line syncing with other charts
                     },
                     zoom: {
-                      enabled: true,                                      // enable zooming
-                      zoomboxBackgroundColor: 'rgba(66,133,244,0.2)',     // background color of zoom box 
-                      zoomboxBorderColor: '#48F',                         // border color of zoom box
-                      zoomButtonText: 'Reset Zoom',                       // reset zoom button text
-                      zoomButtonClass: 'reset-zoom',                      // reset zoom button class
+                        enabled: true,                                      // enable zooming
+                        zoomboxBackgroundColor: 'rgba(66,133,244,0.2)',     // background color of zoom box 
+                        zoomboxBorderColor: '#48F',                         // border color of zoom box
+                        zoomButtonText: 'Reset Zoom',                       // reset zoom button text
+                        zoomButtonClass: 'reset-zoom',                      // reset zoom button class
                     },
-                    
-                  },
+
+                },
                 //@ts-ignore - additional plugin config data is not declated in type.
                 dragData: {
                     round: 4,
@@ -201,7 +201,7 @@ export class Editable extends React.Component<{
                 },
                 annotation: {
                     annotations
-                  }                
+                }
             },
         };
 

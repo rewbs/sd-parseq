@@ -1,12 +1,11 @@
 import Alert, { AlertColor } from '@mui/material/Alert';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
-import * as React from 'react';
 import { useState } from 'react';
 //@ts-ignore
 
 type MyProps = {
-    status : {
+    status: {
         severity: AlertColor | undefined;
         message: string;
     }
@@ -27,7 +26,7 @@ export function InitialisationStatus({ status }: MyProps) {
                         onClick={() => {
                             setOpen(false);
                         }}>
-                        ❌
+                        ❎
                     </IconButton>
                 }
                 sx={{ mb: 2 }}

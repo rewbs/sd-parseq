@@ -1,4 +1,4 @@
-import { Slider, Typography } from "@mui/material";
+import { Slider } from "@mui/material";
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useState } from 'react';
@@ -26,7 +26,7 @@ export function Preview(props: PreviewProps) {
 
 
     return <Grid xs={12} container style={{ margin: 0, padding: 0, marginRight: 1 }}>
-        <Grid xs={12} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', gap: 1}}>
+        <Grid xs={12} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', gap: 1 }}>
             <TextField
                 type="number"
                 size="small"
@@ -47,29 +47,30 @@ export function Preview(props: PreviewProps) {
         </Grid>
         {
             [fields1, fields2].map((fields) =>
-            <Grid xs={6}>
-            <Typography fontSize={"0.7em"} fontFamily={"monospace"}>
-                <ul>
-                    {
-                        fields.map(field => {
-                        
-                            //@ts-ignore
-                            const valueAsPercent = (renderedFrames[frame][field.name]-renderedFramesMeta[field.name].min)/(renderedFramesMeta[field.name].max-renderedFramesMeta[field.name].min)*100;
-                        return <li>
-                            <div style={{
-                                 float:'none',
-                                 overflow:'visible',
-                                 backgroundColor: percentageToColor(valueAsPercent/100, 100, 0, 0.5),
-                                 width: (valueAsPercent +'%') }} >
-                                {field.name}&nbsp;:&nbsp;{renderedFrames[frame][field.name].toFixed(4)}
-                            </div>
-                        </li>
-                        })
-                    }
-                </ul>
-            </Typography>
-            </Grid>
-        )} 
+                <Grid xs={6} key={fields.join('_').substring(5)}>
+                    <div style={{ fontSize: "0.7em", fontFamily: "monospace" }}>
+                        <ul>
+                            {
+                                fields.map(field => {
+
+                                    //@ts-ignore
+                                    const valueAsPercent = (renderedFrames[frame][field.name] - renderedFramesMeta[field.name].min) / (renderedFramesMeta[field.name].max - renderedFramesMeta[field.name].min) * 100;
+                                    return <li key={field.name}>
+                                        <div style={{
+                                            float: 'none',
+                                            overflow: 'visible',
+                                            backgroundColor: percentageToColor(valueAsPercent / 100, 100, 0, 0.5),
+                                            width: (valueAsPercent + '%')
+                                        }} >
+                                            {field.name}&nbsp;:&nbsp;{renderedFrames[frame][field.name].toFixed(4)}
+                                        </div>
+                                    </li>
+                                })
+                            }
+                        </ul>
+                    </div>
+                </Grid>
+            )}
         <Grid xs={12}>
             <TextField
                 multiline
@@ -83,7 +84,7 @@ export function Preview(props: PreviewProps) {
                 label={`Prompt [frame ${frame}]`}
                 variant="outlined"
             />
-        </Grid>          
+        </Grid>
     </Grid>
 
 

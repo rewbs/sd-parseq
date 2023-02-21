@@ -42,12 +42,12 @@ type ParseqDocVersion = ParseqPersistableState & {
 }
 
 type ParseqOptions = {
-    input_fps: number;
+    input_fps?: number;
     bpm: number;
     output_fps: number;
-    cc_window_width: number;
-    cc_window_slide_rate: number;
-    cc_use_input: boolean;
+    cc_window_width?: number;
+    cc_window_slide_rate?: number;
+    cc_use_input?: boolean;
 };
 
 type SimpleParseqPrompts = {
@@ -55,15 +55,38 @@ type SimpleParseqPrompts = {
     negative: string;
 };
 
-type AdvancedParseqPrompts = {
-    positive:string;
-    negative:string;    
-    allFrames:boolean;
-    from:number;
-    to:number;
-    weight:string;
-    name:string;
-}[];
+type Template = {
+    name: string;
+    description: string;
+    template: {
+        options?: ParseqOptions;
+        displayFields?: string[];
+        interpolatableFields?: interpolatableField[];
+        prompts: ParseqPrompts;
+        keyframes: ParseqKeyframes;
+    }
+}
+
+type OverlapType = "none" | "linear" | "custom";
+
+type Overlap = {
+    type: OverlapType;
+    custom: string;
+    inFrames: number;
+    outFrames: number;
+}
+
+type AdvancedParseqPrompt = {
+    positive: string;
+    negative: string;
+    allFrames: boolean;
+    from: number;
+    to: number;
+    name: string;
+    overlap: Overlap;
+};
+
+type AdvancedParseqPrompts = AdvancedParseqPrompt[] | [];
 
 type ParseqPrompts = SimpleParseqPrompts | AdvancedParseqPrompts;
 

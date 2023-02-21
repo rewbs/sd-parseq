@@ -219,7 +219,7 @@ export function Prompts(props: PromptsProps) {
 
 
     const displayPrompts = useCallback((advancedPrompts: AdvancedParseqPrompts) =>
-        <Grid container>
+        <Grid container xs={12}>
             {
                 advancedPrompts.map((prompt, idx) => <>
                     <Box key={"prompt-"+idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >

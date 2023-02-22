@@ -3,7 +3,7 @@ import ParserRules from './parseq-lang.js';
 import { linear, polynomial, step } from 'everpolate';
 import Spline from 'cubic-spline';
 import BezierEasing from "bezier-easing";
-import { toFixedNumber } from './utils';
+import { toFixedNumber, toFixedCeil, toFixedFloor } from './utils';
 
 
 export function defaultInterpolation(definedFrames, definedValues, frame) {
@@ -86,6 +86,10 @@ export function interpret(ast, context) {
           return f => cubic_spline_interpolation(context.definedFrames, context.definedValues, f);
         case 'f':
           return f => f;
+        case 'b':
+            return f => f / ((context.FPS*60)/context.BPM);
+        case 's':
+            return f => f / context.FPS;
         case 'k': // offset since last active keyframe
           return f => f - context.activeKeyframe;
         case 'prev_keyframe': // deprecated, use 'active_keyframe', which is a more accurate name.
@@ -112,7 +116,7 @@ export function interpret(ast, context) {
         case 's':
           return f => interpret(ast.value, context)(f) * context.FPS;
         case 'b':
-          return f => interpret(ast.value, context)(f) * (context.FPS*60)/context.BPM
+          return f => interpret(ast.value, context)(f) * (context.FPS*60)/context.BPM;
         default:
           throw new Error(`Unrecognised conversion unit ${ast.value} at ${ast.start.line}:${ast.start.col}`);
       }
@@ -152,6 +156,14 @@ export function interpret(ast, context) {
           let vr1 = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
           let vr2 = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], 0), context);
           return f => toFixedNumber(vr1(f), vr2(f));
+        case 'floor':  
+          let vr1f = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
+          let vr2f = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], 0), context);
+          return f => toFixedFloor(vr1f(f), vr2f(f));
+        case 'ceil':  
+          let vr1c = interpret(named_argument_extractor(ast.arguments, ['value', 'v'], null), context);
+          let vr2c = interpret(named_argument_extractor(ast.arguments, ['precision', 'p'], 0), context);
+          return f => toFixedCeil(vr1c(f), vr2c(f));
         case 'slide':
             let start = interpret(named_argument_extractor(ast.arguments, ['start', 'from' , 'f'], getActiveKeyframeValue(context, context.activeKeyframe)), context);
             let end = interpret(named_argument_extractor(ast.arguments, ['end', 'to' , 't'], getActiveKeyframeValue(context, context.activeKeyframe)), context);
@@ -193,6 +205,12 @@ export function interpret(ast, context) {
           case 'round':
             let [v, p = _ => 0] = ast.arguments.map(arg => interpret(arg, context))  
             return f => toFixedNumber(v(f), p(f));
+          case 'floor':
+            let [vf, pf = _ => 0] = ast.arguments.map(arg => interpret(arg, context))  
+            return f => toFixedFloor(vf(f), pf(f));
+          case 'ceil':
+            let [vc, pc = _ => 0] = ast.arguments.map(arg => interpret(arg, context))  
+            return f => toFixedCeil(vc(f), pc(f));            
           case 'bez':
             let [x1 = _ => 0.5, y1 = _ => 0, x2 = _ => 0.5, y2 = _ => 1] = ast.arguments.map(arg => interpret(arg, context))
             return f => bezier(f, x1(f), y1(f), x2(f), y2(f), context);

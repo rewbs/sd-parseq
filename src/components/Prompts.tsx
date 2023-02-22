@@ -333,7 +333,6 @@ export function Prompts(props: PromptsProps) {
         </Grid>
         , [delPrompt, promptInput, prompts, props, displayFadeOptions]);
 
-
     const [openSpacePromptsDialog, setOpenSpacePromptsDialog] = useState(false);
     const [spacePromptsLastFrame, setSpacePromptsLastFrame] = useState(props.lastFrame);
     const [spacePromptsOverlap, setSpacePromptsOverlap] = useState(0);
@@ -350,8 +349,8 @@ export function Prompts(props: PromptsProps) {
         const span = (spacePromptsLastFrame + 1) / prompts.length;
         const newPrompts = prompts.map((p, idx) => {
             const newPrompt = { ...p };
-            newPrompt.from = Math.max(0, Math.ceil(idx * span) - spacePromptsOverlap);
-            newPrompt.to = Math.floor((idx + 1) * span);
+            newPrompt.from = Math.max(0, Math.ceil(idx*span - spacePromptsOverlap/2));
+            newPrompt.to =  Math.min(props.lastFrame, Math.floor((idx+1)* span + spacePromptsOverlap/2));
             newPrompt.allFrames = false;
             newPrompt.overlap.type = spacePromptsOverlap > 0 ? 'linear' : 'none';
             newPrompt.overlap.inFrames = newPrompt.from <= 0 ? 0 : spacePromptsOverlap;
@@ -382,7 +381,7 @@ export function Prompts(props: PromptsProps) {
             <TextField
                 type="number"
                 size="small"
-                style={{ marginTop: '10px', width: '5em' }}
+                style={{ marginTop: '10px', width: '10em' }}
                 label={"Fade frames"}
                 inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                 InputLabelProps={{ shrink: true, }}
@@ -483,63 +482,7 @@ export function Prompts(props: PromptsProps) {
 
     }, []);
 
-
-    // type Overlap = {
-    //     from: number,
-    //     to: number,
-    //     fadeOuts: Set<AdvancedParseqPrompt>
-    //     fadeIns: Set<AdvancedParseqPrompt>
-    //     transients: Set<AdvancedParseqPrompt>
-    //     constants: Set<AdvancedParseqPrompt>
-    // }
-
-    // // const findOverlaps = (): Overlap[] => {
-
-
-    //     let inOverlap = false;
-    //     let newOverlap: Overlap = {
-    //         from: -1,
-    //         to: -1,
-    //         fadeOuts: new Set(),
-    //         fadeIns: new Set(),
-    //         transients: new Set(),
-    //         constants: new Set()
-    //     }
-    //     let overlaps: Overlap[] = [];
-    //     for (let f = 0; f <= props.lastFrame; f++) {
-    //         const activePrompts = prompts.filter(p => p.allFrames || (f >= p.from && f <= p.to));
-    //         if (activePrompts.length > 1 && !inOverlap) {
-    //             // new overlap
-    //             inOverlap = true;
-    //             const frameBeforeOverlap = Math.max(0, f - 1);
-    //             newOverlap = {
-    //                 from: f,
-    //                 to: -1,
-    //                 fadeOuts: new Set(),
-    //                 fadeIns: new Set(),
-    //                 transients: new Set(),
-    //                 constants: new Set()
-    //             }
-    //         } else if ((activePrompts.length <= 1 || f === props.lastFrame) && inOverlap) {
-    //             // end of overlap
-    //             newOverlap.to = f;
-    //             overlaps.push(newOverlap);
-    //         }
-    //     }
-
-    //     overlaps = overlaps.map(o => ({
-    //         from: o.from,
-    //         to: o.to,
-    //         fadeOuts: new Set(prompts.filter(p => p.from < o.from && p.to <= o.to)),
-    //         fadeIns: new Set(prompts.filter(p => p.from >= o.from && (p.to > o.to || p.to === props.lastFrame))),
-    //         transients: new Set(prompts.filter(p => p.from > o.from && p.to < o.to)),
-    //         constants: new Set(prompts.filter(p => p.from <= o.from && p.to >= o.to)),
-    //     }));
-
-    //     return overlaps;
-    // }
-
-    // update the quick preview if prompts, 
+    // update the quick preview when the cursor is dragged or prompts change
     useEffect(() => {
         const f = quickPreviewPosition;
         const activePrompts = prompts
@@ -564,7 +507,7 @@ export function Prompts(props: PromptsProps) {
         {spacePromptsDialog}
         <Grid xs={12}>
             <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
-            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+            <Button size="small" disabled={prompts.length<2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
         </Grid>
         <Grid xs={4} sx={{ paddingRight: '15px' }} >
             <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >

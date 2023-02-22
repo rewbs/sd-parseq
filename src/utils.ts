@@ -47,6 +47,16 @@ export function toFixedNumber(num: number, digits: number, base: number): number
   return Math.round(num * pow) / pow;
 }
 
+export function toFixedFloor(num: number, digits: number, base: number): number {
+  var pow = Math.pow(base || 10, digits);
+  return Math.floor(num * pow) / pow;
+}
+
+export function toFixedCeil(num: number, digits: number, base: number): number {
+  var pow = Math.pow(base || 10, digits);
+  return Math.ceil(num * pow) / pow;
+}
+
 
 export function isValidNumber(toTest : any) {
   return toTest !== undefined 

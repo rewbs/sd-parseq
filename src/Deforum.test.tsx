@@ -1,17 +1,15 @@
 /* eslint-disable no-template-curly-in-string */
 // Set up Dexie / indexedDB for testing
-import 'jest-canvas-mock'
-import "fake-indexeddb/auto";
+import { render, screen, waitFor } from '@testing-library/react';
 import Dexie from "dexie";
-import { render, screen, waitFor, } from '@testing-library/react';
-import Deforum from './Deforum';
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-} from "react-router-dom";
+import "fake-indexeddb/auto";
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en.json';
+import 'jest-canvas-mock';
+import {
+  BrowserRouter, Route, Routes
+} from "react-router-dom";
+import Deforum from './Deforum';
 import * as utils from './utils';
 
 //@ts-ignore
@@ -33,16 +31,16 @@ jest.mock('chartjs-plugin-annotation', () => ({
 
 
 jest.mock('chart.js', () => ({
-    Chart: {
-      register: () => {},
-      }
-  }));
+  Chart: {
+    register: () => { },
+  }
+}));
 
-  jest.mock('@xzdarcy/react-timeline-editor', () => ({
-    Timeline: () => null,
-    TimelineEffect: () => null,
-    TimelineRow: () => null,
-  }));
+jest.mock('@xzdarcy/react-timeline-editor', () => ({
+  Timeline: () => null,
+  TimelineEffect: () => null,
+  TimelineRow: () => null,
+}));
 
 
 async function loadAndRender(fixture: {}) {
@@ -61,11 +59,11 @@ async function loadAndRender(fixture: {}) {
   // Wait for Parseq to complete
   await waitFor(() => {
     expect(screen.getAllByTestId("render-button")[0]).toHaveTextContent("Re-render");
-  }, { timeout: 10000 });    
+  }, { timeout: 10000 });
 }
 
 
-test('Blank document',  async () => {
+test('Blank document', async () => {
   const fixture = {
     "prompts": {
       "positive": "",
@@ -85,7 +83,7 @@ test('Blank document',  async () => {
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
 
-test('Multiple evals in prompts',  async () => {
+test('Multiple evals in prompts', async () => {
   const fixture = {
     "prompts": {
       "positive": "(cat:${prompt_weight_1})\n(dog:${-prompt_weight_1})",
@@ -106,7 +104,7 @@ test('Multiple evals in prompts',  async () => {
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
 
-test('Full prodigy',  async () => {
+test('Full prodigy', async () => {
   const fixture = {
     "prompts": {
       "positive": "Realistic eyeball, photorealism, centered, photo, realistic, organic, dense, beautiful detail, fine textures, intense, volumetric lighting, cinematic lighting :${prompt_weight_1} AND\nRealistic ancient vicious snakes with open mouths, fangs, biting camera, photorealism, centered, photo, realistic, organic, dense, beautiful detail, fine textures, intense, volumetric lighting, cinematic lighting  :${prompt_weight_2} AND\nRealistic mushrooms, photorealism, centered, photo, realistic, organic, dense, beautiful detail, fine textures, intense, volumetric lighting, cinematic lighting  :${prompt_weight_3} AND\nLSD blotter, powder, pills, illegal drugs, syringe, photorealism, centered, photo, realistic, organic, dense, beautiful detail, fine textures, intense, volumetric lighting, cinematic lighting  :${prompt_weight_4}",

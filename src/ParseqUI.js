@@ -23,6 +23,7 @@ import { Sparklines, SparklinesLine } from 'react-sparklines';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
 import { ExpandableSection } from './components/ExpandableSection';
+import { FieldSelector } from "./components/FieldSelector";
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { Preview } from "./components/Preview";
 import { Prompts } from "./components/Prompts";
@@ -1131,6 +1132,15 @@ const ParseqUI = (props) => {
           {promptsUI}
         </ExpandableSection>
       </Grid>
+      <Grid xs={12}>
+        <ExpandableSection title="Fields">
+          <FieldSelector
+            selectedFields={[]}
+            customFields={[]}
+            onChange={(e) => {}}
+          />
+        </ExpandableSection>
+      </Grid>      
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <ExpandableSection title="Keyframes for parameter flow">
           {optionsUI}
@@ -1146,7 +1156,6 @@ const ParseqUI = (props) => {
             {deleteRowDialog}
           </span>
         </ExpandableSection>
-
       </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Visualised parameter flow">

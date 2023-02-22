@@ -1,8 +1,13 @@
 /* eslint-disable no-template-curly-in-string */
+
+// WARNING: do NOT run organise imports on this file!
+// Order of imports is important for the tests to work.
+// "fake-indexeddb/auto" must be imported before Dexie.
+
 // Set up Dexie / indexedDB for testing
-import { render, screen, waitFor } from '@testing-library/react';
-import Dexie from "dexie";
 import "fake-indexeddb/auto";
+import Dexie from "dexie";
+import { render, screen, waitFor } from '@testing-library/react';
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en.json';
 import 'jest-canvas-mock';

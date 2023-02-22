@@ -381,7 +381,7 @@ export function Prompts(props: PromptsProps) {
             <TextField
                 type="number"
                 size="small"
-                style={{ marginTop: '10px', width: '5em' }}
+                style={{ marginTop: '10px', width: '10em' }}
                 label={"Fade frames"}
                 inputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
                 InputLabelProps={{ shrink: true, }}
@@ -507,7 +507,7 @@ export function Prompts(props: PromptsProps) {
         {spacePromptsDialog}
         <Grid xs={12}>
             <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
-            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+            <Button size="small" disabled={prompts.length<2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
         </Grid>
         <Grid xs={4} sx={{ paddingRight: '15px' }} >
             <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >

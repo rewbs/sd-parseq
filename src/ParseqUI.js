@@ -22,6 +22,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
+import { ExpandableSection } from './components/ExpandableSection';
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { Preview } from "./components/Preview";
 import { Prompts } from "./components/Prompts";
@@ -139,6 +140,7 @@ const ParseqUI = (props) => {
   const [uploadStatus, setUploadStatus] = useState(<></>);
   const [lastRenderTime, setLastRenderTime] = useState(0);
   const [gridCursorPos, setGridCursorPos] = useState(0);
+
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
 
@@ -292,7 +294,7 @@ const ParseqUI = (props) => {
               const url = new URL(window.location);
               url.searchParams.delete('importRemote');
               url.searchParams.delete('token');
-              window.history.replaceState({}, '', url); 
+              window.history.replaceState({}, '', url);
               setAutoSaveEnabled(true);
               if (!preventInitialRender) {
                 setEnqueuedRender(true);
@@ -1129,41 +1131,48 @@ const ParseqUI = (props) => {
         </Box>
       </Grid>
       <Grid xs={12}>
-        <h3>Prompts</h3>
-        {promptsUI}
+        <ExpandableSection title="Prompts">
+          {promptsUI}
+        </ExpandableSection>
       </Grid>
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
-        <h3>Keyframes for parameter flow</h3>
-        {optionsUI}
-        <small>Show fields:</small>
-        {fieldSelector}
-        {grid}
-        <span id='gridControls'>
-          <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
-          <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenMergeKeyframesDialog}>🌪️ Merge keyframes</Button>
-          <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
-          {addRowDialog}
-          {mergeKeyframesDialog}
-          {deleteRowDialog}
-        </span>
+        <ExpandableSection title="Keyframes for parameter flow">
+          {optionsUI}
+          <small>Show fields:</small>
+          {fieldSelector}
+          {grid}
+          <span id='gridControls'>
+            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
+            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenMergeKeyframesDialog}>🌪️ Merge keyframes</Button>
+            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
+            {addRowDialog}
+            {mergeKeyframesDialog}
+            {deleteRowDialog}
+          </span>
+        </ExpandableSection>
+
       </Grid>
       <Grid xs={12}>
-        <h3>Visualised parameter flow</h3>
-        {editableGraph}
+        <ExpandableSection title="Visualised parameter flow">
+          {editableGraph}
+        </ExpandableSection>
       </Grid>
       <Grid xs={12}>
-        <h3>Sparklines</h3>
-        {renderSparklines()}
+        <ExpandableSection title="Sparklines">
+          {renderSparklines()}
+        </ExpandableSection>
       </Grid>
       <Grid xs={12}>
-        <h3>Preview</h3>
-        <Preview data={renderedData} />
+        <ExpandableSection title="Preview">
+          <Preview data={renderedData} />
+        </ExpandableSection>
       </Grid>
       <Grid xs={12}>
-        <h3>Output</h3>
-        <Box sx={{ paddingBottom: '150px' }}>
-          {renderedOutput}
-        </Box>
+        <ExpandableSection title="Output">
+          <Box sx={{ paddingBottom: '150px' }}>
+            {renderedOutput}
+          </Box>
+        </ExpandableSection>
       </Grid>
       {stickyFooter}
     </Grid>

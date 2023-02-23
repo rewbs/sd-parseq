@@ -1,6 +1,6 @@
 {
   "name": "sd-parseq",
-  "version": "0.1.39",
+  "version": "0.1.40",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.10.5",
@@ -9,6 +9,7 @@
     "@fortawesome/free-brands-svg-icons": "^6.3.0",
     "@fortawesome/free-solid-svg-icons": "^6.3.0",
     "@fortawesome/react-fontawesome": "^0.2.0",
+    "@mui/icons-material": "^5.11.9",
     "@mui/material": "^5.11.8",
     "@sentry/react": "^7.37.1",
     "@sentry/tracing": "^7.37.1",

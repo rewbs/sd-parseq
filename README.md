@@ -4,6 +4,7 @@
 
   * [What is this?](#what-is-this)
   * [What's new?](#what-s-new)
+    + [Version 0.1.40](#version-0140)  
     + [Version 0.1.22](#version-0122)
     + [Version 0.1.14](#version-0114)
     + [Version 0.1.0](#version-010)
@@ -47,7 +48,7 @@ For context:
 
 Parseq (this tool) is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
-<img  width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213244-b768437a-a260-4448-b8c1-3a832091241b.png">
+<img width="500"  src="https://www.evernote.com/shard/s246/sh/6601a99d-4078-4589-a26c-22c02fa07ac7/u3TayR3OPMjXkDIYphPO-FhUpBZRM5FXqqyBaHB87cT4GJtuk6532rEHzQ/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
 
 You can jump straight into the UI here: https://sd-parseq.web.app/ . 
 
@@ -55,25 +56,23 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 ## What's new?
 
+### Version 0.1.40
+
+* Improved UI with duplicated elements moved to footer.
+* Revamped prompt management. Add unlimited prompts with defined frame ranges, and flexible [composable diffusion](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion) weighting for overlapping prompts.
+* New "Preview" section, allowing you to quickly see the value of all fields and the fully rendered prompt on each frame.
+* Create new documents from templates (including a "blank" template). Only 2 templates available for now, suggestions / contributions welcome.
+* UI improvements to grid: coloured columns, auto-resizing to match row count.
+* Optionally show markers on graph, including prompt start/end positions and grid cursor location.
+* Added functions `ceil()` and `floor()`, and variables `s` (current position in seconds) and `b` (current position in beats).
+
+
 ### Version 0.1.22
 
 * Added an [audio analyser](https://sd-parseq.web.app/analyser). Use it to generate keyframes and values based on beats, events and pitch of an input audio file. Experimental! Details in documentation.
-
-<img width="300" alt="image" src="https://i.imgur.com/MBSrpQV.png">
-
-
 * Added an "info" field on keyframes so you can keep track of what each keyframe represents.
-
-<img width="300" alt="image" src="https://i.imgur.com/YqJZrCZ.png">
-
 * New functions and variables available in your formula: `prev_computed_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
-
-<img width="300" alt="image" src="https://i.imgur.com/zx4MKhm.jpg">
-
-* Full parseq expressions can now be used directly in the prompts:
-
-<img src="https://www.evernote.com/l/APbG8dF2-GxGNoJnCyxvfmtObQIvlH7eUEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
-
+* Full parseq expressions can now be used directly in the prompts.
 * Blank values are now permitted on the first and last frames (will use closest value or default value if none specified).
 * Oscillator functions can now all take a `limit` (`li`) argument to limit the number of repeated periods.
 * Support for new Deforum A1111 schedules (antiblur, hybrid comp). Sampler schedule is not available for now in Parseq (but you can use it directly in Deforum alongside your Parseq manifest).
@@ -82,24 +81,10 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 ### Version 0.1.14
 
 * If you sign in at the top right (only Google sign-in supported for now, raise a feature request if this is too limiting), you can use 2 new upload features.
-
-<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209023672-70969c67-b80e-4aa1-95f5-470ff42574c8.png">
-
 * Once signed in, you can now easily create a sharable URL for your parseq doc from the `Share...` dialog.
-
-<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024021-a5051ff7-6bfd-43c5-b15b-eda8da6e8078.png">
-
 * Also once signed in, you can upload the rendered output to a URL. With the latest version of the A1111 extension, you can refer to this URL in the Parseq manifest textbox, so you don't have to keep copying the full JSON data back and forth.
-
-<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024413-231231a3-6626-4055-9017-ea70db3d6089.png"><img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024824-71454cde-256e-4deb-8134-9e133bbda1b9.png">
-
 * Sparklines are now clickable, so you can show/hide data more easily.
-
-<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209024185-6ee11a71-614f-4bb9-b02e-6e3fe0cc1d91.png">
-
 * A simple Parseq document "Browser" is accessible from the `Load...` dialog that lets you see all the docs and versions in your local storage a bit more easily.
-
-<img width="300" alt="image" src="https://user-images.githubusercontent.com/74455/209025568-ddaa5dee-1514-4908-b3ed-cd2d8302d6a7.png">
 
 
 ### Version 0.1.0
@@ -158,13 +143,14 @@ In summary, there are 2 steps to perform:
 * Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
 * Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
 * Hit `Render` to generate the JSON config for every frame.
-* Copy the contents of the textbox at the bottom
+* Copy the contents of the textbox at the bottom.
+   *  If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All changes will be pushed to the same URL, so you won't need to copy & paste again.
 
 ### Step 2: Generate the video
 
 * Head to the SD web UI go to the Deforum tab and then the Init tab.
-* Paste the JSON you copied in step 1 into the Parseq section at the bottom of the page.
-* Fiddle with any other Deforum / Stable Diffusion settings you want to tweak.
+* Paste the JSON or URL you copied in step 1 into the Parseq section at the bottom of the page.
+* Fiddle with any other Deforum / Stable Diffusion settings you want to tweak. Rember in particular to check the animation mode, the FPS and the total number of frames to make sure they match Parseq.
 * Click generate.
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
@@ -209,6 +195,8 @@ Lastly, Parseq can generate keyframes and values directly from an audio file. Se
 | `P`  	| Polinomial interpolation betwen the last and next keyframed value. Very similar to Cubic spline. | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226091-09958f94-25fa-4646-944e-a3f07ad8d214.png"> |
 | `f`  	| The frame number. Not very useful alone, but can be used to reference the overall video position in your interpolation algoritm. For example, add it to your seed value to increment the seed on every frame. |  <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226179-ff524dfa-aa40-4491-b4c1-2be56f7dda5a.png"> |
 | `k`  	| The number of frames elapsed since the active keyframe started for this field |  <img width="360"  src="https://www.evernote.com/l/APZb70iFBttLsK4ioqLTDV-UF5rxaLUy2tcB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `b`  	| The current position in beats. Depends on BPM and FPS. |   |
+| `s`  	| The current position in seconds. Depends on FPS. |   |
 | `active_keyframe`  	| The frame number of the currently active keyframe for this field 	| <img  width="360" src="https://www.evernote.com/l/APY-jH_C5AJIUYipUAU_REuR6bq6jvkBY6sB/image.png" />    |
 | `next_keyframe`  	| The frame number of the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APZUpufADXZJP55Z0jsDzFYZxvo-XKwPcicB/image.png" />  |
 | `active_keyframe_value`  	| The value set at the currently active keyframe for this field. Equivalent to `S` (step interpolation). 	| <img width="360" src="https://www.evernote.com/l/APZv89DKzZpPna9s8O1w-5bYeCobsYl9GiEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
@@ -233,7 +221,9 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | `min()`  	| Return the minimum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APZX1k4fvOlJP6eyrKSFaw-9KeonwNkS7tEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
 | `max()`  	| Return the maximum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APb9CEaqhEhF6L0FRWovG2Rt-qacyphjc_cB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />	|
 | `abs()`  	| Return the asolute value of the argument | <img src="https://www.evernote.com/l/APar6IXJsoxK6LDrTeyeHr9c-42Cnrk05qgB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
-| `round()`  	| Return the rounded value of the argument | <img src="https://www.evernote.com/l/APZWLyA1YPVMWao-Zke_v7X2adVxjk_0rEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `round()`  	| Return the rounded value of the argument. Second argument specifies precision (default: 0). | <img src="https://www.evernote.com/l/APZWLyA1YPVMWao-Zke_v7X2adVxjk_0rEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `floor()`  	| Return the value of the argument rounded down.  Second argument specifies precision (default: 0). | |
+| `ceil()`  	| Return the value of the argument rounded up.  Second argument specifies precision (default: 0). | |
 | `info_match()` | Takes a **regular expression** as an argument. Returns 1 if the info label of the current active kefframe matches the regex, 0 otherwise.  | <img src="https://www.evernote.com/l/APbS0YKyh2ZHw7ZKEIwCvRTyjIMGL5h2ZNkB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_count()` | Takes a **regular expression** as an argument. Returns the number of keyframes that have info labels that matched the regex so far. | <img src="https://www.evernote.com/l/APaln7KfMdNNwI1I6vKNwORBzE0Br_BfTxYB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_last()` | Takes a **regular expression** as an argument. Returns the frame number of the last keyframe that matched the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
@@ -441,9 +431,11 @@ Other parameters:
    
 * contrast: factor by which to adjust the previous last generated image's contrast before feeding to the current generation. 1 is no change, <1 lowers contrast, >1 increases contract.   
    
-### Prompt interpolation
+### Prompt manipulation
 
-Parseq provides a further 8 keyframable parameters (`prompt_weight_1` to 'prompt_weight_8') that you can reference in your prompts, and can therefore be used as prompts weights. For example, here's a positive prompt that uses Composable Diffusion to interpolate between faces:
+Parseq provides a further 8 keyframable parameters (`prompt_weight_1` to `prompt_weight_8`) that you can reference in your prompts, and can therefore be used as prompts weights. You can use any prompt format that will be recognised by a1111, keeping in mind that anything enclosed in `${...}` will be evaluated as a Parseq expression.
+
+For example, here's a positive prompt that uses [Composable Diffusion](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion) to interpolate between faces:
 ```
 Jennifer Aniston, centered, high detail studio photo portrait :${prompt_weight_1} AND
 Brad Pitt, centered, high detail studio photo portrait :${prompt_weight_2} AND
@@ -455,14 +447,46 @@ Jennifer Lawrence, centered, high detail studio photo portrait :${prompt_weight_
 Jude Law, centered, high detail studio photo portrait :${prompt_weight_8}
 ```
 
+And here's an example using term weighting:
+```
+(Jennifer Aniston:${prompt_weight_1}), (Brad Pitt:${prompt_weight_2}), (Ben Affleck:${prompt_weight_3}), (Gwyneth Paltrow:${prompt_weight_4}), (Zac Efron:${prompt_weight_5}), (Clint Eastwood:${prompt_weight_6}), (Jennifer Lawrence:${prompt_weight_7}), (Jude Law:${prompt_weight_8}), centered, high detail studio photo portrait 
+```
+
 A corresponding parameter flow could look like this:
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205405460-2f9ed10c-0df4-4e4e-8c4f-d68c1c6ceccf.png">
    
+Note that any Parseq expression can be used, so for example the following will alternate between cat and dog on each beat:
+
+```
+Detailed photo of a ${if (floor(b%2)==0) "cat" else "dog"} 
+```
+
+Some important notes:
+* Remember that unless you set `strength` to `0`, prior frames influence the current frame in addition to the prompt, so previous items won't disappear immediately even if they are removed from the prompt on a given frame.
+* To counter-act this, you may wish to put terms you *don't* wish to see at a given frame in your negative prompt too, with inverted weights. 
+
+So the prior example might look like this:
+
+| Positive | Negative |
+|--- |--- |
+| `Detailed photo of a ${if (floor(b%2)==0) "cat" else "dog"}` | `${if (floor(b%2)==0) "dog" else "cat"}` |
+
+### Using multiple prompts
+
+You can add additional prompts and assign each one to a frame range:
+
+<img width='500' src="https://i.imgur.com/eY5FSOX.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
+If the ranges overlap, Parseq will combine the overlapping prompts with [composable diffusion](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion). You can decide whether the composable diffusion weights should be fixed, slide linearly in and out, or be defined by a custom Parseq expression.
+
+Note that if overlapping prompts already use composable diffusion (`... AND ...`), this may lead to unexpected results, because only the last section of the original prompt will be weighted against the overlapping prompt. Parseq will warn you if this is happening.
+
+
 ### Subseed control for seed travelling
 
 For a great description of seed travelling, see [Yownas' script](https://github.com/yownas/seed_travel). In summary, you can interpolate between the latent noise generated by 2 seeds by setting the first as the (main) seed, the second as the subseed, and fluctuating the subseed strength. A subseed strength of 0 will just use the main seed, and 1 will just use the subseed as the seed. Any value in between will interpolate between the two noise patterns using spherical linear interpolation (SLERP).
-   
+
 Parseq does not currently expose the subseed and subseed strength parameters explicitly. Instead, it takes fractional seed values and uses them to control the subseed and subseed strength values. For example, if on a given frame your seed value is `10.5`, Parseq will send `10` as the seed, `11` as the subseed, and `0.5` as the subseed strength.
    
 The downside is you can only interpolate between adjacent seeds. The benefit is seed travelling is very intuitive. If you'd like to have full control over the subseed and subseed strength, feel free to raise a feature request!
@@ -519,9 +543,10 @@ firebase hosting:clone sd-parseq:staging sd-parseq:live
 This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of inspiration:
 
 * Everyone behind Deforum: https://github.com/deforum-art/
-* Everyone behind Aubio, AubioJS and Wavesurfer.
+* Everyone trying out Parseq and giving me feedback on Discrod (e.g. ronnykhalil, Michael L, Moistlicks, Kingpin, hithere, kabachuha...)
+* Everyone behind [Aubio](https://aubio.org/), [AubioJS](https://github.com/qiuxiang/aubiojs), [Wavesurfer](https://wavesurfer-js.org/),  [react-timeline-editor](https://github.com/xzdarcy/react-timeline-editor), [ag-grid](https://www.ag-grid.com/) (community edition), chart.js and recharts.
 * Filarus for their vid2vid script: https://github.com/Filarius/stable-diffusion-webui/blob/master/scripts/vid2vid.py .  
 * Animator-Anon for their animation script: https://github.com/Animator-Anon/Animator/blob/main/animation.py . I picked up some good ideas from this.
-* Yownas for their seed travelling script: https://github.com/yownas/seed_travel . sd-parsec can only travel between consecutive seeds so only offers a fraction of the possible seed variations that Yownas's script does.
+* Yownas for their seed travelling script: https://github.com/yownas/seed_travel.
 * feffy380 for the prompt-morph script https://github.com/feffy380/prompt-morph
 * eborboihuc for the clear implementation of 3d rotations using `cv2.warpPerspective()`:  https://github.com/eborboihuc/rotate_3d/blob/master/image_transformer.py

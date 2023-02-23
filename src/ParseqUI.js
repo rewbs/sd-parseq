@@ -42,9 +42,9 @@ import './robin.css';
 // Config
 const default_prompts = {
   // eslint-disable-next-line no-template-curly-in-string
-  positive: `A lone white (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:\${prompt_weight_1} AND
-  A lone black (cat:\${prompt_weight_3}) (duck:\${prompt_weight_4}) at midnight, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography :\${prompt_weight_2}`,
-  negative: `watermark, logo, text, signature, copyright, writing, letters,
+  positive: `A lone (black cat:\${prompt_weight_1}) (white duck:\${prompt_weight_2}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:`,
+  negative: `(black cat:\${prompt_weight_2}) (white duck:\${prompt_weight_1})
+watermark, logo, text, signature, copyright, writing, letters,
 low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,
 cartoon, computer game, video game, painting, drawing, sketch,
 disfigured, deformed, ugly`
@@ -531,7 +531,7 @@ const ParseqUI = (props) => {
 
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
     setOptions({ ...options, [optionId]: value });
-
+    console.log(options);
     if (autoRender) {
       setEnqueuedRender(true);
     }
@@ -855,9 +855,11 @@ const ParseqUI = (props) => {
       <TextField
         id={"options_output_fps"}
         label={"Output FPS"}
-        defaultValue={options['output_fps']}
+        value={options['output_fps']}
         onChange={handleChangeOption}
+        onBlur={(e) => { if (!e.target.value) { setOptions({...options,  output_fps:default_options['output_fps']}) } }}        
         style={{ marginBottom: '10px', marginTop: '0px' }}
+        InputLabelProps={{ shrink: true, }}
         InputProps={{ style: { fontSize: '0.75em' } }}
         size="small"
         variant="standard" />
@@ -866,9 +868,11 @@ const ParseqUI = (props) => {
       <TextField
         id={"options_bpm"}
         label={"BPM"}
-        defaultValue={options['bpm']}
+        value={options['bpm']}
         onChange={handleChangeOption}
+        onBlur={(e) => { if (!e.target.value) { setOptions({...options,  bpm:default_options['bpm']}) } }}                
         style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px', marginRight: '30px' }}
+        InputLabelProps={{ shrink: true, }}
         InputProps={{ style: { fontSize: '0.75em' } }}
         size="small"
         variant="standard" />

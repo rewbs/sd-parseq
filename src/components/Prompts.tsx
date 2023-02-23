@@ -1,4 +1,4 @@
-import { Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, MenuItem, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, MenuItem, Tooltip, Typography } from "@mui/material";
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
@@ -108,6 +108,26 @@ export function Prompts(props: PromptsProps) {
 
     const delPrompt = useCallback((idxToDelete: number) => {
         setPrompts(prompts.filter((_, idx) => idx !== idxToDelete));
+    }, [prompts]);
+
+
+    const composableDiffusionWarning = useCallback((idx: number) => {
+        const prompt = prompts[idx];
+        const overlappingPrompts = prompts.filter(p => p !== prompt
+            && p.from <= prompt.to
+            && prompt.from <= p.to);
+
+        if (overlappingPrompts.length > 0
+            && (prompt.positive.match(/\sAND\s/)
+                || prompt.negative.match(/\sAND\s/))) {
+            return <Alert severity="warning">
+                Warning: Parseq uses <a href="https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion">composable diffusion</a> to combine overlapping prompts. 
+                &nbsp;{prompt.name} overlaps with the following: <strong>{overlappingPrompts.map(p => p.name).join(', ')}</strong>.
+                But {prompt.name}  also appears to contain its own composable diffusion sections (<span style={{ fontFamily: 'monospace' }}>&#8230; AND &#8230;</span>).
+                This may lead to unexpected results. Check your rendered prompts in the preview window and consider removing the composable diffusion sections  from {prompt.name} if possible.
+            </Alert>
+        }
+        return <></>;
     }, [prompts]);
 
 
@@ -326,12 +346,15 @@ export function Prompts(props: PromptsProps) {
                             <Grid xs={6} style={{ margin: 0, padding: 0 }}>
                                 {promptInput(idx, false)}
                             </Grid>
+                            <Grid xs={12}>
+                                {composableDiffusionWarning(idx)}
+                            </Grid>
                         </Grid>
                     </Box>
                 </>)
             }
         </Grid>
-        , [delPrompt, promptInput, prompts, props, displayFadeOptions]);
+        , [delPrompt, promptInput, prompts, props, displayFadeOptions, composableDiffusionWarning]);
 
     const [openSpacePromptsDialog, setOpenSpacePromptsDialog] = useState(false);
     const [spacePromptsLastFrame, setSpacePromptsLastFrame] = useState(props.lastFrame);
@@ -559,4 +582,6 @@ export function calculateWeight(p: AdvancedParseqPrompt, f: number, lastFrame: n
     }
 
 }
+
+
 

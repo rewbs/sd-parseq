@@ -155,8 +155,8 @@ const ParseqUI = (props) => {
   }, [rangeSelection]);
 
   const isSameCellPosition = (cell1, cell2) => {
-    return cell1 && cell2 && cell1.rowIndex == cell2.rowIndex
-      && cell1.column.instanceId == cell2.column.instanceId;
+    return cell1 && cell2 && cell1.rowIndex === cell2.rowIndex
+      && cell1.column.instanceId === cell2.column.instanceId;
   }
 
   const columnDefs = useMemo(() => {
@@ -241,7 +241,7 @@ const ParseqUI = (props) => {
         }
       ])
     ]
-  }, [interpolatable_fields, rangeSelection]);
+  }, [interpolatable_fields, isInRangeSelection]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -883,7 +883,7 @@ const ParseqUI = (props) => {
         }}
       />
     </div>
-  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, default_keyframes]);
+  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, default_keyframes, navigateToNextCell, rangeSelection]);
 
   const getAnimatedFields = (renderedData) => {
     if (renderedData && renderedData.rendered_frames_meta) {

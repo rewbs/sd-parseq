@@ -469,13 +469,13 @@ export function Prompts(props: PromptsProps) {
                     gridSnap={true}
                     onChange={(e: any) => {
                         console.log(e);
-                        const newPromps = prompts.map((p, idx) => {
+                        const newPrompts = prompts.map((p, idx) => {
                             const action = e[idx].actions.find((a: any) => a.id === p.name);
                             p.from = Math.round(action.start);
                             p.to = Math.round(action.end);
                             return p;
                         });
-                        setPrompts([...prompts]);
+                        setPrompts(newPrompts);
                         props.afterBlur(e);
                     }}
                     getActionRender={(action: any, row: any) => {

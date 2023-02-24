@@ -17,6 +17,7 @@ import Grid from '@mui/material/Unstable_Grid2';
 import { AgGridReact } from 'ag-grid-react';
 import equal from 'fast-deep-equal';
 import clonedeep from 'lodash.clonedeep';
+import range from 'lodash.range';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
@@ -140,9 +141,23 @@ const ParseqUI = (props) => {
   const [uploadStatus, setUploadStatus] = useState(<></>);
   const [lastRenderTime, setLastRenderTime] = useState(0);
   const [gridCursorPos, setGridCursorPos] = useState(0);
+  const [rangeSelection, setRangeSelection] = useState({});
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
+
+  const isInRangeSelection = useCallback((cell) => {
+    return rangeSelection.anchor && rangeSelection.tip && cell
+      && cell.rowIndex >= Math.min(rangeSelection.anchor.y, rangeSelection.tip.y)
+      && cell.rowIndex <= Math.max(rangeSelection.anchor.y, rangeSelection.tip.y)
+      && cell.column.instanceId >= Math.min(rangeSelection.anchor.x, rangeSelection.tip.x)
+      && cell.column.instanceId <= Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
+  }, [rangeSelection]);
+
+  const isSameCellPosition = (cell1, cell2) => {
+    return cell1 && cell2 && cell1.rowIndex == cell2.rowIndex
+      && cell1.column.instanceId == cell2.column.instanceId;
+  }
 
   const columnDefs = useMemo(() => {
     return [
@@ -181,10 +196,19 @@ const ParseqUI = (props) => {
             params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
           },
           suppressMovable: true,
-          cellStyle: params => ({
-            backgroundColor: fieldNametoRGBa(field, 0.1),
-            borderRight: '1px solid lightgrey'
-          })
+          cellStyle: params => {
+            if (isInRangeSelection(params)) {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.4),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+              }
+            } else {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.1),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+              }
+            }
+          }
 
         },
         {
@@ -201,14 +225,23 @@ const ParseqUI = (props) => {
             params.data[field + '_i'] = params.newValue;
           },
           suppressMovable: true,
-          cellStyle: params => ({
-            backgroundColor: fieldNametoRGBa(field, 0.1),
-            borderRight: '1px solid black'
-          })
+          cellStyle: params => {
+            if (isInRangeSelection(params)) {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.4),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
+              }            
+            } else {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.1),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
+              }
+            }
+          }
         }
       ])
     ]
-  }, [interpolatable_fields]);
+  }, [interpolatable_fields, rangeSelection]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -423,7 +456,12 @@ const ParseqUI = (props) => {
       return;
     }
 
-    if (keyframes.length <= 2) {
+    if (frame === 0 || frame === keyframes[keyframes.length - 1].frame )  {
+      console.error(`Cannot delete first or last frame.`)
+      return;      
+    }
+    
+    if (keyframes.length <= 2 || gridRef.current.api.getDisplayedRowCount() < 3) {
       console.error("There must be at least 2 keyframes. Can't delete any more.")
       return;
     }
@@ -455,7 +493,28 @@ const ParseqUI = (props) => {
     gridRef.current.api.sizeColumnsToFit();
   }, [gridRef]);
 
+  const navigateToNextCell = useCallback((params) => {
+    const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
+    if (params.event.shiftKey) {
+      if (rangeSelection.anchor === undefined) {
+        setRangeSelection({
+          anchor: { x: previousCell.column.instanceId, y: previousCell.rowIndex },
+          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
+        })
+      } else {
+        setRangeSelection({
+          ...rangeSelection,
+          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
+        })
+      }
+    } else {
+      setRangeSelection({});
+    }
+    return nextCell;
+  }, [rangeSelection]);
+
   const onCellKeyPress = useCallback((e) => {
+    console.log(e);
     if (e.event) {
       var keyPressed = e.event.key;
       if (keyPressed === 'a' && e.event.ctrlKey) {
@@ -465,6 +524,7 @@ const ParseqUI = (props) => {
       } else if (keyPressed === 'r' && e.event.ctrlKey) {
         setEnqueuedRender(true);
       }
+
     }
   }, [addRow, deleteRow]);
 
@@ -531,7 +591,6 @@ const ParseqUI = (props) => {
 
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
     setOptions({ ...options, [optionId]: value });
-    console.log(options);
     if (autoRender) {
       setEnqueuedRender(true);
     }
@@ -656,43 +715,53 @@ const ParseqUI = (props) => {
     </Dialog>
     , [openMergeKeyframesDialog, handleCloseMergeKeyframesDialog, activeDocId, dataToMerge, keyFrameMergeStatus, mergeEnabled, options]);
 
-  const [frameToDelete, setFrameToDelete] = useState();
+  const [framesToDelete, setFramesToDelete] = useState();
   const [openDeleteRowDialog, setOpenDeleteRowDialog] = useState(false);
-  const handleClickOpenDeleteRowDialog = () => {
+
+  const handleClickOpenDeleteRowDialog = useCallback(() => {
+    const frames = rangeSelection.anchor ?
+        range(Math.min(rangeSelection.anchor.y, rangeSelection.tip.y), Math.max(rangeSelection.anchor.y, rangeSelection.tip.y)+1)
+          .map((y) => gridRef.current.api.getDisplayedRowAtIndex(y).data.frame)
+          .sort()
+          .join(',')
+      : gridRef.current.api.getFocusedCell()?.data?.frame;
+    console.log(frames);
+    setFramesToDelete(frames);
     setOpenDeleteRowDialog(true);
-  };
+  }, [gridRef, rangeSelection]);
 
   const handleCloseDeleteRowDialog = useCallback((e) => {
     setOpenDeleteRowDialog(false);
     if (e.target.id === "delete") {
-      deleteRow(parseInt(frameToDelete));
+      for (let frame of framesToDelete.split(',')) {
+        deleteRow(parseInt(frame));
+      }
     }
-  }, [deleteRow, frameToDelete]);
+  }, [deleteRow, framesToDelete]);
 
   const deleteRowDialog = useMemo(() => <Dialog open={openDeleteRowDialog} onClose={handleCloseDeleteRowDialog}>
-    <DialogTitle>❌ Delete keyframe</DialogTitle>
+    <DialogTitle>❌ Delete keyframes</DialogTitle>
     <DialogContent>
       <DialogContentText>
-        Delete a keyframe at the following position.
+        Delete keyframes at the following positions (enter a comma separated list).
       </DialogContentText>
       <TextField
         autoFocus
         margin="dense"
-        id="delete_keyframe_at"
         label="Frame"
         variant="standard"
-        defaultValue={frameToDelete}
-        onChange={(e) => setFrameToDelete(e.target.value)}
+        value={framesToDelete}
+        onChange={(e) => setFramesToDelete(e.target.value)}
       />
       <DialogContentText>
-        <small><small>TODO: warning here if frame doesn't exist</small></small>
-      </DialogContentText>
+          <small>Note: first and last frames cannot be deleted.</small>
+      </DialogContentText>    
     </DialogContent>
     <DialogActions>
       <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
       <Button variant="contained" id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
     </DialogActions>
-  </Dialog>, [openDeleteRowDialog, frameToDelete, handleCloseDeleteRowDialog]);
+  </Dialog>, [openDeleteRowDialog, framesToDelete, handleCloseDeleteRowDialog]);
 
   // TODO: switch to useMemo that updates when elements change?
   const getPersistableState = useCallback(() => ({
@@ -770,11 +839,47 @@ const ParseqUI = (props) => {
         animateRows={true}
         columnHoverHighlight={true}
         undoRedoCellEditing={true}
-        undoRedoCellEditingLimit={0}
+        undoRedoCellEditingLimit={20}
         enableCellChangeFlash={true}
+        //rowSelection='multiple' 
         tooltipShowDelay={0}
+        navigateToNextCell={navigateToNextCell}
+        onCellKeyDown={(e) => {
+          if (e.event.keyCode === 46 || e.event.keyCode === 8) {
+            if (rangeSelection.anchor && rangeSelection.tip) {
+              const x1 = Math.min(rangeSelection.anchor.x, rangeSelection.tip.x);
+              const x2 = Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
+              const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
+              const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);              
+              for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
+                for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
+                  const col = e.columnApi.getAllGridColumns()[colInstanceId];
+                  if (col.visible) {
+                    e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
+                  }
+                }
+              }
+            }
+          }
+        }} 
+        onCellClicked={(e) => {
+          if (e.event.shiftKey) {
+            setRangeSelection({
+              anchor: {x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex},
+              tip: {x: e.column.instanceId, y: e.rowIndex}
+            })
+          } else {
+            setRangeSelection({});
+          }
+        }}
         onCellMouseOver={(e) => {
           setGridCursorPos(e.data.frame);
+          if (e.event.buttons === 1) {
+            setRangeSelection({
+              anchor: {x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex},
+              tip: {x: e.column.instanceId, y: e.rowIndex}
+            })
+          }
         }}
       />
     </div>

@@ -280,7 +280,7 @@ function composePromptAtFrame(prompts: AdvancedParseqPrompts, frame: number, pos
     } else {
         prompt = activePrompts.map(p => {
             const prompt = positive ? p.positive : p.negative;
-            return `${prompt} : ${calculateWeight(p, frame, lastFrame)}}`
+            return `${prompt} : ${calculateWeight(p, frame, lastFrame)}`
         }).join(' AND ');
     }
     return prompt;

@@ -1,4 +1,4 @@
-import { Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, MenuItem, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, MenuItem, Tooltip, Typography } from "@mui/material";
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
@@ -108,6 +108,26 @@ export function Prompts(props: PromptsProps) {
 
     const delPrompt = useCallback((idxToDelete: number) => {
         setPrompts(prompts.filter((_, idx) => idx !== idxToDelete));
+    }, [prompts]);
+
+
+    const composableDiffusionWarning = useCallback((idx: number) => {
+        const prompt = prompts[idx];
+        const overlappingPrompts = prompts.filter(p => p !== prompt
+            && p.from <= prompt.to
+            && prompt.from <= p.to);
+
+        if (overlappingPrompts.length > 0
+            && (prompt.positive.match(/\sAND\s/)
+                || prompt.negative.match(/\sAND\s/))) {
+            return <Alert severity="warning">
+                Warning: Parseq uses <a href="https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion">composable diffusion</a> to combine overlapping prompts.
+                &nbsp;{prompt.name} overlaps with the following: <strong>{overlappingPrompts.map(p => p.name).join(', ')}</strong>.
+                But {prompt.name}  also appears to contain its own composable diffusion sections (<span style={{ fontFamily: 'monospace' }}>&#8230; AND &#8230;</span>).
+                This may lead to unexpected results. Check your rendered prompts in the preview window and consider removing the composable diffusion sections  from {prompt.name} if possible.
+            </Alert>
+        }
+        return <></>;
     }, [prompts]);
 
 
@@ -222,7 +242,7 @@ export function Prompts(props: PromptsProps) {
         <Grid container xs={12}>
             {
                 advancedPrompts.map((prompt, idx) => <>
-                    <Box key={"prompt-"+idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
                         <Grid xs={12} style={{ padding: 0, margin: 0, border: 0 }}>
 
                             <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%' }}>
@@ -326,12 +346,15 @@ export function Prompts(props: PromptsProps) {
                             <Grid xs={6} style={{ margin: 0, padding: 0 }}>
                                 {promptInput(idx, false)}
                             </Grid>
+                            <Grid xs={12}>
+                                {composableDiffusionWarning(idx)}
+                            </Grid>
                         </Grid>
                     </Box>
                 </>)
             }
         </Grid>
-        , [delPrompt, promptInput, prompts, props, displayFadeOptions]);
+        , [delPrompt, promptInput, prompts, props, displayFadeOptions, composableDiffusionWarning]);
 
     const [openSpacePromptsDialog, setOpenSpacePromptsDialog] = useState(false);
     const [spacePromptsLastFrame, setSpacePromptsLastFrame] = useState(props.lastFrame);
@@ -349,8 +372,8 @@ export function Prompts(props: PromptsProps) {
         const span = (spacePromptsLastFrame + 1) / prompts.length;
         const newPrompts = prompts.map((p, idx) => {
             const newPrompt = { ...p };
-            newPrompt.from = Math.max(0, Math.ceil(idx*span - spacePromptsOverlap/2));
-            newPrompt.to =  Math.min(props.lastFrame, Math.floor((idx+1)* span + spacePromptsOverlap/2));
+            newPrompt.from = Math.max(0, Math.ceil(idx * span - spacePromptsOverlap / 2));
+            newPrompt.to = Math.min(props.lastFrame, Math.floor((idx + 1) * span + spacePromptsOverlap / 2));
             newPrompt.allFrames = false;
             newPrompt.overlap.type = spacePromptsOverlap > 0 ? 'linear' : 'none';
             newPrompt.overlap.inFrames = newPrompt.from <= 0 ? 0 : spacePromptsOverlap;
@@ -444,8 +467,17 @@ export function Prompts(props: PromptsProps) {
                     scaleWidth={scaleWidth}
                     rowHeight={15}
                     gridSnap={true}
-                    disableDrag={true}
-                    //maxScaleCount={props.lastFrame*1.1}
+                    onChange={(e: any) => {
+                        console.log(e);
+                        const newPrompts = prompts.map((p, idx) => {
+                            const action = e[idx].actions.find((a: any) => a.id === p.name);
+                            p.from = Math.round(action.start);
+                            p.to = Math.round(action.end);
+                            return p;
+                        });
+                        setPrompts(newPrompts);
+                        props.afterBlur(e);
+                    }}
                     getActionRender={(action: any, row: any) => {
                         return <div style={{ borderRadius: '5px', marginTop: '1px', overflow: 'hidden', maxHeight: '15px', backgroundColor: 'rgba(125,125,250,0.5)' }}>
                             <Typography paddingLeft={'5px'} color={'white'} fontSize='0.7em'>
@@ -507,7 +539,7 @@ export function Prompts(props: PromptsProps) {
         {spacePromptsDialog}
         <Grid xs={12}>
             <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
-            <Button size="small" disabled={prompts.length<2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+            <Button size="small" disabled={prompts.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
         </Grid>
         <Grid xs={4} sx={{ paddingRight: '15px' }} >
             <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >
@@ -559,4 +591,6 @@ export function calculateWeight(p: AdvancedParseqPrompt, f: number, lastFrame: n
     }
 
 }
+
+
 

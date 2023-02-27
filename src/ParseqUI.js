@@ -38,6 +38,7 @@ import { fieldNametoRGBa, frameToBeats, frameToSeconds, getUTCTimeStamp, getVers
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
+import { defaultFields } from './data/fields';
 
 //////////////////////////////////////////
 // Config
@@ -85,13 +86,9 @@ const GridTooltip = (props) => {
 };
 
 const ParseqUI = (props) => {
-  //log.debug(Date.now(), "Re-initializing ParseqUI....");
-
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
-  const interpolatable_fields = props.interpolatable_fields;
   const default_keyframes = props.default_keyframes;
-  const default_displayFields = props.default_displayFields;
   const preventInitialRender = new URLSearchParams(window.location.search).get("noRender") === "true" || false;
 
   const fillWithDefaults = useCallback((possiblyIncompleteContent) => {
@@ -102,20 +99,20 @@ const ParseqUI = (props) => {
       // Deep copy the default keyframes so that we can still refer to the original defaults in the future (e.g. when missing a field in firs or last keyframe)
       possiblyIncompleteContent.keyframes = deepCopy(default_keyframes);
     }
-    if (!possiblyIncompleteContent.displayFields) {
-      possiblyIncompleteContent.displayFields = default_displayFields;
+    if (!possiblyIncompleteContent.displayedFields) {
+      possiblyIncompleteContent.displayedFields = [];
     }
     // For options we want to merge the defaults with the existing options.
     possiblyIncompleteContent.options = { ...default_options, ...(possiblyIncompleteContent.options || {}) };
 
     return possiblyIncompleteContent;
-  }, [default_displayFields, default_keyframes]);
+  }, [default_keyframes]);
 
   const freshLoadContentToState = useCallback((loadedContent) => {
     const filledContent = fillWithDefaults(loadedContent || {});
     setPrompts(filledContent.prompts);
     setOptions(filledContent.options);
-    setDisplayFields([...filledContent.displayFields]);
+    setDisplayedFields([...filledContent.displayedFields]);
     setKeyframes(filledContent.keyframes);
     refreshGridFromKeyframes(filledContent.keyframes);
   }, [fillWithDefaults]);
@@ -130,7 +127,8 @@ const ParseqUI = (props) => {
   const [graphPromptMarkers, setGraphPromptMarkers] = useState(false);
   const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
-  const [displayFields, setDisplayFields] = useState();
+  const [managedFields, setManagedFields] = useState(['seed', 'prompt_weight_1', 'prompt_weight_2', 'zoom']);   // The fields that the user has chosen to be managed by Parseq.
+  const [displayedFields, setDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
   const [options, setOptions] = useState()
   const [prompts, setPrompts] = useState();
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
@@ -175,7 +173,7 @@ const ParseqUI = (props) => {
         pinned: 'left',
         suppressMovable: true,
       },
-      ...interpolatable_fields.flatMap(field => [
+      ...managedFields.flatMap(field => [
         {
           field: field,
           valueSetter: (params) => {
@@ -209,7 +207,7 @@ const ParseqUI = (props) => {
         }
       ])
     ]
-  }, [interpolatable_fields]);
+  }, [managedFields]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -231,14 +229,14 @@ const ParseqUI = (props) => {
   // This is debounced to 200ms to avoid repeated saves if edits happen
   // in quick succession.
   useDebouncedEffect(() => {
-    if (autoSaveEnabled && prompts && options && displayFields && keyframes) {
+    if (autoSaveEnabled && prompts && options && displayedFields && keyframes) {
       saveVersion(activeDocId, getPersistableState());
     }
-  }, 200, [prompts, options, displayFields, keyframes, autoSaveEnabled]);
+  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled]);
 
   useDebouncedEffect(() => {
     if (enqueuedRender) {
-      if (prompts && options && displayFields && keyframes) {
+      if (prompts && options && displayedFields && keyframes) {
         // This is the only place we should call render explicitly.
         render();
       } else {
@@ -246,7 +244,7 @@ const ParseqUI = (props) => {
         setTimeout(render, 100);
       }
     }
-  }, 200, [enqueuedRender, prompts, options, displayFields, keyframes]);
+  }, 200, [enqueuedRender, prompts, options, displayedFields, keyframes]);
 
   // Run on first load, once all react components are ready and Grid is ready.
   runOnceTimeout.current = 0;
@@ -470,10 +468,10 @@ const ParseqUI = (props) => {
   }, [addRow, deleteRow]);
 
 
-  // Update displayed columns when displayFields changes.
+  // Update displayed columns when displayedFields changes.
   useEffect(() => {
-    if (displayFields && gridRef.current.columnApi) {
-      let columnsToShow = displayFields.flatMap(c => [c, c + '_i']);
+    if (displayedFields && gridRef.current.columnApi) {
+      let columnsToShow = displayedFields.flatMap(c => [c, c + '_i']);
       let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
       gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
       gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
@@ -482,13 +480,13 @@ const ParseqUI = (props) => {
       gridRef.current.api.sizeColumnsToFit();
     } else {
       // TODO: if we need this, we also need to cancel the timer in the good path
-      // to avoid nuking displayFields by mistake. But for now I don't think we need this.
+      // to avoid nuking displayedFields by mistake. But for now I don't think we need this.
       //log.debug("Couldn't update columns, try again in 100ms.");
       // setTimeout(() => {
-      //   setDisplayFields(Array.isArray(displayFields) ? [...displayFields] : []);
+      //   setDisplayedFields(Array.isArray(displayedFields) ? [...displayedFields] : []);
       // }, 100);
     }
-  }, [displayFields]);
+  }, [displayedFields]);
 
 
   //////////////////////////////////////////
@@ -520,9 +518,9 @@ const ParseqUI = (props) => {
 
   //////////////////////////////////////////
   // Other component event callbacks  
-  const handleChangeDisplayFields = useCallback((e) => {
+  const handleChangeDisplayedFields = useCallback((e) => {
     let selectedToShow = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value
-    setDisplayFields(selectedToShow);
+    setDisplayedFields(selectedToShow);
   }, []);
 
   const handleChangeOption = useCallback((e) => {
@@ -704,10 +702,10 @@ const ParseqUI = (props) => {
     },
     prompts: prompts,
     options: options,
-    interpolatableFields: interpolatable_fields.map(s => ({ name: s })),
-    displayFields: displayFields,
+    managedFields: managedFields.map(s => ({ name: s })),
+    displayedFields: displayedFields,
     keyframes: keyframes,
-  }), [prompts, options, displayFields, keyframes, interpolatable_fields]);
+  }), [prompts, options, displayedFields, keyframes, managedFields]);
 
   const needsRender = useMemo(() => {
     return !lastRenderedState
@@ -801,8 +799,8 @@ const ParseqUI = (props) => {
 
   const renderStatus = useMemo(() => {
     let animated_fields = getAnimatedFields(renderedData);
-    let uses2d = props.settings_2d_only.filter((field) => animated_fields.includes(field));
-    let uses3d = props.settings_3d_only.filter((field) => animated_fields.includes(field));
+    let uses2d = defaultFields.filter(f => f.labels.some(l => l === '2D') && animated_fields.includes(f));
+    let uses3d = defaultFields.filter(f => f.labels.some(l => l === '3D') && animated_fields.includes(f));
     let message = '';
     if (uses2d.length > 0 && uses3d.length > 0) {
       message = `Note: you're animating with both 2D and 3D settings (2D:${uses2d}; 3D:${uses3d}). Some settings will have no effect depending on which Deforum animation mode you choose.`;
@@ -834,7 +832,7 @@ const ParseqUI = (props) => {
       {errorMessage}
       {statusMessage}
     </div>
-  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender, props.settings_2d_only, props.settings_3d_only]);
+  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender]);
 
   const docManager = useMemo(() => <UserAuthContextProvider>
     <DocManagerUI
@@ -880,11 +878,11 @@ const ParseqUI = (props) => {
     </Tooltip2>
   </span>, [options, handleChangeOption])
 
-  const fieldSelector = useMemo(() => displayFields && <Select
+  const fieldSelector = useMemo(() => displayedFields && <Select
     id="select-display-fields"
     multiple
-    value={displayFields}
-    onChange={handleChangeDisplayFields}
+    value={displayedFields}
+    onChange={handleChangeDisplayedFields}
     style={{ marginBottom: '10px', marginLeft: '10px' }}
     input={<OutlinedInput id="select-display-fields" label="Chip" />}
     size="small"
@@ -904,10 +902,10 @@ const ParseqUI = (props) => {
       }
     }}
   >
-    {interpolatable_fields.map((field) => (
+    {managedFields.map((field) => (
       <MenuItem key={field} value={field} style={{ fontSize: '1em' }}>{field}</MenuItem>
     ))}
-  </Select>, [displayFields, handleChangeDisplayFields, interpolatable_fields])
+  </Select>, [displayedFields, handleChangeDisplayedFields, managedFields])
 
   const promptsUI = useMemo(() => prompts ? <Prompts
     initialPrompts={prompts}
@@ -934,7 +932,7 @@ const ParseqUI = (props) => {
       label={<Box component="div" fontSize="0.75em">Show prompt markers</Box>} />
     <Editable
       renderedData={renderedData}
-      displayFields={displayFields}
+      displayedFields={displayedFields}
       as_percents={graphAsPercentages}
       markers={
         (prompts && graphPromptMarkers) ?
@@ -986,18 +984,18 @@ const ParseqUI = (props) => {
         }
       }}
     />
-  </div>, [renderedData, displayFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId]);
+  </div>, [renderedData, displayedFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId]);
 
   const handleClickedSparkline = useCallback((e) => {
     let field = e.currentTarget.id.replace("sparkline_", "");
-    if (interpolatable_fields.includes(field)) {
-      if (displayFields.includes(field)) {
-        setDisplayFields(displayFields.filter((f) => f !== field));
+    if (managedFields.includes(field)) {
+      if (displayedFields.includes(field)) {
+        setDisplayedFields(displayedFields.filter((f) => f !== field));
       } else {
-        setDisplayFields([...displayFields, field]);
+        setDisplayedFields([...displayedFields, field]);
       }
     }
-  }, [interpolatable_fields, displayFields]);
+  }, [managedFields, displayedFields]);
 
   const renderSparklines = useCallback(() => renderedData && <>
     <FormControlLabel control={
@@ -1005,15 +1003,15 @@ const ParseqUI = (props) => {
         id={"graph_as_percent"}
         onChange={(e) => setShowFlatSparklines(e.target.checked)}
       />}
-      label={<Box component="div" fontSize="0.75em">Show {interpolatable_fields.filter((field) => !getAnimatedFields(renderedData).includes(field)).length} flat sparklines</Box>} />
+      label={<Box component="div" fontSize="0.75em">Show {managedFields.filter((field) => !getAnimatedFields(renderedData).includes(field)).length} flat sparklines</Box>} />
     <Grid container>
       {
-        interpolatable_fields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
-          <Grid key={"sparkline_" + field} xs={1} sx={{ bgcolor: displayFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
-            <Typography style={{ fontSize: "0.5em" }}>{(displayFields.includes(field) ? "✔️" : "") + field}</Typography>
-            {props.settings_2d_only.includes(field) ?
+        managedFields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
+          <Grid key={"sparkline_" + field} xs={1} sx={{ bgcolor: displayedFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
+            <Typography style={{ fontSize: "0.5em" }}>{(displayedFields.includes(field) ? "✔️" : "") + field}</Typography>
+            {defaultFields.find(f => f.name === field)?.labels?.includes("2D") ?
               <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
-              props.settings_3d_only.includes(field) ?
+              defaultFields.find(f => f.name === field)?.labels?.includes("3D") ?
                 <Typography style={{ color: 'SteelBlue', fontSize: "0.5em" }} >[3D]</Typography> :
                 <Typography style={{ color: 'grey', fontSize: "0.5em" }} >[2D+3D]</Typography>}
             <Sparklines style={{ bgcolor: 'white' }} data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
@@ -1027,7 +1025,7 @@ const ParseqUI = (props) => {
         )
       }
     </Grid>
-  </>, [displayFields, showFlatSparklines, renderedData, interpolatable_fields, props.settings_2d_only, props.settings_3d_only, handleClickedSparkline]);
+  </>, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline]);
 
   const renderedOutput = useMemo(() => <>
     <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
@@ -1139,16 +1137,16 @@ const ParseqUI = (props) => {
       <Grid xs={12}>
         <ExpandableSection title="Fields">
           <FieldSelector
-            selectedFields={[]}
+            selectedFields={managedFields}
             customFields={[]}
-            onChange={(e) => {}}
+            onChange={(fields) => { setManagedFields(fields) }}
           />
         </ExpandableSection>
-      </Grid>      
+      </Grid>
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
-        <ExpandableSection title="Keyframes for parameter flow">
+        <ExpandableSection title="Keyframes grid for field value flow">
           {optionsUI}
-          <small>Show fields:</small>
+          <small>Show/hide fields:</small>
           {fieldSelector}
           {grid}
           <span id='gridControls'>
@@ -1162,7 +1160,7 @@ const ParseqUI = (props) => {
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>
-        <ExpandableSection title="Visualised parameter flow">
+        <ExpandableSection title="Visualised field value flow">
           {editableGraph}
         </ExpandableSection>
       </Grid>

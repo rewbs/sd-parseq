@@ -9,7 +9,7 @@ export const templates: {
                 "positive": "",
                 "negative": ""
             },
-            "displayFields": [
+            "displayedFields": [
                 "seed",
                 "strength",
             ],
@@ -88,7 +88,7 @@ export const templates: {
                     }
                 }
             ],
-            displayFields: ['seed', 'strength'],
+            displayedFields: ['seed', 'strength'],
             "keyframes": [
                 {
                     "frame": 0,

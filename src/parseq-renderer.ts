@@ -32,7 +32,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     const options = input.options;
     const prompts = input.prompts as AdvancedParseqPrompts;
 
-    const interpolatableFields = input.interpolatableFields.map((field) => field.name);
+    const managedFields = input.managedFields.map((field) => field.name);
 
     // Validation
     if (!keyframes) {
@@ -48,7 +48,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
     // Create implicit bookend keyframes to use any first or last values are missing.
     const bookendKeyFrames = { first: { frame: firstKeyFrame?.frame }, last: { frame: lastKeyFrame.frame } };
-    (interpolatableFields.concat(['frame'])).forEach((field) => {
+    (managedFields.concat(['frame'])).forEach((field) => {
 
         if (!isValidNumber(firstKeyFrame[field])) {
             const firstKeyFrameWithValueForField = sortedKeyframes.find((kf) => isValidNumber(kf[field]));
@@ -69,7 +69,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     let rendered_frames: ParseqRenderedFrames = [];
     var previousContext = {};
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
-    interpolatableFields.forEach((field) => {
+    managedFields.forEach((field) => {
 
         // Get all keyframes that have a value for this field
         const filtered = sortedKeyframes.filter(kf => isValidNumber(kf[field]));
@@ -160,7 +160,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     all_frame_numbers.forEach((frame) => {
 
         let variableMap = {};
-        interpolatableFields.forEach((field) => {
+        managedFields.forEach((field) => {
             variableMap = {
                 ...variableMap || {},
                 [field]: rendered_frames[frame][field]
@@ -214,7 +214,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
         }
     });
     var rendered_frames_meta: ParseqRenderedFramesMeta = []
-    interpolatableFields.forEach((field) => {
+    managedFields.forEach((field) => {
         let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
         let minValue = Math.min(...rendered_frames.map(rf => rf[field]))
         rendered_frames_meta = {
@@ -229,7 +229,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
     // Calculate delta variants
     all_frame_numbers.forEach((frame) => {
-        interpolatableFields.forEach((field) => {
+        managedFields.forEach((field) => {
 
             //@ts-ignore
             let maxValue = rendered_frames_meta[field].max;

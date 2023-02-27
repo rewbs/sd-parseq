@@ -20,10 +20,9 @@ export function Preview(props: PreviewProps) {
         return;
     }
 
-    const half = Math.ceil(props.data.interpolatableFields.length / 2);
-    const fields1 = props.data.interpolatableFields.slice(0, half);
-    const fields2 = props.data.interpolatableFields.slice(half);
-
+    const half = Math.ceil(props.data.managedFields.length / 2);
+    const fields1 = props.data.managedFields.slice(0, half);
+    const fields2 = props.data.managedFields.slice(half);
 
     return <Grid xs={12} container style={{ margin: 0, padding: 0, marginRight: 1 }}>
         <Grid xs={12} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', gap: 1 }}>
@@ -46,16 +45,16 @@ export function Preview(props: PreviewProps) {
                 valueLabelDisplay="auto" />
         </Grid>
         {
-            [fields1, fields2].map((fields) =>
-                <Grid xs={6} key={fields.join('_').substring(5)}>
+            [fields1, fields2].map((fields, col) =>
+                <Grid xs={6} key={fields.join('_').substring(5)+'_'+col}>
                     <div style={{ fontSize: "0.7em", fontFamily: "monospace" }}>
                         <ul>
                             {
-                                fields.map(field => {
+                                fields.map((field, index) => {
 
                                     //@ts-ignore
                                     const valueAsPercent = (renderedFrames[frame][field.name] - renderedFramesMeta[field.name].min) / (renderedFramesMeta[field.name].max - renderedFramesMeta[field.name].min) * 100;
-                                    return <li key={field.name}>
+                                    return <li key={`${field.name}_${index}`}>
                                         <div style={{
                                             float: 'none',
                                             overflow: 'visible',

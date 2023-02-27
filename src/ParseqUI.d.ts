@@ -22,8 +22,8 @@ type ParseqDoc = {
 type ParseqPersistableState = {
     meta: ParseqMetadata;
     options: ParseqOptions;
-    displayFields?: string[];
-    interpolatableFields: InterpolatableField[];
+    displayedFields?: string[];
+    managedFields: InterpolatableField[];
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
 }
@@ -31,6 +31,8 @@ type ParseqPersistableState = {
 type InterpolatableField = {
     name: string;
 }
+
+type Color = [number, number, number];
 
 type InterpolatableFieldDefinition = {
     name: string;
@@ -66,8 +68,8 @@ type Template = {
     description: string;
     template: {
         options?: ParseqOptions;
-        displayFields?: string[];
-        interpolatableFields?: InterpolatableField[];
+        displayedFields?: string[];
+        managedFields?: InterpolatableField[];
         prompts: ParseqPrompts;
         keyframes: ParseqKeyframes;
     }

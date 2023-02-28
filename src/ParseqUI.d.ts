@@ -23,14 +23,11 @@ type ParseqPersistableState = {
     meta: ParseqMetadata;
     options: ParseqOptions;
     displayedFields?: string[];
-    managedFields: InterpolatableField[];
+    managedFields: string[];
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
 }
 
-type InterpolatableField = {
-    name: string;
-}
 
 type Color = [number, number, number];
 
@@ -68,8 +65,8 @@ type Template = {
     description: string;
     template: {
         options?: ParseqOptions;
+        managedFields?: string[];        
         displayedFields?: string[];
-        managedFields?: InterpolatableField[];
         prompts: ParseqPrompts;
         keyframes: ParseqKeyframes;
     }
@@ -85,6 +82,7 @@ type Overlap = {
 }
 
 type AdvancedParseqPrompt = {
+    enabled?: boolean; // defaults to true
     positive: string;
     negative: string;
     allFrames: boolean;

@@ -53,15 +53,15 @@ export function Preview(props: PreviewProps) {
                                 fields.map((field, index) => {
 
                                     //@ts-ignore
-                                    const valueAsPercent = (renderedFrames[frame][field.name] - renderedFramesMeta[field.name].min) / (renderedFramesMeta[field.name].max - renderedFramesMeta[field.name].min) * 100;
-                                    return <li key={`${field.name}_${index}`}>
+                                    const valueAsPercent = (renderedFrames[frame][field] - renderedFramesMeta[field].min) / (renderedFramesMeta[field].max - renderedFramesMeta[field].min) * 100;
+                                    return <li key={`${field}_${col}_${index}`}>
                                         <div style={{
                                             float: 'none',
                                             overflow: 'visible',
                                             backgroundColor: percentageToColor(valueAsPercent / 100, 100, 0, 0.5),
                                             width: (valueAsPercent + '%')
                                         }} >
-                                            {field.name}&nbsp;:&nbsp;{renderedFrames[frame][field.name].toFixed(4)}
+                                            {field}&nbsp;:&nbsp;{renderedFrames[frame][field].toFixed(4)}
                                         </div>
                                     </li>
                                 })

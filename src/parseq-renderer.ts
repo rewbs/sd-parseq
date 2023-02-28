@@ -32,7 +32,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     const options = input.options;
     const prompts = input.prompts as AdvancedParseqPrompts;
 
-    const managedFields = input.managedFields.map((field) => field.name);
+    const managedFields = input.managedFields;
 
     // Validation
     if (!keyframes) {
@@ -41,6 +41,13 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     if (keyframes.length < 2) {
         throw new ParseqRendererException("There must be at least 2 keyframes to render.");
     }
+    if (!options || !options.output_fps) {
+        throw new ParseqRendererException("No output_fps found.");
+    }
+    if (!options.bpm) {
+        throw new ParseqRendererException("No bpm found.");
+    }    
+
     let sortedKeyframes: ParseqKeyframes = keyframes.sort((a, b) => a.frame - b.frame);
 
     let firstKeyFrame = sortedKeyframes[0];
@@ -157,49 +164,51 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     });
 
     // Calculate rendered prompt based on prompts and weights
-    all_frame_numbers.forEach((frame) => {
+    if ( typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled) {
+        all_frame_numbers.forEach((frame) => {
 
-        let variableMap = {};
-        managedFields.forEach((field) => {
-            variableMap = {
-                ...variableMap || {},
-                [field]: rendered_frames[frame][field]
+            let variableMap = {};
+            managedFields.forEach((field) => {
+                variableMap = {
+                    ...variableMap || {},
+                    [field]: rendered_frames[frame][field]
+                }
+            });
+
+            var context = new InterpreterContext({
+                fieldName: "prompt",
+                activeKeyframe: frame,
+                definedFrames: keyframes.map(kf => kf.frame),
+                definedValues: [],
+                FPS: options.output_fps,
+                BPM: options.bpm,
+                allKeyframes: keyframes,
+                variableMap: variableMap
+            });
+
+            try {
+
+                let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
+                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
+                    .replace(/(\n)/g, " ");
+                let negative_prompt = composePromptAtFrame(prompts, frame, false, lastKeyFrame.frame)
+                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
+                    .replace(/(\n)/g, " ");
+
+                //@ts-ignore
+                rendered_frames[frame] = {
+                    ...rendered_frames[frame] || {},
+                    // positive_prompt: positive_prompt,
+                    // negative_prompt: negative_prompt,
+                    deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
+                }
+            } catch (error) {
+                console.error(error);
+                throw new ParseqRendererException(`Error parsing prompt weight value: ` + error);
             }
+
         });
-
-        var context = new InterpreterContext({
-            fieldName: "prompt",
-            activeKeyframe: frame,
-            definedFrames: keyframes.map(kf => kf.frame),
-            definedValues: [],
-            FPS: options.output_fps,
-            BPM: options.bpm,
-            allKeyframes: keyframes,
-            variableMap: variableMap
-        });
-
-        try {
-
-            let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
-                .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
-                .replace(/(\n)/g, " ");
-            let negative_prompt = composePromptAtFrame(prompts, frame, false, lastKeyFrame.frame)
-                .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
-                .replace(/(\n)/g, " ");
-
-            //@ts-ignore
-            rendered_frames[frame] = {
-                ...rendered_frames[frame] || {},
-                // positive_prompt: positive_prompt,
-                // negative_prompt: negative_prompt,
-                deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
-            }
-        } catch (error) {
-            console.error(error);
-            throw new ParseqRendererException(`Error parsing prompt weight value: ` + error);
-        }
-
-    });
+    }
 
     // Calculate subseed & subseed strength based on fractional part of seed.
     all_frame_numbers.forEach((frame) => {

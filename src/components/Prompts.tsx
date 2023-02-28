@@ -5,11 +5,13 @@ import Grid from '@mui/material/Unstable_Grid2';
 import { Stack } from '@mui/system';
 import { Timeline, TimelineEffect, TimelineRow } from '@xzdarcy/react-timeline-editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import StyledSwitch from './StyledSwitch';
 
 interface PromptsProps {
     initialPrompts: ParseqPrompts,
     lastFrame: number,
     afterBlur: (event: any) => void,
+    afterFocus: (event: any) => void,
     afterChange: (event: any) => void
 }
 
@@ -66,6 +68,7 @@ export function Prompts(props: PromptsProps) {
             value={positive ? prompts[index]?.positive : prompts[index]?.negative}
             InputProps={{ style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? 'DarkGreen' : 'Firebrick' } }}
             onBlur={(e: any) => props.afterBlur(e)}
+            onFocus={(e: any) => props.afterFocus(e)}
             onChange={(e: any) => {
                 if (positive) {
                     prompts[index].positive = e.target.value;
@@ -149,7 +152,6 @@ export function Prompts(props: PromptsProps) {
                         newPrompts[promptIdx].overlap.type = (e.target.value as OverlapType);
                         setPrompts(newPrompts);
                     }}
-                    onBlur={(e: any) => props.afterBlur(e)}
                 >
                     <MenuItem value={"none"}>Fixed</MenuItem>
                     <MenuItem value={"linear"}>Linear fade </MenuItem>
@@ -167,10 +169,14 @@ export function Prompts(props: PromptsProps) {
                     InputLabelProps={{ shrink: true, }}
                     value={prompt.overlap.inFrames}
                     onChange={(e) => {
-                        const newPrompts = prompts.slice(0);
-                        newPrompts[promptIdx].overlap.inFrames = parseInt(e.target.value);
-                        setPrompts(newPrompts);
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) {
+                            const newPrompts = prompts.slice(0);
+                            newPrompts[promptIdx].overlap.inFrames = val;
+                            setPrompts(newPrompts);                                
+                        }
                     }}
+                    onFocus={(e: any) => props.afterFocus(e)}
                     onBlur={(e) => {
                         if (parseInt(e.target.value) > (prompts[promptIdx].to - prompts[promptIdx].from)) {
                             const newPrompts = prompts.slice(0);
@@ -201,6 +207,7 @@ export function Prompts(props: PromptsProps) {
                         newPrompts[promptIdx].overlap.outFrames = parseInt(e.target.value);
                         setPrompts(newPrompts);
                     }}
+                    onFocus={(e: any) => props.afterFocus(e)}
                     onBlur={(e) => {
                         if (parseInt(e.target.value) > (prompts[promptIdx].to - prompts[promptIdx].from)) {
                             const newPrompts = prompts.slice(0);
@@ -231,6 +238,7 @@ export function Prompts(props: PromptsProps) {
                         newPrompts[promptIdx].overlap.custom = e.target.value;
                         setPrompts(newPrompts);
                     }}
+                    onFocus={(e: any) => props.afterFocus(e)}
                     onBlur={(e: any) => props.afterBlur(e)}
                 />
             </Tooltip>
@@ -239,7 +247,7 @@ export function Prompts(props: PromptsProps) {
 
 
     const displayPrompts = useCallback((advancedPrompts: AdvancedParseqPrompts) =>
-        <Grid container xs={12}>
+        <Grid container xs={12}  sx = {{ paddingTop:'0',paddingBottom:'0'}}>
             {
                 advancedPrompts.map((prompt, idx) => <>
                     <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
@@ -274,9 +282,12 @@ export function Prompts(props: PromptsProps) {
                                             InputLabelProps={{ shrink: true, }}
                                             value={prompt.from}
                                             onChange={(e) => {
-                                                const newPrompts = prompts.slice(0);
-                                                newPrompts[idx].from = parseInt(e.target.value);
-                                                setPrompts(newPrompts);
+                                                const val = parseInt(e.target.value);
+                                                if (!isNaN(val)) {                                                
+                                                    const newPrompts = prompts.slice(0);
+                                                    newPrompts[idx].from = val;
+                                                    setPrompts(newPrompts);
+                                                }
                                             }}
                                             onBlur={(e) => {
                                                 if (parseInt(e.target.value) >= prompts[idx].to) {
@@ -305,9 +316,12 @@ export function Prompts(props: PromptsProps) {
                                             InputLabelProps={{ shrink: true, }}
                                             value={prompt.to}
                                             onChange={(e) => {
-                                                const newPrompts = prompts.slice(0);
-                                                newPrompts[idx].to = parseInt(e.target.value);
-                                                setPrompts(newPrompts);
+                                                const val = parseInt(e.target.value);
+                                                if (!isNaN(val)) {
+                                                    const newPrompts = prompts.slice(0);
+                                                    newPrompts[idx].to = val;
+                                                    setPrompts(newPrompts);
+                                                }
                                             }}
                                             onBlur={(e) => {
                                                 if (parseInt(e.target.value) <= prompts[idx].from) {
@@ -468,7 +482,6 @@ export function Prompts(props: PromptsProps) {
                     rowHeight={15}
                     gridSnap={true}
                     onChange={(e: any) => {
-                        console.log(e);
                         const newPrompts = prompts.map((p, idx) => {
                             const action = e[idx].actions.find((a: any) => a.id === p.name);
                             p.from = Math.round(action.start);
@@ -505,7 +518,9 @@ export function Prompts(props: PromptsProps) {
 
     useEffect((): any => {
         function handleResize() {
-            setTimelineWidth(timelineRef.current.offsetWidth);
+            if (timelineRef.current) {
+                setTimelineWidth(timelineRef.current.offsetWidth);
+            }
             //console.log("resized to", timelineRef.current.offsetWidth);
         }
         window.addEventListener('resize', handleResize)
@@ -535,35 +550,58 @@ export function Prompts(props: PromptsProps) {
     }, [prompts, quickPreviewPosition, props.lastFrame]);
 
     return <Grid xs={12} container style={{ margin: 0, padding: 0 }}>
-        {displayPrompts(prompts)}
-        {spacePromptsDialog}
-        <Grid xs={12}>
-            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
-            <Button size="small" disabled={prompts.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+        <Grid xs={12} sx = {{ paddingTop:'0',paddingBottom:'0'}}>
+            <FormControlLabel
+                sx = {{ padding:'0' }}
+                control={<StyledSwitch                    
+                    onChange={(e) => { setPromptsEnabled(e.target.checked); props.afterBlur(null); }}
+                    checked={isPromptsEnabled()} />}
+                label={<small> Use Parseq to manage prompts (disable to control prompts with Deforum instead).</small>} />
         </Grid>
-        <Grid xs={4} sx={{ paddingRight: '15px' }} >
-            <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >
-                <Stack>
-                    <TextField
-                        multiline
-                        minRows={2}
-                        maxRows={16}
-                        size="small"
-                        fullWidth={true}
-                        InputLabelProps={{ shrink: true }}
-                        InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                        value={quickPreview}
-                        label={`Quick preview [frame ${quickPreviewPosition}]`}
-                        variant="outlined"
-                    />
-                </Stack>
-            </Tooltip>
-        </Grid>
-        <Grid xs={8}>
-            {timeline}
-        </Grid>
+        {isPromptsEnabled() ? <>
+            {displayPrompts(prompts)}
+            {spacePromptsDialog}        
+            <Grid xs={12} >
+                <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
+                <Button size="small" disabled={prompts.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+            </Grid>
+            <Grid xs={4} sx={{ paddingRight: '15px' }} >
+                <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >
+                    <Stack>
+                        <TextField
+                            multiline
+                            minRows={2}
+                            maxRows={16}
+                            size="small"
+                            fullWidth={true}
+                            InputLabelProps={{ shrink: true }}
+                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                            value={quickPreview}
+                            label={`Quick preview [frame ${quickPreviewPosition}]`}
+                            variant="outlined"
+                        />
+                    </Stack>
+                </Tooltip>
+            </Grid>
+            <Grid xs={8}>
+                {timeline}
+            </Grid>
+        </> : <></>
+        }
     </Grid>
 
+    // HACK: this should really be a top-level field on the AdvancedPrompts type,
+    // but there's a lot of code that relies on that being an array type.
+    // So we make it a field of AdvancedPrompt (singular) and check the first prompt instead...
+    function setPromptsEnabled(enabled:boolean) {
+        setPrompts(prompts.map(p => ({
+            ...p,
+            enabled: enabled
+        })));
+    }
+    function isPromptsEnabled(): boolean {
+        return typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled;
+    }
 }
 
 

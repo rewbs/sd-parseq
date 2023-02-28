@@ -1,12 +1,13 @@
 .ag-theme-alpine {
-    --ag-font-size: 10px;
-    --ag-grid-size: 3px;
-    --ag-cell-horizontal-padding: 2px;
-    --ag-header-column-separator-display: block;
-    --ag-header-column-separator-width: 1px;
-    --ag-header-column-separator-height: 100%;
-    --ag-font-family: monospace;
-  }
+  --ag-font-size: 10px !important;
+  --ag-grid-size: 3px !important;
+  --ag-cell-horizontal-padding: 2px !important;
+  --ag-header-column-separator-display: block !important;
+  --ag-header-column-separator-width: 1px !important;
+  --ag-header-column-separator-height: 100% !important;
+  --ag-font-family: monospace !important;
+}
+
 h3 {
     margin-block-start: 0.5em;
     margin-block-end: 0.5em;

@@ -1,6 +1,6 @@
 {
   "name": "sd-parseq",
-  "version": "0.1.42",
+  "version": "0.1.44",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.10.5",
@@ -43,6 +43,7 @@
     "jest-canvas-mock": "^2.4.0",
     "lodash.clonedeep": "^4.5.0",
     "lodash.debounce": "^4.0.8",
+    "lodash.range": "^3.2.0",
     "moo": "^0.5.2",
     "nearley": "^2.20.1",
     "path": "npm:path-browserify@^1.0.1",
@@ -50,6 +51,7 @@
     "pre-commit": "^1.2.2",
     "react": "^18.2.0",
     "react-chartjs-2": "^4.3.1",
+    "react-color": "^2.19.3",
     "react-copy-to-clipboard": "^5.1.0",
     "react-dom": "^18.2.0",
     "react-google-button": "^0.7.2",
@@ -103,6 +105,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.14.0",
+    "@types/react-color": "^3.0.6",
     "@types/react-copy-to-clipboard": "^5.0.4",
     "@types/uuid": "^9.0.0",
     "@types/wavesurfer.js": "^6.0.3",

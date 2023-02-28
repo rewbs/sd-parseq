@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string */
 export const templates: {
     [key: string]: Template;
 } = {
@@ -29,7 +30,6 @@ export const templates: {
         name: "Multi-prompt",
         description: "An example showing multiple prompts",
         template: {
-
             "prompts": [
                 {
                     "name": "Prompt 1",
@@ -88,6 +88,15 @@ export const templates: {
                     }
                 }
             ],
+            "managedFields": [
+                "prompt_weight_1",
+                "prompt_weight_2",
+                "prompt_weight_3",
+                "prompt_weight_4",
+                "seed",
+                "stength",
+                "zoom"
+            ],            
             displayedFields: ['seed', 'strength'],
             "keyframes": [
                 {
@@ -96,6 +105,72 @@ export const templates: {
                 },
                 {
                     "frame": 119
+                }
+            ]
+        }
+    },
+
+    "catduck": {
+        name: "Cat / Duck",
+        description: "Using term weights to slide from a cat to a duck.",
+        template: {
+            "prompts": [
+                {
+                    "name": "Prompt 1",
+                    "positive": "A lone (black cat:${prompt_weight_1}) (white duck:${prompt_weight_2}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:",
+                    "negative": "(black cat:${prompt_weight_2}) (white duck:${prompt_weight_1})\nwatermark, logo, text, signature, copyright, writing, letters,\nlow quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,\ncartoon, computer game, video game, painting, drawing, sketch,\ndisfigured, deformed, ugly",
+                    "allFrames": true,
+                    "from": 0,
+                    "to": 119,
+                    "overlap": {
+                        "inFrames": 0,
+                        "outFrames": 0,
+                        "type": "none",
+                        "custom": "prompt_weight_1"
+                    }
+                }
+            ],
+            "managedFields": [
+                "prompt_weight_1",
+                "prompt_weight_2",
+                "prompt_weight_3",
+                "prompt_weight_4",
+                "seed",
+                "strength",
+                "noise",
+                "zoom"
+            ],
+            "displayedFields": [
+                "seed",
+                "prompt_weight_1",
+                "prompt_weight_2",
+                "zoom"
+            ],
+            "keyframes": [
+                {
+                    "frame": 0,
+                    "zoom": 1,
+                    "zoom_i": "C",
+                    "seed": -1,
+                    "noise": 0.04,
+                    "strength": 0.6,
+                    "prompt_weight_1": 1,
+                    "prompt_weight_1_i": "bez(0,0.6,1,0.4)",
+                    "prompt_weight_2": 0,
+                    "prompt_weight_2_i": "bez(0,0.6,1,0.4)"
+                },
+                {
+                    "frame": 40,
+                    "zoom": 1.5
+                },
+                {
+                    "frame": 80,
+                    "prompt_weight_1": 0,
+                    "prompt_weight_2": 1
+                },
+                {
+                    "frame": 119,
+                    "zoom": 0.5
                 }
             ]
         }

@@ -17,6 +17,7 @@ import Grid from '@mui/material/Unstable_Grid2';
 import { AgGridReact } from 'ag-grid-react';
 import equal from 'fast-deep-equal';
 import clonedeep from 'lodash.clonedeep';
+import range from 'lodash.range';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines';
@@ -38,19 +39,13 @@ import { fieldNametoRGBa, frameToBeats, frameToSeconds, getUTCTimeStamp, getVers
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
+
 import { defaultFields } from './data/fields';
+
 
 //////////////////////////////////////////
 // Config
-const default_prompts = {
-  // eslint-disable-next-line no-template-curly-in-string
-  positive: `A lone (black cat:\${prompt_weight_1}) (white duck:\${prompt_weight_2}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:`,
-  negative: `(black cat:\${prompt_weight_2}) (white duck:\${prompt_weight_1})
-watermark, logo, text, signature, copyright, writing, letters,
-low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,
-cartoon, computer game, video game, painting, drawing, sketch,
-disfigured, deformed, ugly`
-}
+
 const default_options = {
   input_fps: "",
   bpm: 140,
@@ -88,34 +83,45 @@ const GridTooltip = (props) => {
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
-  const default_keyframes = props.default_keyframes;
-  const preventInitialRender = new URLSearchParams(window.location.search).get("noRender") === "true" || false;
+  const defaultTemplate = props.defaultTemplate;
+  const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
 
   const fillWithDefaults = useCallback((possiblyIncompleteContent) => {
     if (!possiblyIncompleteContent.prompts) {
-      possiblyIncompleteContent.prompts = default_prompts;
+      possiblyIncompleteContent.prompts = deepCopy(templates[defaultTemplate].prompts);
     }
     if (!possiblyIncompleteContent.keyframes) {
-      // Deep copy the default keyframes so that we can still refer to the original defaults in the future (e.g. when missing a field in firs or last keyframe)
-      possiblyIncompleteContent.keyframes = deepCopy(default_keyframes);
+      possiblyIncompleteContent.keyframes = deepCopy(templates[defaultTemplate].keyframes);
+    }
+    if (!possiblyIncompleteContent.managedFields || possiblyIncompleteContent.managedFields.length === 0) {
+      console.log("Document does not specify managed fields. Assuming all fields are managed.");
+      possiblyIncompleteContent.managedFields = defaultFields.map(f => f.name);
     }
     if (!possiblyIncompleteContent.displayedFields) {
-      possiblyIncompleteContent.displayedFields = [];
+      possiblyIncompleteContent.displayedFields = possiblyIncompleteContent.managedFields.length <= 5
+        ? deepCopy(possiblyIncompleteContent.managedFields)
+        : possiblyIncompleteContent.managedFields.slice(0, 5);
     }
     // For options we want to merge the defaults with the existing options.
     possiblyIncompleteContent.options = { ...default_options, ...(possiblyIncompleteContent.options || {}) };
 
     return possiblyIncompleteContent;
-  }, [default_keyframes]);
+  }, [defaultTemplate]);
 
   const freshLoadContentToState = useCallback((loadedContent) => {
+    console.log("loadedContent", loadedContent);
+    if (!loadedContent) {
+      console.log("Falling back to default template:", defaultTemplate);
+      loadedContent = templates[defaultTemplate].template;
+    }
     const filledContent = fillWithDefaults(loadedContent || {});
     setPrompts(filledContent.prompts);
     setOptions(filledContent.options);
+    setManagedFields([...filledContent.managedFields]);
     setDisplayedFields([...filledContent.displayedFields]);
     setKeyframes(filledContent.keyframes);
     refreshGridFromKeyframes(filledContent.keyframes);
-  }, [fillWithDefaults]);
+  }, [fillWithDefaults, defaultTemplate]);
 
   //////////////////////////////////////////
   // App State
@@ -127,7 +133,7 @@ const ParseqUI = (props) => {
   const [graphPromptMarkers, setGraphPromptMarkers] = useState(false);
   const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
-  const [managedFields, setManagedFields] = useState(['seed', 'prompt_weight_1', 'prompt_weight_2', 'zoom']);   // The fields that the user has chosen to be managed by Parseq.
+  const [managedFields, setManagedFields] = useState();   // The fields that the user has chosen to be managed by Parseq.
   const [displayedFields, setDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
   const [options, setOptions] = useState()
   const [prompts, setPrompts] = useState();
@@ -139,9 +145,28 @@ const ParseqUI = (props) => {
   const [uploadStatus, setUploadStatus] = useState(<></>);
   const [lastRenderTime, setLastRenderTime] = useState(0);
   const [gridCursorPos, setGridCursorPos] = useState(0);
+  const [rangeSelection, setRangeSelection] = useState({});
+  const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
+
+  useEffect(() => {
+    console.log("typing", typing);
+  }, [typing]);
+
+  const isInRangeSelection = useCallback((cell) => {
+    return rangeSelection.anchor && rangeSelection.tip && cell
+      && cell.rowIndex >= Math.min(rangeSelection.anchor.y, rangeSelection.tip.y)
+      && cell.rowIndex <= Math.max(rangeSelection.anchor.y, rangeSelection.tip.y)
+      && cell.column.instanceId >= Math.min(rangeSelection.anchor.x, rangeSelection.tip.x)
+      && cell.column.instanceId <= Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
+  }, [rangeSelection]);
+
+  const isSameCellPosition = (cell1, cell2) => {
+    return cell1 && cell2 && cell1.rowIndex === cell2.rowIndex
+      && cell1.column.instanceId === cell2.column.instanceId;
+  }
 
   const columnDefs = useMemo(() => {
     return [
@@ -156,6 +181,9 @@ const ParseqUI = (props) => {
         },
         pinned: 'left',
         suppressMovable: true,
+        cellStyle: params => ({
+          borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+        })
       },
       {
         headerName: 'Info',
@@ -173,17 +201,26 @@ const ParseqUI = (props) => {
         pinned: 'left',
         suppressMovable: true,
       },
-      ...managedFields.flatMap(field => [
+      ...(managedFields ? managedFields.flatMap(field => [
         {
           field: field,
           valueSetter: (params) => {
             params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
           },
           suppressMovable: true,
-          cellStyle: params => ({
-            backgroundColor: fieldNametoRGBa(field, 0.1),
-            borderRight: '1px solid lightgrey'
-          })
+          cellStyle: params => {
+            if (isInRangeSelection(params)) {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.4),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+              }
+            } else {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.1),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+              }
+            }
+          }
 
         },
         {
@@ -200,14 +237,24 @@ const ParseqUI = (props) => {
             params.data[field + '_i'] = params.newValue;
           },
           suppressMovable: true,
-          cellStyle: params => ({
-            backgroundColor: fieldNametoRGBa(field, 0.1),
-            borderRight: '1px solid black'
-          })
+          cellStyle: params => {
+            if (isInRangeSelection(params)) {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.4),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
+              }
+            } else {
+              return {
+                backgroundColor: fieldNametoRGBa(field, 0.1),
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
+              }
+            }
+          }
         }
-      ])
+      ]) : [])
     ]
-  }, [managedFields]);
+
+  }, [managedFields, isInRangeSelection]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -229,22 +276,19 @@ const ParseqUI = (props) => {
   // This is debounced to 200ms to avoid repeated saves if edits happen
   // in quick succession.
   useDebouncedEffect(() => {
-    if (autoSaveEnabled && prompts && options && displayedFields && keyframes) {
+    if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields) {
       saveVersion(activeDocId, getPersistableState());
     }
-  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled]);
+  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields]);
 
   useDebouncedEffect(() => {
     if (enqueuedRender) {
-      if (prompts && options && displayedFields && keyframes) {
+      if (prompts && options && displayedFields && keyframes && keyframes.length > 1) {
         // This is the only place we should call render explicitly.
         render();
-      } else {
-        // Some data was not yet initialised, render again soon.
-        setTimeout(render, 100);
       }
     }
-  }, 200, [enqueuedRender, prompts, options, displayedFields, keyframes]);
+  }, typing ? 1000 : 200, [enqueuedRender, prompts, options, displayedFields, keyframes]);
 
   // Run on first load, once all react components are ready and Grid is ready.
   runOnceTimeout.current = 0;
@@ -366,10 +410,7 @@ const ParseqUI = (props) => {
     gridRef.current.api.sizeColumnsToFit();
     refreshKeyframesFromGrid();
 
-    if (autoRender) {
-      setEnqueuedRender(true);
-    }
-  }, [autoRender, frameToRowId]);
+  }, [frameToRowId]);
 
   const mergeKeyframes = useCallback((incomingKeyframes) => {
     //console.log(dataToMerge);
@@ -391,13 +432,9 @@ const ParseqUI = (props) => {
       .sort((a, b) => a.frame - b.frame);
 
     setKeyframes(keyframes_local);
-
     refreshGridFromKeyframes(keyframes_local)
-    if (autoRender) {
-      setEnqueuedRender(true);
-    }
 
-  }, [keyframes, autoRender]);
+  }, [keyframes]);
 
 
   // Resize grid to fit content
@@ -422,7 +459,12 @@ const ParseqUI = (props) => {
       return;
     }
 
-    if (keyframes.length <= 2) {
+    if (frame === 0 || frame === keyframes[keyframes.length - 1].frame) {
+      console.error(`Cannot delete first or last frame.`)
+      return;
+    }
+
+    if (keyframes.length <= 2 || gridRef.current.api.getDisplayedRowCount() < 3) {
       console.error("There must be at least 2 keyframes. Can't delete any more.")
       return;
     }
@@ -434,25 +476,39 @@ const ParseqUI = (props) => {
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
     refreshKeyframesFromGrid();
-    if (autoRender) {
-      setEnqueuedRender(true);
-    }
-  }, [keyframes, autoRender, frameToRowId]);
+
+  }, [keyframes, frameToRowId]);
 
   const onCellValueChanged = useCallback((event) => {
     gridRef.current.api.onSortChanged();
     refreshKeyframesFromGrid();
-
-    if (autoRender) {
-      setEnqueuedRender(true);
-    }
-  }, [gridRef, autoRender]);
+  }, [gridRef]);
 
   const onGridReady = useCallback((params) => {
     refreshKeyframesFromGrid();
     gridRef.current.api.onSortChanged();
     gridRef.current.api.sizeColumnsToFit();
   }, [gridRef]);
+
+  const navigateToNextCell = useCallback((params) => {
+    const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
+    if (params.event.shiftKey) {
+      if (rangeSelection.anchor === undefined) {
+        setRangeSelection({
+          anchor: { x: previousCell.column.instanceId, y: previousCell.rowIndex },
+          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
+        })
+      } else {
+        setRangeSelection({
+          ...rangeSelection,
+          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
+        })
+      }
+    } else {
+      setRangeSelection({});
+    }
+    return nextCell;
+  }, [rangeSelection]);
 
   const onCellKeyPress = useCallback((e) => {
     if (e.event) {
@@ -464,6 +520,7 @@ const ParseqUI = (props) => {
       } else if (keyPressed === 'r' && e.event.ctrlKey) {
         setEnqueuedRender(true);
       }
+
     }
   }, [addRow, deleteRow]);
 
@@ -530,11 +587,7 @@ const ParseqUI = (props) => {
 
     const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
     setOptions({ ...options, [optionId]: value });
-    console.log(options);
-    if (autoRender) {
-      setEnqueuedRender(true);
-    }
-  }, [autoRender, options]);
+  }, [options]);
 
   const [frameToAdd, setFrameToAdd] = useState();
   const [openAddRowDialog, setOpenAddRowDialog] = useState(false);
@@ -655,43 +708,52 @@ const ParseqUI = (props) => {
     </Dialog>
     , [openMergeKeyframesDialog, handleCloseMergeKeyframesDialog, activeDocId, dataToMerge, keyFrameMergeStatus, mergeEnabled, options]);
 
-  const [frameToDelete, setFrameToDelete] = useState();
+  const [framesToDelete, setFramesToDelete] = useState();
   const [openDeleteRowDialog, setOpenDeleteRowDialog] = useState(false);
-  const handleClickOpenDeleteRowDialog = () => {
+
+  const handleClickOpenDeleteRowDialog = useCallback(() => {
+    const frames = rangeSelection.anchor ?
+      range(Math.min(rangeSelection.anchor.y, rangeSelection.tip.y), Math.max(rangeSelection.anchor.y, rangeSelection.tip.y) + 1)
+        .map((y) => gridRef.current.api.getDisplayedRowAtIndex(y).data.frame)
+        .sort()
+        .join(',')
+      : gridRef.current.api.getFocusedCell()?.data?.frame;
+    setFramesToDelete(frames);
     setOpenDeleteRowDialog(true);
-  };
+  }, [gridRef, rangeSelection]);
 
   const handleCloseDeleteRowDialog = useCallback((e) => {
     setOpenDeleteRowDialog(false);
     if (e.target.id === "delete") {
-      deleteRow(parseInt(frameToDelete));
+      for (let frame of framesToDelete.split(',')) {
+        deleteRow(parseInt(frame));
+      }
     }
-  }, [deleteRow, frameToDelete]);
+  }, [deleteRow, framesToDelete]);
 
   const deleteRowDialog = useMemo(() => <Dialog open={openDeleteRowDialog} onClose={handleCloseDeleteRowDialog}>
-    <DialogTitle>❌ Delete keyframe</DialogTitle>
+    <DialogTitle>❌ Delete keyframes</DialogTitle>
     <DialogContent>
       <DialogContentText>
-        Delete a keyframe at the following position.
+        Delete keyframes at the following positions (enter a comma separated list).
       </DialogContentText>
       <TextField
         autoFocus
         margin="dense"
-        id="delete_keyframe_at"
         label="Frame"
         variant="standard"
-        defaultValue={frameToDelete}
-        onChange={(e) => setFrameToDelete(e.target.value)}
+        value={framesToDelete}
+        onChange={(e) => setFramesToDelete(e.target.value)}
       />
       <DialogContentText>
-        <small><small>TODO: warning here if frame doesn't exist</small></small>
+        <small>Note: first and last frames cannot be deleted.</small>
       </DialogContentText>
     </DialogContent>
     <DialogActions>
       <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
       <Button variant="contained" id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
     </DialogActions>
-  </Dialog>, [openDeleteRowDialog, frameToDelete, handleCloseDeleteRowDialog]);
+  </Dialog>, [openDeleteRowDialog, framesToDelete, handleCloseDeleteRowDialog]);
 
   // TODO: switch to useMemo that updates when elements change?
   const getPersistableState = useCallback(() => ({
@@ -702,7 +764,7 @@ const ParseqUI = (props) => {
     },
     prompts: prompts,
     options: options,
-    managedFields: managedFields.map(s => ({ name: s })),
+    managedFields: managedFields,
     displayedFields: displayedFields,
     keyframes: keyframes,
   }), [prompts, options, displayedFields, keyframes, managedFields]);
@@ -712,7 +774,8 @@ const ParseqUI = (props) => {
       || !equal(lastRenderedState.keyframes, keyframes)
       || !equal(lastRenderedState.options, options)
       || !equal(lastRenderedState.prompts, prompts)
-  }, [lastRenderedState, keyframes, options, prompts]);
+      || !equal(lastRenderedState.managedFields, managedFields)
+  }, [lastRenderedState, keyframes, options, prompts, managedFields]);
 
   //////////////////////////////////////////
   // Main render action callback
@@ -731,6 +794,7 @@ const ParseqUI = (props) => {
         keyframes: clonedeep(keyframes),
         prompts: clonedeep(prompts),
         options: clonedeep(options),
+        managedFields: clonedeep(managedFields)
       });
       setLastRenderTime(Date.now());
     } catch (e) {
@@ -746,7 +810,7 @@ const ParseqUI = (props) => {
       console.timeEnd('Render');
     }
 
-  }, [keyframes, prompts, options, getPersistableState]);
+  }, [keyframes, prompts, options, managedFields, getPersistableState]);
 
   const renderButton = useMemo(() =>
     <Stack>
@@ -760,7 +824,7 @@ const ParseqUI = (props) => {
     <div className="ag-theme-alpine" style={{ width: '100%', minHeight: '150px', maxHeight: '1150px', height: '150px' }}>
       <AgGridReact
         ref={gridRef}
-        rowData={deepCopy(default_keyframes)}
+        rowData={[]}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         onCellValueChanged={onCellValueChanged}
@@ -769,15 +833,51 @@ const ParseqUI = (props) => {
         animateRows={true}
         columnHoverHighlight={true}
         undoRedoCellEditing={true}
-        undoRedoCellEditingLimit={0}
+        undoRedoCellEditingLimit={20}
         enableCellChangeFlash={true}
+        //rowSelection='multiple' 
         tooltipShowDelay={0}
+        navigateToNextCell={navigateToNextCell}
+        onCellKeyDown={(e) => {
+          if (e.event.keyCode === 46 || e.event.keyCode === 8) {
+            if (rangeSelection.anchor && rangeSelection.tip) {
+              const x1 = Math.min(rangeSelection.anchor.x, rangeSelection.tip.x);
+              const x2 = Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
+              const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
+              const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);
+              for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
+                for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
+                  const col = e.columnApi.getAllGridColumns()[colInstanceId];
+                  if (col.visible) {
+                    e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
+                  }
+                }
+              }
+            }
+          }
+        }}
+        onCellClicked={(e) => {
+          if (e.event.shiftKey) {
+            setRangeSelection({
+              anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
+              tip: { x: e.column.instanceId, y: e.rowIndex }
+            })
+          } else {
+            setRangeSelection({});
+          }
+        }}
         onCellMouseOver={(e) => {
           setGridCursorPos(e.data.frame);
+          if (e.event.buttons === 1) {
+            setRangeSelection({
+              anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
+              tip: { x: e.column.instanceId, y: e.rowIndex }
+            })
+          }
         }}
       />
     </div>
-  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, default_keyframes]);
+  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, navigateToNextCell, rangeSelection]);
 
   const getAnimatedFields = (renderedData) => {
     if (renderedData && renderedData.rendered_frames_meta) {
@@ -838,16 +938,13 @@ const ParseqUI = (props) => {
     <DocManagerUI
       docId={activeDocId}
       onLoadContent={(content) => {
-        //console.log("Loading version", content);
+        console.log("Loading version", content);
         if (content) {
           freshLoadContentToState(content);
-          if (!preventInitialRender) {
-            setEnqueuedRender(true);
-          }
         }
       }}
     />
-  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState, preventInitialRender]);
+  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
 
   const optionsUI = useMemo(() => options && <span>
     <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
@@ -856,7 +953,8 @@ const ParseqUI = (props) => {
         label={"Output FPS"}
         value={options['output_fps']}
         onChange={handleChangeOption}
-        onBlur={(e) => { if (!e.target.value) { setOptions({...options,  output_fps:default_options['output_fps']}) } }}        
+        onFocus={(e) => setTyping(true)}
+        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: default_options['output_fps'] }) } }}
         style={{ marginBottom: '10px', marginTop: '0px' }}
         InputLabelProps={{ shrink: true, }}
         InputProps={{ style: { fontSize: '0.75em' } }}
@@ -869,7 +967,8 @@ const ParseqUI = (props) => {
         label={"BPM"}
         value={options['bpm']}
         onChange={handleChangeOption}
-        onBlur={(e) => { if (!e.target.value) { setOptions({...options,  bpm:default_options['bpm']}) } }}                
+        onFocus={(e) => setTyping(true)}
+        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: default_options['bpm'] }) } }}
         style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px', marginRight: '30px' }}
         InputLabelProps={{ shrink: true, }}
         InputProps={{ style: { fontSize: '0.75em' } }}
@@ -878,7 +977,7 @@ const ParseqUI = (props) => {
     </Tooltip2>
   </span>, [options, handleChangeOption])
 
-  const fieldSelector = useMemo(() => displayedFields && <Select
+  const displayedFieldSelector = useMemo(() => displayedFields && <Select
     id="select-display-fields"
     multiple
     value={displayedFields}
@@ -910,9 +1009,18 @@ const ParseqUI = (props) => {
   const promptsUI = useMemo(() => prompts ? <Prompts
     initialPrompts={prompts}
     lastFrame={keyframes[keyframes.length - 1].frame}
-    afterBlur={(e) => { if (autoRender && needsRender) setEnqueuedRender(true) }}
+    afterFocus={(e) => setTyping(true) }
+    afterBlur={(e) => setTyping(false) }
     afterChange={(p) => setPrompts(p)}
-  /> : <></>, [prompts, autoRender, needsRender, keyframes]);
+  /> : <></>, [prompts, keyframes]);
+
+  const managedFieldSelector = useMemo(() => managedFields && <FieldSelector
+    selectedFields={managedFields}
+    customFields={[]}
+    onChange={(fields) => {
+      setManagedFields(fields);
+    }}
+  />, [managedFields]);
 
   const editableGraph = useMemo(() => renderedData && <div>
     <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
@@ -965,13 +1073,11 @@ const ParseqUI = (props) => {
       updateKeyframe={(field, index, value) => {
         let rowId = frameToRowId(index)
         gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
-        setEnqueuedRender(true);
       }}
       addKeyframe={(index) => {
         // If this isn't already a keyframe, add a keyframe
         if (frameToRowId(index) === undefined) {
           addRow(index);
-          setEnqueuedRender(true);
         }
       }}
       clearKeyframe={(field, index) => {
@@ -980,7 +1086,6 @@ const ParseqUI = (props) => {
         if (rowId !== undefined) {
           gridRef.current.api.getRowNode(rowId).setDataValue(field, "");
           gridRef.current.api.getRowNode(rowId).setDataValue(field + '_i', "");
-          setEnqueuedRender(true);
         }
       }}
     />
@@ -997,7 +1102,7 @@ const ParseqUI = (props) => {
     }
   }, [managedFields, displayedFields]);
 
-  const renderSparklines = useCallback(() => renderedData && <>
+  const sparklines = useMemo(() => renderedData && renderedData.rendered_frames && managedFields ? <>
     <FormControlLabel control={
       <Checkbox defaultChecked={false}
         id={"graph_as_percent"}
@@ -1013,19 +1118,27 @@ const ParseqUI = (props) => {
               <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
               defaultFields.find(f => f.name === field)?.labels?.includes("3D") ?
                 <Typography style={{ color: 'SteelBlue', fontSize: "0.5em" }} >[3D]</Typography> :
-                <Typography style={{ color: 'grey', fontSize: "0.5em" }} >[2D+3D]</Typography>}
-            <Sparklines style={{ bgcolor: 'white' }} data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
-              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
-            </Sparklines>
-            <Typography style={{ fontSize: "0.5em" }}>delta</Typography>
-            <Sparklines data={renderedData.rendered_frames.map(f => f[field + '_delta'])} margin={1} padding={1}>
-              <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
-            </Sparklines>
+                <Typography style={{ color: 'grey', fontSize: "0.5em" }} >[2D+3D]</Typography>
+            }
+            {
+              !isNaN(renderedData.rendered_frames[0][field]) &&
+              <Sparklines style={{ bgcolor: 'white' }} data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
+                <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
+              </Sparklines>
+            }
+            {
+              !isNaN(renderedData.rendered_frames[0][field + '_delta']) && <>
+                <Typography style={{ fontSize: "0.5em" }}>delta</Typography>
+                <Sparklines data={renderedData.rendered_frames.map(f => f[field + '_delta'])} margin={1} padding={1}>
+                  <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
+                </Sparklines>
+              </>
+            }
           </Grid>
         )
       }
     </Grid>
-  </>, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline]);
+  </> : <></>, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline]);
 
   const renderedOutput = useMemo(() => <>
     <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
@@ -1098,6 +1211,12 @@ const ParseqUI = (props) => {
   </Paper>, [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender]);
 
 
+  // Auto-render if something has changed (i.e. needsRender is true) and autorender is enabled
+  useEffect(() => {
+    if (needsRender && autoRender) {
+      setEnqueuedRender(true);
+    }
+  }, [needsRender, autoRender, typing]);
 
 
   //////////////////////////////////////////
@@ -1135,19 +1254,15 @@ const ParseqUI = (props) => {
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>
-        <ExpandableSection title="Fields">
-          <FieldSelector
-            selectedFields={managedFields}
-            customFields={[]}
-            onChange={(fields) => { setManagedFields(fields) }}
-          />
+        <ExpandableSection title="Managed fields">
+          {managedFieldSelector}
         </ExpandableSection>
       </Grid>
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <ExpandableSection title="Keyframes grid for field value flow">
           {optionsUI}
           <small>Show/hide fields:</small>
-          {fieldSelector}
+          {displayedFieldSelector}
           {grid}
           <span id='gridControls'>
             <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
@@ -1166,7 +1281,7 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Sparklines">
-          {renderSparklines()}
+          {sparklines}
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>

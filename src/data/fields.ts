@@ -228,7 +228,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 5,
         description: "",
-        color: [0, 0, 255],
+        color: [0, 0, 0],
         labels: ['antiblur']
     },
     {
@@ -236,7 +236,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 1,
         description: "",
-        color: [0, 0, 255],
+        color: [75, 75, 75],
         labels: ['antiblur']
     },
     {
@@ -244,7 +244,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0.2,
         description: "",
-        color: [0, 0, 255],
+        color: [150, 150, 150],
         labels: ['antiblur']
     },
     {
@@ -252,7 +252,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [0, 0, 255],
+        color: [225, 225, 225],
         labels: ['antiblur']
     },
     {
@@ -260,7 +260,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 1,
         description: "",
-        color: [0, 0, 255],
+        color: [0, 0, 50],
         labels: ['hybrid_video']
     },
     {
@@ -268,7 +268,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0.5,
         description: "",
-        color: [0, 0, 255],
+        color: [50, 50, 100],
         labels: ['hybrid_video']
     },
     {
@@ -276,7 +276,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 1,
         description: "",
-        color: [0, 0, 255],
+        color: [100, 100, 150],
         labels: ['hybrid_video']
     },
     {
@@ -284,7 +284,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [0, 0, 255],
+        color: [150, 150, 200],
         labels: ['hybrid_video']
     },
     {
@@ -292,7 +292,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 100,
         description: "",
-        color: [0, 0, 255],
+        color: [200, 200, 250],
         labels: ['hybrid_video']
     },
 ]

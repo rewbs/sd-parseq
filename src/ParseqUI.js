@@ -109,7 +109,6 @@ const ParseqUI = (props) => {
   }, [defaultTemplate]);
 
   const freshLoadContentToState = useCallback((loadedContent) => {
-    console.log("loadedContent", loadedContent);
     if (!loadedContent) {
       console.log("Falling back to default template:", defaultTemplate);
       loadedContent = templates[defaultTemplate].template;
@@ -152,7 +151,6 @@ const ParseqUI = (props) => {
   const _frameToRowId_cache = useRef();
 
   useEffect(() => {
-    console.log("typing", typing);
   }, [typing]);
 
   const isInRangeSelection = useCallback((cell) => {
@@ -1024,13 +1022,15 @@ const ParseqUI = (props) => {
       // Update displayedFields to remove any missing fields or add any new fields.
       const addedFields = fields.filter((field) => !oldManagedFields.includes(field));       
       if (displayedFields) {
-        let newDisplayedFields = displayedFields
-          .filter((field) => managedFields.includes(field))
-          .concat(addedFields);
-        setDisplayedFields(newDisplayedFields);
+        let newDisplayedFields = displayedFields.filter((field) => managedFields.includes(field)).concat(addedFields);
+          if (displayedFields.length !== newDisplayedFields.length
+            || !newDisplayedFields.every(f => displayedFields.includes(f))) {
+          // This update MUST be conditional, else we get into an infinite react loop.
+          setDisplayedFields(newDisplayedFields);
+        }
       }
     }}
-  />, [managedFields]);
+  />, [managedFields, displayedFields]);
 
   const editableGraph = useMemo(() => renderedData && <div>
     <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>

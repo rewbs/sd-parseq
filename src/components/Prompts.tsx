@@ -249,7 +249,7 @@ export function Prompts(props: PromptsProps) {
     const displayPrompts = useCallback((advancedPrompts: AdvancedParseqPrompts) =>
         <Grid container xs={12}  sx = {{ paddingTop:'0',paddingBottom:'0'}}>
             {
-                advancedPrompts.map((prompt, idx) => <>
+                advancedPrompts.map((prompt, idx) =>
                     <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
                         <Grid xs={12} style={{ padding: 0, margin: 0, border: 0 }}>
 
@@ -364,8 +364,7 @@ export function Prompts(props: PromptsProps) {
                                 {composableDiffusionWarning(idx)}
                             </Grid>
                         </Grid>
-                    </Box>
-                </>)
+                    </Box>)
             }
         </Grid>
         , [delPrompt, promptInput, prompts, props, displayFadeOptions, composableDiffusionWarning]);

@@ -4,7 +4,8 @@
 
   * [What is this?](#what-is-this)
   * [What's new?](#what-s-new)
-    + [Version 0.1.40](#version-0140)  
+    + [Version 0.1.45](#version-0145) 
+    + [Version 0.1.40](#version-0140)
     + [Version 0.1.22](#version-0122)
     + [Version 0.1.14](#version-0114)
     + [Version 0.1.0](#version-010)
@@ -55,6 +56,29 @@ You can jump straight into the UI here: https://sd-parseq.web.app/ .
 For now Parseq is almost entirely front-end and stores all state in browser local storage by default. Signed-in users can optionally upload their work from the UI for easier sharing.
 
 ## What's new?
+
+### Version 0.1.45
+
+* You can now mix & match Parseq-managed schedules with Deforum-managed schedules, and choose whether the prompt should be managed by Parseq or Deforum.
+
+<img width="500"  src="https://user-images.githubusercontent.com/74455/222583867-898f3763-481c-490a-ac93-6f9918bca416.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+   
+   * **Note:** Delegating prompts to Deforum requires the latest Deforum extenion. Make sure you update! You should a table like this in your A1111 CLI output to help describe what is managed by Parseq vs Deforum:
+
+<img width="500"  src="https://user-images.githubusercontent.com/74455/222584674-6fcfe3ed-dd50-4b55-9465-d07bf97c216f.png" />
+
+* The prompt visual timeline is now clickable (you can move and resize prompts)
+
+https://user-images.githubusercontent.com/74455/222586254-3a776276-64aa-4779-9d04-0e8c4d4dcaf8.mp4
+
+* Initial implementation range selection in the grid. Works for deletion only – **not** copy/cut/paste. 
+* Delete keyframes dialog accepts lists and is pre-populated based on the range selection.
+
+
+
+https://user-images.githubusercontent.com/74455/222586768-05073ce8-70d5-4b35-b2a9-88ed27822c46.mp4
+
+
 
 ### Version 0.1.40
 

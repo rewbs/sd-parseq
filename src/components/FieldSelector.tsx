@@ -1,8 +1,9 @@
 import { Grid, List, ListItem, ListItemButton, ListItemIcon, ListItemText, TextField, Tooltip, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { defaultFields } from '../data/fields';
 import StyledSwitch from './StyledSwitch';
+import { useMeasure } from "react-use";
 
 type FieldSelectorProps = {
     selectedFields: string[];
@@ -22,7 +23,6 @@ const StyledList = styled(List)<{ component?: React.ElementType }>({
         marginRight: 16,        
     },
     '& .MuiListItemButton-dense': {
-        backgroundColor: 'rgb(250, 250, 245)',
         border: '1px solid rgb(250, 250, 245)',
     },
     '& .MuiListItemButton-dense:hover': {
@@ -36,35 +36,49 @@ export function FieldSelector(props: FieldSelectorProps) {
     const [selectedFields, setSelectedFields] = useState(props.selectedFields);
     // eslint-disable-next-line
     const [detailedField, setDetailedField] = useState<InterpolatableFieldDefinition>();
+    const [listRef, { x, y, width, height, top, right, bottom, left }] = useMeasure();
+
+    const itemWidth = 300;
+    const numCols = width ? Math.floor(width/itemWidth) : 4;
+    const numRows = Math.ceil(defaultFields.concat(props.customFields).length/numCols);
  
     const list = useMemo(() => <StyledList
+            //@ts-ignore
+            ref={listRef}
             sx={{
-                display: "flex",
-                flexFlow: "column wrap",
-                gap: "0 10px",
-                maxHeight: 490,
+                display: "grid",
+                gridTemplateRows: `repeat(${numRows}, 1fr)`,
+                gridAutoFlow: "column",
                 overflow: "scroll",
-                width: '100%'  
+                width: '100%',
             }}
         >
             {defaultFields.concat(props.customFields)
                 .filter(field => field.name.toLowerCase().includes(filter.toLowerCase())
                     || field.labels.some( label => label.toLowerCase().includes(filter.toLowerCase())))   
                 .filter(field => field.name !== 'frame').map((field, idx) =>
-                <ListItem dense sx={{ width: 'auto', maxWidth: '300px' }} key={field.name}>
+                <ListItem dense sx={{ width: 'auto', maxWidth: itemWidth }} key={field.name}>
                     <ListItemButton
                         onClick={(_)=> selectedFields.some(f => f === field.name)
                                 ? setSelectedFields(selectedFields.filter(f => f !== field.name))
                                 : setSelectedFields([...selectedFields, field.name])}
+                                sx={{backgroundColor: selectedFields.some(f => f === field.name) ? 'rgb(245, 245, 255)' : ''}}
                         >
                         <ListItemIcon>
                             <Typography color={`rgb(${field.color[0]},${field.color[1]},${field.color[2]})`} >█</Typography>
                         </ListItemIcon>
-                        <Tooltip arrow placement="top" title={field.name}>
+                        <Tooltip arrow placement="top" title={<>
+                            <strong>{field.name}</strong>
+                            <ul style={{padding:5, margin:0}}>
+                                <li>type: {field.type}</li>
+                                <li>default value: {field.defaultValue}</li>
+                                {field.labels.length > 0 ? <li>labels: {field.labels.join(',')}</li> : <></> }
+                            </ul></>}>
                             <ListItemText
                                 primaryTypographyProps={{
                                     fontSize: '0.75em',
                                     overflow: 'hidden',
+                                    color: selectedFields.some(f => f === field.name) ? '' : 'text.secondary',
                                 }}
                                 primary={field.name} />
                         </Tooltip>
@@ -84,7 +98,7 @@ export function FieldSelector(props: FieldSelectorProps) {
                     </ListItemButton>
                 </ListItem>
             )}
-        </StyledList>, [selectedFields, props.customFields, filter]);
+        </StyledList>, [selectedFields, props.customFields, filter, numCols, numRows]);
 
 
         const details = useMemo(() => detailedField && <Grid container xs={12}>
@@ -122,7 +136,7 @@ export function FieldSelector(props: FieldSelectorProps) {
         }, [selectedFields, props]);
 
     return <>
-        <p><small>Select which parameters you'd like to control with Parseq. Unselected parameters are controllable via Deforum.</small></p>
+        <p><small>Select which fields you'd like to manage with Parseq. Unselected fields are controllable with Deforum.</small></p>
         <TextField
             label="Filter"
             value={filter}

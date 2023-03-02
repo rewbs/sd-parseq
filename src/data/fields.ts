@@ -4,7 +4,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: -1,
         description: "",
-        color: [0, 100, 0],
+        color: [51, 105, 30],
         labels: []
     },
     {
@@ -12,7 +12,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 7,
         description: "",
-        color: [0, 50, 100],
+        color: [130, 119, 23],
         labels: []
     },
     {
@@ -20,7 +20,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0.08,
         description: "",
-        color: [200, 20, 200],
+        color: [136, 14, 79],
         labels: []
     },
     {
@@ -28,7 +28,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0.6,
         description: "",
-        color: [0, 0, 80],
+        color: [49, 27, 146],
         labels: []
     },
     {
@@ -44,7 +44,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [0, 128, 0],
+        color: [229, 115, 115],
         labels: []
     },
     {
@@ -52,7 +52,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [255, 128, 128],
+        color: [186, 104, 200],
         labels: []
     },
     {
@@ -60,7 +60,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [75, 0, 130],
+        color: [121, 134, 203],
         labels: []
     },
     {
@@ -68,7 +68,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [0, 0, 255],
+        color: [79, 195, 247],
         labels: []
     },
     {
@@ -76,7 +76,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [188, 143, 143],
+        color: [77, 182, 172],
         labels: []
     },
     {
@@ -84,7 +84,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [112, 128, 144],
+        color: [174, 213, 129],
         labels: []
     },
     {
@@ -92,7 +92,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [255, 0, 0],
+        color: [220, 231, 117],
         labels: []
     },
     {
@@ -100,7 +100,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [255, 0, 255],
+        color: [77, 208, 225],
         labels: []
     },
     {
@@ -108,7 +108,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0,
         description: "",
-        color: [128, 0, 128],
+        color: [13, 71, 161],
         labels: ['2D']
     },
     {
@@ -116,7 +116,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 1,
         description: "",
-        color: [255, 80, 80],
+        color: [136, 14, 79],
         labels: ['2D']
     },
     {

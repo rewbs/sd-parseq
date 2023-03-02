@@ -988,7 +988,7 @@ const ParseqUI = (props) => {
     renderValue={(selected) => (
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.1 }}>
         {selected.map((value) => (
-          <Chip sx={{ fontSize: "0.75em" }} key={value} label={value} />
+          <Chip sx={{ fontSize: "0.75em", backgroundColor: fieldNametoRGBa(value, 0.2) }} key={value} label={value} />
         ))}
       </Box>
     )}
@@ -1018,7 +1018,17 @@ const ParseqUI = (props) => {
     selectedFields={managedFields}
     customFields={[]}
     onChange={(fields) => {
+      const oldManagedFields = managedFields;
       setManagedFields(fields);
+
+      // Update displayedFields to remove any missing fields or add any new fields.
+      const addedFields = fields.filter((field) => !oldManagedFields.includes(field));       
+      if (displayedFields) {
+        let newDisplayedFields = displayedFields
+          .filter((field) => managedFields.includes(field))
+          .concat(addedFields);
+        setDisplayedFields(newDisplayedFields);
+      }
     }}
   />, [managedFields]);
 

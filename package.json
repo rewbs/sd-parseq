@@ -60,6 +60,7 @@
     "react-scripts": "5.0.1",
     "react-sparklines": "^1.7.0",
     "react-time-ago": "^7.2.1",
+    "react-use": "^17.4.0",
     "recharts": "^2.4.1",
     "roarr": "^7.14.2",
     "simplify-ts": "^1.0.2",

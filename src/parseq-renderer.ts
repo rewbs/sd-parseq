@@ -32,7 +32,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     const options = input.options;
     const prompts = input.prompts as AdvancedParseqPrompts;
 
-    const interpolatableFields = input.interpolatableFields.map((field) => field.name);
+    const managedFields = input.managedFields;
 
     // Validation
     if (!keyframes) {
@@ -41,6 +41,13 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     if (keyframes.length < 2) {
         throw new ParseqRendererException("There must be at least 2 keyframes to render.");
     }
+    if (!options || !options.output_fps) {
+        throw new ParseqRendererException("No output_fps found.");
+    }
+    if (!options.bpm) {
+        throw new ParseqRendererException("No bpm found.");
+    }    
+
     let sortedKeyframes: ParseqKeyframes = keyframes.sort((a, b) => a.frame - b.frame);
 
     let firstKeyFrame = sortedKeyframes[0];
@@ -48,7 +55,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
     // Create implicit bookend keyframes to use any first or last values are missing.
     const bookendKeyFrames = { first: { frame: firstKeyFrame?.frame }, last: { frame: lastKeyFrame.frame } };
-    (interpolatableFields.concat(['frame'])).forEach((field) => {
+    (managedFields.concat(['frame'])).forEach((field) => {
 
         if (!isValidNumber(firstKeyFrame[field])) {
             const firstKeyFrameWithValueForField = sortedKeyframes.find((kf) => isValidNumber(kf[field]));
@@ -69,7 +76,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     let rendered_frames: ParseqRenderedFrames = [];
     var previousContext = {};
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
-    interpolatableFields.forEach((field) => {
+    managedFields.forEach((field) => {
 
         // Get all keyframes that have a value for this field
         const filtered = sortedKeyframes.filter(kf => isValidNumber(kf[field]));
@@ -157,49 +164,51 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     });
 
     // Calculate rendered prompt based on prompts and weights
-    all_frame_numbers.forEach((frame) => {
+    if ( typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled) {
+        all_frame_numbers.forEach((frame) => {
 
-        let variableMap = {};
-        interpolatableFields.forEach((field) => {
-            variableMap = {
-                ...variableMap || {},
-                [field]: rendered_frames[frame][field]
+            let variableMap = {};
+            managedFields.forEach((field) => {
+                variableMap = {
+                    ...variableMap || {},
+                    [field]: rendered_frames[frame][field]
+                }
+            });
+
+            var context = new InterpreterContext({
+                fieldName: "prompt",
+                activeKeyframe: frame,
+                definedFrames: keyframes.map(kf => kf.frame),
+                definedValues: [],
+                FPS: options.output_fps,
+                BPM: options.bpm,
+                allKeyframes: keyframes,
+                variableMap: variableMap
+            });
+
+            try {
+
+                let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
+                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
+                    .replace(/(\n)/g, " ");
+                let negative_prompt = composePromptAtFrame(prompts, frame, false, lastKeyFrame.frame)
+                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
+                    .replace(/(\n)/g, " ");
+
+                //@ts-ignore
+                rendered_frames[frame] = {
+                    ...rendered_frames[frame] || {},
+                    // positive_prompt: positive_prompt,
+                    // negative_prompt: negative_prompt,
+                    deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
+                }
+            } catch (error) {
+                console.error(error);
+                throw new ParseqRendererException(`Error parsing prompt weight value: ` + error);
             }
+
         });
-
-        var context = new InterpreterContext({
-            fieldName: "prompt",
-            activeKeyframe: frame,
-            definedFrames: keyframes.map(kf => kf.frame),
-            definedValues: [],
-            FPS: options.output_fps,
-            BPM: options.bpm,
-            allKeyframes: keyframes,
-            variableMap: variableMap
-        });
-
-        try {
-
-            let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
-                .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
-                .replace(/(\n)/g, " ");
-            let negative_prompt = composePromptAtFrame(prompts, frame, false, lastKeyFrame.frame)
-                .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
-                .replace(/(\n)/g, " ");
-
-            //@ts-ignore
-            rendered_frames[frame] = {
-                ...rendered_frames[frame] || {},
-                // positive_prompt: positive_prompt,
-                // negative_prompt: negative_prompt,
-                deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
-            }
-        } catch (error) {
-            console.error(error);
-            throw new ParseqRendererException(`Error parsing prompt weight value: ` + error);
-        }
-
-    });
+    }
 
     // Calculate subseed & subseed strength based on fractional part of seed.
     all_frame_numbers.forEach((frame) => {
@@ -214,7 +223,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
         }
     });
     var rendered_frames_meta: ParseqRenderedFramesMeta = []
-    interpolatableFields.forEach((field) => {
+    managedFields.forEach((field) => {
         let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
         let minValue = Math.min(...rendered_frames.map(rf => rf[field]))
         rendered_frames_meta = {
@@ -229,7 +238,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
     // Calculate delta variants
     all_frame_numbers.forEach((frame) => {
-        interpolatableFields.forEach((field) => {
+        managedFields.forEach((field) => {
 
             //@ts-ignore
             let maxValue = rendered_frames_meta[field].max;

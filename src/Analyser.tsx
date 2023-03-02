@@ -31,37 +31,9 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 //@ts-ignore
 import Stats from 'stats-analysis';
 
-// TODO - HACK - this is duplicated from Deforum.tsx, need to refactor.
-const interpolatable_fields = [
-    'seed',
-    'scale',
-    'noise',
-    'strength',
-    'contrast',
-    'prompt_weight_1',
-    'prompt_weight_2',
-    'prompt_weight_3',
-    'prompt_weight_4',
-    'prompt_weight_5',
-    'prompt_weight_6',
-    'prompt_weight_7',
-    'prompt_weight_8',
-    'angle',
-    'zoom',
-    'perspective_flip_theta',
-    'perspective_flip_phi',
-    'perspective_flip_gamma',
-    'perspective_flip_fv',
-    'translation_x',
-    'translation_y',
-    'translation_z',
-    'rotation_3d_x',
-    'rotation_3d_y',
-    'rotation_3d_z',
-    'fov',
-    'near',
-    'far',
-];
+import { defaultFields } from "./data/fields";
+
+const fields = defaultFields.map((field) => field.name);
 
 function AnalyserInput(props: { label: string, value: number | string, onChange: (event: React.ChangeEvent<HTMLInputElement>) => void, disabled: boolean, isString?: boolean, helperText?: string }) {
     return <TextField
@@ -1005,7 +977,7 @@ export default function Analyser() {
                             select
                         >
                         <MenuItem key="(none)" value="(none)" style={{ fontSize: '0.75em', paddingBottom: '5px', paddingTop: '5px' }}>(none)</MenuItem>
-                        {interpolatable_fields.map((field) => <MenuItem key={field} value={field} style={{ fontSize: '0.75em', paddingBottom: '5px', paddingTop: '5px' }}>{field}</MenuItem>)}
+                        {fields.map((field) => <MenuItem key={field} value={field} style={{ fontSize: '0.75em', paddingBottom: '5px', paddingTop: '5px' }}>{field}</MenuItem>)}
                     </TextField>
                     <AnalyserInput
                         label="Value"
@@ -1061,7 +1033,7 @@ export default function Analyser() {
                             select
                         >
                         <MenuItem key="(none)" value="(none)">(none)</MenuItem>
-                        {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
+                        {fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
                     </TextField>
                     <AnalyserInput
                         label="Value"
@@ -1133,7 +1105,7 @@ export default function Analyser() {
                             select
                         >
                         <MenuItem key="(none)" value="(none)">(none)</MenuItem>
-                        {interpolatable_fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
+                        {fields.map((field) => <MenuItem key={field} value={field}>{field}</MenuItem>)}
                     </TextField>
                     <AnalyserInput
                         label="Interpolation"

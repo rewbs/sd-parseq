@@ -43,7 +43,7 @@ ChartJS.register(
 
 export class Editable extends React.Component<{
     renderedData: RenderedData,
-    displayFields: string[],
+    displayedFields: string[],
     as_percents: boolean,
     updateKeyframe: (field: string, index: number, value: number) => void;
     addKeyframe: (index: number) => void;
@@ -177,7 +177,7 @@ export class Editable extends React.Component<{
                         if (!this.isKeyframe(index)) {
                             return;
                         }
-                        let field = this.props.displayFields[datasetIndex];
+                        let field = this.props.displayedFields[datasetIndex];
                         if (this.props.as_percents) {
                             //@ts-ignore
                             const maxValue = this.props.renderedData.rendered_frames_meta[field].max;
@@ -208,7 +208,7 @@ export class Editable extends React.Component<{
         let chartData: ChartData<'line'> = {
             labels: this.props.renderedData.rendered_frames.map((idx, frame) => frame.toString()),
             datasets: [
-                ...this.props.displayFields.map((field) => {
+                ...this.props.displayedFields.map((field) => {
                     return {
                         label: field,
                         data: this.props.renderedData.rendered_frames.map((frame) => this.props.as_percents ? (frame[field + '_pc']) : frame[field] || 0),

@@ -501,3 +501,28 @@ test('Full prodigy', async () => {
   await loadAndRender(fixture);
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
+
+
+test('Delegated seed', async () => {
+  const fixture = {
+    "prompts": {
+      "positive": "",
+      "negative": ""
+    },
+    "managedFields": [
+      "noise",
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "noise": 0.01,
+      },
+      {
+        "frame": 10,
+        "noise": 0.1,
+      }
+    ]
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});

@@ -211,17 +211,20 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     }
 
     // Calculate subseed & subseed strength based on fractional part of seed.
-    all_frame_numbers.forEach((frame) => {
-        let subseed = Math.ceil(rendered_frames[frame]['seed'])
-        let subseed_strength = rendered_frames[frame]['seed'] % 1
+    if (managedFields.includes("seed")) {
+        all_frame_numbers.forEach((frame) => {
+            let subseed = Math.ceil(rendered_frames[frame]['seed'])
+            let subseed_strength = rendered_frames[frame]['seed'] % 1
 
-        //@ts-ignore
-        rendered_frames[frame] = {
-            ...rendered_frames[frame] || {},
-            subseed: subseed,
-            subseed_strength: subseed_strength
-        }
-    });
+            //@ts-ignore
+            rendered_frames[frame] = {
+                ...rendered_frames[frame] || {},
+                subseed: subseed,
+                subseed_strength: subseed_strength
+            }
+        });
+    }
+    
     var rendered_frames_meta: ParseqRenderedFramesMeta = []
     managedFields.forEach((field) => {
         let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
@@ -255,6 +258,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
             } else {
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
+                    //[field + '_delta']: (field === 'zoom') ? 1+(rendered_frames[frame][field] - rendered_frames[frame - 1][field]) : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
                     [field + '_delta']: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame - 1][field] : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
                     [field + "_pc"]: (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field],
                 }

@@ -76,9 +76,10 @@
     "web-vitals": "^3.1.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --coverage",
+    "compile-grammar": "npx tsc --project src/parseq-lang && npx nearleyc src/parseq-lang/parseq-lang.ne -o src/parseq-lang/parseq-lang.js",
+    "start": "npm run compile-grammar && react-scripts start",
+    "build": "npm run compile-grammar && react-scripts build",
+    "test": "npm run compile-grammar && react-scripts test --coverage",
     "eject": "react-scripts eject",
     "lint": "eslint .",
     "lint:fix": "eslint --fix --ext .js,.jsx ."
@@ -105,6 +106,7 @@
     ]
   },
   "devDependencies": {
+    "@types/nearley": "^2.11.2",
     "@types/node": "^18.14.0",
     "@types/react-color": "^3.0.6",
     "@types/react-copy-to-clipboard": "^5.0.4",

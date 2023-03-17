@@ -1,28 +1,31 @@
 //@ts-ignore
+import { InvocationContext } from './parseq-lang/parseq-lang-ast';
 import { interpret, parse } from './parseq-lang-interpreter';
 
-const basicContext =  {
-  definedVariables: {},
+const basicContext : InvocationContext =  {
   definedFrames: [0,5,10],
   definedValues: [5,0,10],
   fieldName: 'test',
   BPM: 140,
   FPS: 30,
+  allKeyframes: [],
+  variableMap: new Map(),
+  activeKeyframe: 0,
+  frame: 0
 };
 
 const runParseq = (formula: string) => {
   var activeKeyframe = 0;
-  return [ ...Array(11).keys() ].map((i) => 
+  return [ ...Array(11).keys() ].map((i, f) => 
     {
       activeKeyframe = basicContext.definedFrames.includes(i) ? i : activeKeyframe;
-      return interpret(parse(formula), {
-        ...basicContext,
-        activeKeyframe,
-      })(i)
+      const parsed = parse(formula);
+
+      return interpret(parsed, {...basicContext, activeKeyframe, frame: f })
     });
 }
 
-const runTest = (label:string, formula: string, expected: number[]) => {
+const runTest = (label:string, formula: string, expected: (number|string)[]) => {
   const testTag = label + ': ' + formula;
   //  eslint-disable-next-line jest/valid-title
   test(testTag, () => {
@@ -32,6 +35,13 @@ const runTest = (label:string, formula: string, expected: number[]) => {
   });
 }
 
+runTest('literal', '4.5', [4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5]);
+runTest('literal', '-4.5', [-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5]);
+runTest('literal', '"foo"', ["foo","foo","foo","foo","foo","foo","foo","foo","foo","foo","foo"]);
+runTest('literal', '-"foo"', ["-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo"]);
+
+runTest('min', 'min(1,2)', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('max', 'max(1,30)', [30,30,30,30,30,30,30,30,30,30,30]);
 
 runTest('built-in', 'L', [5,4,3,2,1,0,2,4,6,8,10]);
 runTest('built-in', 'S', [5,5,5,5,5,0,0,0,0,0,10]);
@@ -130,7 +140,9 @@ runTest('addition', '1+1', [2,2,2,2,2,2,2,2,2,2,2]);
 runTest('condtional', 'if (1 ) 2', [2,2,2,2,2,2,2,2,2,2,2]);
 runTest('condtional', 'if (0 ) 2', [0,0,0,0,0,0,0,0,0,0,0]);
 runTest('condtional', 'if (0) 2 else 3', [3,3,3,3,3,3,3,3,3,3,3]);
- runTest('condtional', 'if (0 or 1) 2', [2,2,2,2,2,2,2,2,2,2,2]);
+runTest('condtional', 'if (0) 2 else if (1) 3 else 4', [3,3,3,3,3,3,3,3,3,3,3]);
+runTest('condtional', 'if (0) 2 else if (0) 3 else 4', [4,4,4,4,4,4,4,4,4,4,4]);
+runTest('condtional', 'if (0 or 1) 2', [2,2,2,2,2,2,2,2,2,2,2]);
 runTest('condtional', 'if (0 and 1) 2', [0,0,0,0,0,0,0,0,0,0,0]);
 runTest('condtional', 'if (0 or 1 ) 2', [2,2,2,2,2,2,2,2,2,2,2]);
 runTest('condtional', 'if ( 0 or 1) 2', [2,2,2,2,2,2,2,2,2,2,2]);
@@ -176,3 +188,112 @@ runTest('floor', 'floor(v=1.5)', [1,1,1,1,1,1,1,1,1,1,1]);
 runTest('floor', 'floor(v=1,p=2)', [1,1,1,1,1,1,1,1,1,1,1]);
 runTest('floor', 'floor(v=1.444,p=2)', [1.44,1.44,1.44,1.44,1.44,1.44,1.44,1.44,1.44,1.44,1.44]);
 runTest('floor', 'floor(v=1.555,p=2)', [1.55,1.55,1.55,1.55,1.55,1.55,1.55,1.55,1.55,1.55,1.55]);
+
+
+runTest('binary-ops', '1+2', [3,3,3,3,3,3,3,3,3,3,3]);
+runTest('binary-ops', '"a"+2', ["a2","a2","a2","a2","a2","a2","a2","a2","a2","a2","a2"]);
+runTest('binary-ops', '3+"b"', ["3b","3b","3b","3b","3b","3b","3b","3b","3b","3b","3b"]);
+runTest('binary-ops', '1-2', [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]);
+runTest('binary-ops', '"a"-2', [NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN]);
+runTest('binary-ops', '2*2', [4,4,4,4,4,4,4,4,4,4,4]);
+runTest('binary-ops', '"a"*2', [NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN]);
+runTest('binary-ops', '6/3', [2,2,2,2,2,2,2,2,2,2,2]);
+runTest('binary-ops', '"a"/3', [NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN]);
+runTest('binary-ops', '5%2', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '5^4', [625,625,625,625,625,625,625,625,625,625,625]);
+runTest('binary-ops', '5==5', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '4==5', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a"=="a"', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"a"=="b"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"2"==2', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '5!=5', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '4!=5', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"a"!="a"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a"!="b"', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"2"!=2', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('binary-ops', '3<4', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '4<4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '5<4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a"<4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a"<"b"', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"b"<"b"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"c"<"b"', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('binary-ops', '3<=4', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '4<=4', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '5<=4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a"<=4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a"<="b"', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"b"<="b"', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"c"<="b"', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('binary-ops', '3>=4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '4>=4', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '5>=4', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"a">=4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a">="b"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"b">="b"', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"c">="b"', [1,1,1,1,1,1,1,1,1,1,1]);
+
+runTest('binary-ops', '3>4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '4>4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '5>4', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"a">4', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a">"b"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"b">"b"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"c">"b"', [1,1,1,1,1,1,1,1,1,1,1]);
+
+runTest('binary-ops', 'false and false', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'false and true', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'true and false', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'true and true', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '0 and 0', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '0 and 1', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '1 and 0', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '1 and 1', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"" and ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"" and "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" and ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" and "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('binary-ops', 'false && false', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'false && true', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'true && false', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'true && true', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '0 && 0', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '0 && 1', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '1 && 0', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '1 && 1', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"" && ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"" && "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" && ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" && "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('binary-ops', 'false or false', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'false or true', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', 'true or false', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', 'true or true', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '0 or 0', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '0 or 1', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '1 or 0', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '1 or 1', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"" or ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"" or "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" or ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" or "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('binary-ops', 'false || false', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', 'false || true', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', 'true || false', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', 'true || true', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '0 || 0', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '0 || 1', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '1 || 0', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '1 || 1', [1,1,1,1,1,1,1,1,1,1,1]);
+runTest('binary-ops', '"" || ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"" || "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" || ""', [0,0,0,0,0,0,0,0,0,0,0]);
+runTest('binary-ops', '"a" || "a"', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('binary-ops', '"cat" : 0.5', ["(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)",]);

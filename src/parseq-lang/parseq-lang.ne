@@ -1,6 +1,18 @@
-@preprocessor esmodule
+
 @{%
 const moo = require("moo");
+
+// Import all classes defined in parseq-lang-ast
+// TODO - surely we can avoid all this repetition somehow?
+const NumberLiteralAst = require("./parseq-lang-ast").NumberLiteralAst;
+const StringLiteralAst = require("./parseq-lang-ast").StringLiteralAst;
+const BooleanLiteralAst = require("./parseq-lang-ast").BooleanLiteralAst;
+const NegationAst = require("./parseq-lang-ast").NegationAst;
+const FunctionCallAst = require("./parseq-lang-ast").FunctionCallAst;
+const NamedArgAst = require("./parseq-lang-ast").NamedArgAst;
+const UnnamedArgAst = require("./parseq-lang-ast").UnnamedArgAst;
+const IfAst = require("./parseq-lang-ast").IfAst;
+const BinaryOpAst = require("./parseq-lang-ast").BinaryOpAst;
 
 let comment, string_literal, number_literal, identifier, unit, ws;
 
@@ -11,6 +23,9 @@ const lexer = moo.compile({
     gte: ">=",
     gt: ">",
     eq: "==",
+    neq: "!=",
+    and: "&&",
+    or: "||",
     lparan: "(",
     rparan: ")",
     comma: ",",
@@ -18,6 +33,7 @@ const lexer = moo.compile({
     plus: "+",
     minus: "-",
     multiply: "*",
+    pow: "^",
     divide: "/",
     modulo: "%",
     colon: ":",
@@ -53,13 +69,9 @@ function tokenStart(token) {
 }
 
 function tokenEnd(token) {
-    const lastNewLine = token.text.lastIndexOf("\n");
-    if (lastNewLine !== -1) {
-        throw new Error("Unsupported case: token with line breaks");
-    }
     return {
         line: token.line,
-        col: token.col + token.text.length - 1
+        col: token.col + token.text?.length??0 - 1
     };
 }
 
@@ -95,85 +107,49 @@ parameter_list
 call_expression
     ->  identifier _ "(" named_argument_list ")"
         {%
-            d => ({
-                type: "call_expression_named_args",
-                fun_name: d[0],
-                arguments: d[3],
-                start: d[0].start,
-                end: tokenEnd(d[4])
-            })
+            d => new FunctionCallAst(d[0].start, tokenEnd(d[4]), d[3], d[0].value)
         %}
     | identifier _ "(" argument_list ")"
         {%
-            d => ({
-                type: "call_expression",
-                fun_name: d[0],
-                arguments: d[3],
-                start: d[0].start,
-                end: tokenEnd(d[4])
-            })
+            d => new FunctionCallAst(d[0].start, tokenEnd(d[4]), d[3], d[0].value)
         %}
         
 if_expression
     -> "if" __ expression __ expression
         {%
-            d => ({
-                type: "if_expression",
-                condition: d[2],
-                consequent: d[4],
-                start: tokenStart(d[0]),
-                end: d[4].end
-            })
+            d => new IfAst(tokenStart(d[0]), d[4].end, [d[2], d[4]])
         %}
     |  "if" __ expression _ expression _
        "else" __ expression
         {%
-            d => ({
-                type: "if_expression",
-                condition: d[2],
-                consequent: d[4],
-                alternate: d[8],
-                start: tokenStart(d[0]),
-                end: d[8].end
-            })
+            d => new IfAst(tokenStart(d[0]), d[8].end, [d[2], d[4], d[8]])
         %}
     |  "if" __ expression _ expression _
        "else" __ if_expression
        {%
-            d => ({
-                type: "if_expression",
-                condition: d[2],
-                consequent: d[4],
-                alternate: d[8],
-                start: tokenStart(d[0]),
-                end: d[8].end
-            })
+            d => new IfAst(tokenStart(d[0]), d[8].end, [d[2], d[4], d[8]])
        %}
 
 argument_list
     -> null {% () => [] %}
-    |  _ expression _  {% d => [d[1]] %}
+    |  _ expression _ 
+        {%
+            d => [new UnnamedArgAst(tokenStart(d[1]), tokenEnd(d[1]), [d[1]])]
+        %}
     |  _ expression _ "," argument_list
         {%
-            d => [d[1], ...d[4]]
-        %}
+            d => [new UnnamedArgAst(tokenStart(d[1]), tokenEnd(d[1]), [d[1]]), ...d[4]]
+        %} 
 
 named_argument_list
     ->  _ identifier _ "=" _ expression _
         {%
-            d => [{
-                    name: d[1],
-                    value: d[5]
-                  }]
+            d => [new NamedArgAst(d[1].start, d[5].end, [d[5]], d[1].value)]
         %}
+
     |  _ identifier _ "=" _ expression _ "," named_argument_list
         {%
-            d => [{
-                    name: d[1],
-                    value: d[5]
-                  },
-                  ...d[8]
-                  ]
+            d => [new NamedArgAst(d[1].start, d[5].end, [d[5]], d[1].value), ...d[8]]
         %}
 
 expression -> boolean_expression         {% id %}
@@ -182,32 +158,18 @@ boolean_expression
     -> comparison_expression     {% id %}
     |  comparison_expression _ boolean_operator _ boolean_expression
         {%
-            d => ({
-                type: "binary_operation",
-                operator: convertToken(d[2]),
-                left: d[0],
-                right: d[4],
-                start: d[0].start,
-                end: d[4].end
-            })
+            d => new BinaryOpAst(d[0].start, d[4].end, [d[0], d[4]], d[2].value)
         %}
 
 boolean_operator
     -> "and"      {% id %}
-    |  "or"       {% id %}
+    |  "or"       {% id %}    
 
 comparison_expression
     -> additive_expression    {% id %}
     |  additive_expression _ comparison_operator _ comparison_expression
         {%
-            d => ({
-                type: "binary_operation",
-                operator: d[2],
-                left: d[0],
-                right: d[4],
-                start: d[0].start,
-                end: d[4].end
-            })
+            d => new BinaryOpAst(d[0].start, d[4].end, [d[0], d[4]], d[2].value)
         %}
 
 comparison_operator
@@ -216,45 +178,31 @@ comparison_operator
     |  "<"   {% convertTokenId %}
     |  "<="  {% convertTokenId %}
     |  "=="  {% convertTokenId %}
+    |  "!="  {% convertTokenId %}
+    |  "&&"  {% convertTokenId %}
+    |  "||"  {% convertTokenId %}
 
 additive_expression
     -> multiplicative_expression    {% id %}
     |  multiplicative_expression _ [+-] _ additive_expression
         {%
-            d => ({
-                type: "binary_operation",
-                operator: convertToken(d[2]),
-                left: d[0],
-                right: d[4],
-                start: d[0].start,
-                end: d[4].end
-            })
+            d => new BinaryOpAst(d[0].start, d[4].end, [d[0], d[4]], d[2].value)
         %}
+
 
 multiplicative_expression
     -> negation     {% id %}
-    |  negation _ [*/%] _ multiplicative_expression
+    |  negation _ [*/%\:\^] _ multiplicative_expression
         {%
-            d => ({
-                type: "binary_operation",
-                operator: convertToken(d[2]),
-                left: d[0],
-                right: d[4],
-                start: d[0].start,
-                end: d[4].end
-            })
+            d => new BinaryOpAst(d[0].start, d[4].end, [d[0], d[4]], d[2].value)
         %}
+
 
 negation
     -> unary_expression     {% id %}
     | "-" unary_expression
         {%
-            d => ({
-                type: "negation",
-                value: d[1],
-                start: d[0].start,
-                end: d[1].end
-            })        
+            d => new NegationAst(d[0].start, d[1].end, [d[1]])
         %}    
 
 unary_expression
@@ -280,26 +228,19 @@ unary_expression
 boolean_literal
     -> "true"
         {%
-            d => ({
-                type: "boolean_literal",
-                value: true,
-                start: tokenStart(d[0]),
-                end: tokenEnd(d[0])
-            })
+            d => new BooleanLiteralAst(tokenStart(d[0]),tokenEnd(d[0]), [], true)
         %}
     |  "false"
         {%
-            d => ({
-                type: "boolean_literal",
-                value: false,
-                start: tokenStart(d[0]),
-                end: tokenEnd(d[0])
-            })
+            d => new BooleanLiteralAst(tokenStart(d[0]),tokenEnd(d[0]), [], false)
         %}
 
 line_comment -> %comment {% convertTokenId %}
 
-string_literal -> %string_literal {% convertTokenId %}
+string_literal -> %string_literal
+        {% 
+            d => new StringLiteralAst(d[0].start, d[0].end, [], d[0].value)
+        %}
 
 number -> %number_literal
         {%
@@ -316,12 +257,7 @@ number -> %number_literal
                         end: d[0].end
                     };
                 } else {
-                    return {
-                        type: "number_literal",
-                        value: Number(value),
-                        start: d[0].start,
-                        end: d[0].end
-                    };
+                    return new NumberLiteralAst(d[0].start, d[0].end, [], Number(value));
                 }
             }
         %}

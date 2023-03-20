@@ -526,3 +526,189 @@ test('Delegated seed', async () => {
   await loadAndRender(fixture);
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
+
+
+test('Tutorial 2 part 2', async () => {
+  const fixture = {
+    "prompts": [
+      {
+        "name": "Prompt 1",
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a ((vicious snake showing fangs)) \n${\nif (prompt_weight_2>0)\n  \"(daytime, spring, foliage, grass:\" + prompt_weight_2 + \")\"\nelse\n  \"(nighttime, winter, snow, dead plants:\" + -prompt_weight_2 + \")\"\n}\n, Intricate, High Detail, dramatic",
+        "negative": "${if (prompt_weight_2>0) \"(nighttime, winter, snow, dead plants)\" else \"(daytime, spring, foliage, grass)\"} (toxic alien mushroom), watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate, obscured, leaves, cat, leopard",
+        "allFrames": true,
+        "from": 0,
+        "to": 45,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 30,
+          "type": "custom",
+          "custom": "prompt_weight_1"
+        }
+      },
+      {
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a ((toxic alien mushroom))\n${\nif (prompt_weight_2>0)\n  \"(daytime, spring, foliage, grass:\" + prompt_weight_2 + \")\"\nelse\n  \"(nighttime, winter, snow, dead plants:\" + -prompt_weight_2 + \")\"\n}\n, Intricate, High Detail, dramatic",
+        "negative": "${if (prompt_weight_2>0) \"(nighttime, winter, snow, dead plants)\" else \"(daytime, spring, foliage, grass)\"} (vicious snake showing fangs), watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate, obscured, leaves, cat, leopard",
+        "from": 15,
+        "to": 75,
+        "allFrames": true,
+        "name": "Prompt 2",
+        "overlap": {
+          "inFrames": 30,
+          "outFrames": 30,
+          "type": "custom",
+          "custom": "1-prompt_weight_1"
+        }
+      }
+    ],
+    "options": {
+      "input_fps": "",
+      "bpm": "120",
+      "output_fps": "10",
+      "cc_window_width": 0,
+      "cc_window_slide_rate": 1,
+      "cc_use_input": false
+    },
+    "managedFields": [
+      "seed",
+      "prompt_weight_1",
+      "strength",
+      "translation_z",
+      "rotation_3d_z",
+      "prompt_weight_2"
+    ],
+    "displayedFields": [
+      "strength",
+      "rotation_3d_z",
+      "translation_z",
+      "prompt_weight_1",
+      "prompt_weight_2"
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "seed": 20,
+        "seed_i": "S+saw(p=1b, a=5)",
+        "strength": 0.725,
+        "translation_z": "",
+        "rotation_3d_y": "",
+        "prompt_weight_1_i": "if (floor(b)%2==0) 1 else 0",
+        "strength_i": "S-pulse(p=1b, pw=1f, a=0.25)",
+        "translation_z_i": "if (floor(b)%4<2) prev_computed_value+3  else prev_computed_value",
+        "rotation_3d_z_i": "if (floor(b)%4>=2) prev_computed_value+3  else prev_computed_value",
+        "prompt_weight_2": 1.5
+      },
+      {
+        "frame": 159,
+        "seed": "",
+        "translation_z": "",
+        "rotation_3d_y": "",
+        "prompt_weight_2": -1.5
+      }
+    ]
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});
+
+
+test('Tutorial 2 part 1', async () => {
+  const fixture = {
+
+    "prompts": [
+      {
+        "name": "Prompt 1",
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (cat), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "allFrames": false,
+        "from": 0,
+        "to": 45,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 30,
+          "type": "linear",
+          "custom": "prompt_weight_1"
+        }
+      },
+      {
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (duck), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "from": 16,
+        "to": 75,
+        "allFrames": false,
+        "name": "Prompt 2",
+        "overlap": {
+          "inFrames": 30,
+          "outFrames": 30,
+          "type": "linear",
+          "custom": "prompt_weight_2"
+        }
+      },
+      {
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (fox), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "from": 46,
+        "to": 105,
+        "allFrames": false,
+        "name": "Prompt 3",
+        "overlap": {
+          "inFrames": 30,
+          "outFrames": 30,
+          "type": "linear",
+          "custom": "prompt_weight_3"
+        }
+      },
+      {
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (bear), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "from": 76,
+        "to": 120,
+        "allFrames": false,
+        "name": "Prompt 4",
+        "overlap": {
+          "inFrames": 30,
+          "outFrames": 0,
+          "type": "linear",
+          "custom": "prompt_weight_4"
+        }
+      }
+    ],
+    "options": {
+      "input_fps": "",
+      "bpm": 140,
+      "output_fps": "10",
+      "cc_window_width": 0,
+      "cc_window_slide_rate": 1,
+      "cc_use_input": false
+    },
+    "managedFields": [
+      "seed",
+      "strength",
+      "prompt_weight_1",
+      "prompt_weight_2",
+      "translation_z",
+      "rotation_3d_y"
+    ],
+    "displayedFields": [
+      "seed",
+      "strength"
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "seed": -1,
+        "zoom": 1,
+        "zoom_i": "C"
+      },
+      {
+        "frame": 60,
+        "zoom": 0.5
+      },
+      {
+        "frame": 120,
+        "zoom": 1
+      }
+    ]
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});

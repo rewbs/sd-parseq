@@ -1,4 +1,4 @@
-import { Box, Button, Grid, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Grid, List, ListItem, ListItemButton, ListItemIcon, ListItemText, TextField, Tooltip, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useMeasure } from "react-use";
@@ -178,7 +178,7 @@ export function FieldSelector(props: FieldSelectorProps) {
                                 console.log(props.keyframes);
                                 props.keyframes.forEach(kf => { 
                                     console.log(kf);
-                                    Object.keys(kf).filter(field => field !="frame" && !field.endsWith("_i")).forEach(field => {
+                                    Object.keys(kf).filter(field => field !== "frame" && !field.endsWith("_i")).forEach(field => {
                                         if (isDefinedField(kf[field]) || isDefinedField(kf[field+"_i"])) {
                                             usedFields.add(field);
                                         }

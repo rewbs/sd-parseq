@@ -491,6 +491,9 @@ const ParseqUI = (props) => {
 
   const navigateToNextCell = useCallback((params) => {
     const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
+    if (graphPromptMarkers) {
+      setGridCursorPos(params.api.getDisplayedRowAtIndex(nextCell.rowIndex).data.frame);
+    }
     if (params.event.shiftKey) {
       if (rangeSelection.anchor === undefined) {
         setRangeSelection({
@@ -507,7 +510,7 @@ const ParseqUI = (props) => {
       setRangeSelection({});
     }
     return nextCell;
-  }, [rangeSelection]);
+  }, [rangeSelection, graphPromptMarkers]);
 
   const onCellKeyPress = useCallback((e) => {
     if (e.event) {
@@ -856,6 +859,7 @@ const ParseqUI = (props) => {
           }
         }}
         onCellClicked={(e) => {
+          setGridCursorPos(e.data.frame);
           if (e.event.shiftKey) {
             setRangeSelection({
               anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
@@ -866,7 +870,6 @@ const ParseqUI = (props) => {
           }
         }}
         onCellMouseOver={(e) => {
-          setGridCursorPos(e.data.frame);
           if (e.event.buttons === 1) {
             setRangeSelection({
               anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
@@ -1037,7 +1040,7 @@ const ParseqUI = (props) => {
         }
       }
     }}
-  />, [managedFields, displayedFields]);
+  />, [managedFields, displayedFields, prompts, keyframes]);
 
   const editableGraph = useMemo(() => renderedData && <div>
     <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>

@@ -1,10 +1,9 @@
 //@ts-ignore
-import { linear, polynomial, step } from 'everpolate';
+import { linear, polynomial } from 'everpolate';
 //@ts-ignore
 import Spline from 'cubic-spline';
 import BezierEasing from "bezier-easing";
 import { toFixedNumber, toFixedCeil, toFixedFloor, frameToBeat, frameToSec } from '../utils/maths';
-import { start } from 'repl';
 
 export type InvocationContext = {
   fieldName: string;
@@ -169,8 +168,10 @@ export class BinaryOpAst extends ParseqAstNode {
         //@ts-ignore - fall back to JS type juggling.
         return left ** right;
       case '==':
+        /* eslint-disable eqeqeq */
         return left == right ? 1 : 0;
       case '!=':
+        /* eslint-disable eqeqeq */
         return left != right ? 1 : 0;
       case '<':
         return left < right ? 1 : 0;

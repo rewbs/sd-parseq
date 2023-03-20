@@ -34,7 +34,8 @@ import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager'
 import { Editable } from './Editable';
 import { parseqRender } from './parseq-renderer';
 import { UserAuthContextProvider } from "./UserAuthContext";
-import { fieldNametoRGBa, frameToBeats, frameToSeconds, getUTCTimeStamp, getVersionNumber } from './utils';
+import { fieldNametoRGBa, getUTCTimeStamp, getVersionNumber } from './utils/utils';
+import { frameToBeats, frameToSeconds } from './utils/maths';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -1014,15 +1015,21 @@ const ParseqUI = (props) => {
 
   const managedFieldSelector = useMemo(() => managedFields && <FieldSelector
     selectedFields={managedFields}
+    keyframes={keyframes}
+    prompts={prompts}
     customFields={[]}
-    onChange={(fields) => {
+    onChange={(newManagedFields) => {
       const oldManagedFields = managedFields;
-      setManagedFields(fields);
+      if (newManagedFields.length !== oldManagedFields.length
+        || !newManagedFields.every(f => oldManagedFields.includes(f))) {      
+        // This update MUST be conditional, else we get into an infinite react loop.
+        setManagedFields(newManagedFields);
+      }
 
       // Update displayedFields to remove any missing fields or add any new fields.
-      const addedFields = fields.filter((field) => !oldManagedFields.includes(field));       
+      const addedManangedFields = newManagedFields.filter((field) => !oldManagedFields.includes(field));       
       if (displayedFields) {
-        let newDisplayedFields = displayedFields.filter((field) => managedFields.includes(field)).concat(addedFields);
+        let newDisplayedFields = displayedFields.filter((field) => newManagedFields.includes(field)).concat(addedManangedFields);
           if (displayedFields.length !== newDisplayedFields.length
             || !newDisplayedFields.every(f => displayedFields.includes(f))) {
           // This update MUST be conditional, else we get into an infinite react loop.

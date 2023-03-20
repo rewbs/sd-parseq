@@ -15,7 +15,7 @@ import {
   BrowserRouter, Route, Routes
 } from "react-router-dom";
 import Deforum from './Deforum';
-import * as utils from './utils';
+import * as utils from './utils/utils';
 
 //@ts-ignore
 Dexie.dependencies.indexedDB = indexedDB;

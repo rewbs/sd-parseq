@@ -1,7 +1,9 @@
 import { TextField, Button } from '@mui/material';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { parse, interpret, InterpreterContext } from './parseq-lang-interpreter'
+import { parse  } from './parseq-lang-interpreter'
+
+import { InterpreterContext } from './parseq-lang/parseq-lang-ast'
 
 const Interpreter = () => {
 
@@ -28,14 +30,14 @@ const Interpreter = () => {
     ]    
 
     const fieldName = "denoise";
-    const context = new InterpreterContext({
+    const context = {
       fieldName: fieldName,
       activeKeyframe: 0,
       definedFrames: testKeyframes.filter(kf => typeof kf[fieldName] !== "undefined").map(kf => kf.frame),
       definedValues: testKeyframes.filter(kf => typeof kf[fieldName] !== "undefined").map(kf => kf[fieldName]),
       FPS: 20,
       BPM: 140,
-    });
+    };
 
     setOutputText(`Parsing: ${input.current}`);
     let parsed;
@@ -49,7 +51,7 @@ const Interpreter = () => {
 
     setOutputText(`Parsing done. Interpreting: ${input.current}`);
 
-    const frameFetcher = interpret(parsed, context)
+    const frameFetcher = parsed.invoke(context);
     if (!frameFetcher) {
       setOutputText(`Interpreting: ${input.current} for ${context.fieldName}:${context.activeKeyframe} \n\nFailed, see console.`);
       return;

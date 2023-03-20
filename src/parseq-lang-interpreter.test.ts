@@ -1,6 +1,6 @@
 //@ts-ignore
-import { InvocationContext } from './parseq-lang/parseq-lang-ast';
-import { interpret, parse } from './parseq-lang-interpreter';
+import { InvocationContext, ParseqAstNode } from './parseq-lang/parseq-lang-ast';
+import { parse } from './parseq-lang-interpreter';
 
 const basicContext : InvocationContext =  {
   definedFrames: [0,5,10],
@@ -19,9 +19,9 @@ const runParseq = (formula: string) => {
   return [ ...Array(11).keys() ].map((i, f) => 
     {
       activeKeyframe = basicContext.definedFrames.includes(i) ? i : activeKeyframe;
-      const parsed = parse(formula);
+      const parsed = parse(formula) as ParseqAstNode;
 
-      return interpret(parsed, {...basicContext, activeKeyframe, frame: f })
+      return parsed.invoke({...basicContext, activeKeyframe, frame: f })
     });
 }
 
@@ -35,89 +35,6 @@ const runTest = (label:string, formula: string, expected: (number|string)[]) => 
   });
 }
 
-runTest('literal', '4.5', [4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5]);
-runTest('literal', '-4.5', [-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5]);
-runTest('literal', '"foo"', ["foo","foo","foo","foo","foo","foo","foo","foo","foo","foo","foo"]);
-runTest('literal', '-"foo"', ["-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo","-foo"]);
-
-runTest('min', 'min(1,2)', [1,1,1,1,1,1,1,1,1,1,1]);
-runTest('max', 'max(1,30)', [30,30,30,30,30,30,30,30,30,30,30]);
-
-runTest('built-in', 'L', [5,4,3,2,1,0,2,4,6,8,10]);
-runTest('built-in', 'S', [5,5,5,5,5,0,0,0,0,0,10]);
-runTest('built-in', 'round(C,2)', [5,3.28,1.74,0.56,-0.08,0,0.92,2.56,4.74,7.28,10]);
-runTest('built-in', 'P', [5,2.8,1.2,0.2,-0.2,0,0.8,2.2,4.2,6.8,10]);
-runTest('built-in', 'f', [0,1,2,3,4,5,6,7,8,9,10]);
-runTest('built-in', 'round(b,2)', [0,0.08,0.16,0.23,0.31,0.39,0.47,0.54,0.62,0.7,0.78]);
-runTest('built-in', 'round(s,2)', [0,0.03,0.07,0.1,0.13,0.17,0.2,0.23,0.27,0.3,0.33]);
-runTest('built-in', 'k', [0,1,2,3,4,0,1,2,3,4,0]);
-runTest('built-in', 'active_keyframe', [0,0,0,0,0,5,5,5,5,5,10]);
-runTest('built-in', 'next_keyframe', [5,5,5,5,5,10,10,10,10,10,10]);
-runTest('built-in', 'active_keyframe_value', [5,5,5,5,5,0,0,0,0,0,10]);
-runTest('built-in', 'next_keyframe_value', [0,0,0,0,0,10,10,10,10,10,10]);
-
-runTest('units', '1f', [1,1,1,1,1,1,1,1,1,1,1]);
-runTest('units', '1s', [30,30,30,30,30,30,30,30,30,30,30]);
-runTest('units', '1b', [12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858,12.857142857142858]);
-
-runTest('negation', '-1', [-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]);
-runTest('negation', '-f', [-0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10]);
-runTest('negation', '-(2*f)', [-0,-2,-4,-6,-8,-10,-12,-14,-16,-18,-20]);
-
-runTest('sin-unnamed-args', 'round(sin(10),2)', [0,0.59,0.95,0.95,0.59,0,-0.59,-0.95,-0.95,-0.59,-0]);
-runTest('sin-unnamed-args', 'round(sin(10, 1),2)', [0.59,0.95,0.95,0.59,0,-0.59,-0.95,-0.95,-0.59, -0, 0.59]); //phase shift
-runTest('sin-unnamed-args', 'round(sin(10, 1, 2),2)', [1.18,1.9,1.9,1.18, 0,-1.18,-1.9,-1.9,-1.18, -0,1.18]); //amplitude
-runTest('sin-unnamed-args', 'round(sin(10, 1, 2, 10),2)', [11.18,11.9,11.9,11.18,10,8.82,8.1,8.1,8.82,10,11.18]); //centre
-runTest('sin-unnamed-args', 'round(sin(5, 1, 2, 10, 0.5),2)', [11.9,11.18,8.82,0,0,11.9,11.18,8.82,0,0,11.9]); // fractional limit
-runTest('sin-unnamed-args', 'round(sin(5, 1, 2, 10, 0.5, 99),2)', [11.9,11.18,8.82,0,0,11.9,11.18,8.82,0,0,11.9]);  //pulse should be ignored
-
-runTest('sq-unnamed-args', 'round(sq(10),2)', [1,1,1,1,1,1,-1,-1,-1,-1,-1]);
-runTest('sq-unnamed-args', 'round(sq(10, 1),2)', [1,1,1,1,1,-1,-1,-1,-1,-1,1]);  //phase shift
-runTest('sq-unnamed-args', 'round(sq(10, 1, 2),2)', [2,2,2,2,2,-2,-2,-2,-2,-2,2]); //amplitude
-runTest('sq-unnamed-args', 'round(sq(10, 1, 2, 10),2)', [12,12,12,12,12,8,8,8,8,8,12]); //centre
-runTest('sq-unnamed-args', 'round(sq(5, 1, 2, 10, 0.5),2)', [12,12,8,0,0,12,12,8,0,0,12]); // fractional limit
-runTest('sq-unnamed-args', 'round(sq(5, 1, 2, 10, 0.5, 99),2)', [12,12,8,0,0,12,12,8,0,0,12]);  //pulse should be ignored
-
-runTest('tri-unnamed-args', 'round(tri(10),2)', [0,0.4,0.8,0.8,0.4,0,-0.4,-0.8,-0.8,-0.4,-0]);
-runTest('tri-unnamed-args', 'round(tri(10, 1),2)', [0.4,0.8,0.8,0.4,0,-0.4,-0.8,-0.8,-0.4,0,0.4]);  //phase shift
-runTest('tri-unnamed-args', 'round(tri(10, 1, 2),2)', [0.8,1.6,1.6,0.8,0,-0.8,-1.6,-1.6,-0.8,0,0.8]); //amplitude
-runTest('tri-unnamed-args', 'round(tri(10, 1, 2, 10),2)', [10.8,11.6,11.6,10.8,10,9.2,8.4,8.4,9.2,10,10.8]); //centre
-runTest('tri-unnamed-args', 'round(tri(5, 1, 2, 10, 0.5),2)', [11.6,10.8,9.2,0,0,11.6,10.8,9.2,0,0,11.6]); // fractional limit
-runTest('tri-unnamed-args', 'round(tri(5, 1, 2, 10, 0.5, 99),2)', [11.6,10.8,9.2,0,0,11.6,10.8,9.2,0,0,11.6]);  //pulse should be ignored
-
-runTest('saw-unnamed-args', 'round(saw(10),2)', [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0]);
-runTest('saw-unnamed-args', 'round(saw(10, 1),2)', [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0,0.1]);  //phase shift
-runTest('saw-unnamed-args', 'round(saw(10, 1, 2),2)', [0.2,0.4,0.6,0.8,1,1.2,1.4,1.6,1.8,0,0.2]); //amplitude
-runTest('saw-unnamed-args', 'round(saw(10, 1, 2, 10),2)', [10.2,10.4,10.6,10.8,11,11.2,11.4,11.6,11.8,10,10.2]); //centre
-runTest('saw-unnamed-args', 'round(saw(5, 1, 2, 10, 0.5),2)', [10.4,10.8,11.2,0,0,10.4,10.8,11.2,0,0,10.4]); // fractional limit
-runTest('saw-unnamed-args', 'round(saw(5, 1, 2, 10, 0.5, 99),2)', [10.4,10.8,11.2,0,0,10.4,10.8,11.2,0,0,10.4]);  //pulse should be ignored
-
-runTest('pulse-unnamed-args', 'round(pulse(10),2)', [1,1,1,1,1,0,0,0,0,0,1]);
-runTest('pulse-unnamed-args', 'round(pulse(10, 1),2)', [1,1,1,1,0,0,0,0,0,1,1]);  //phase shift
-runTest('pulse-unnamed-args', 'round(pulse(10, 1, 2),2)', [2,2,2,2,0,0,0,0,0,2,2]); //amplitude
-runTest('pulse-unnamed-args', 'round(pulse(10, 1, 2, 10),2)', [12,12,12,12,10,10,10,10,10,12,12]); //centre
-runTest('pulse-unnamed-args', 'round(pulse(5, 0, 2, 10, 0.5, 1),2)', [12,10,10,0,0,12,10,10,0,0,12]); // limit
-runTest('pulse-unnamed-args', 'round(pulse(5, 0, 2, 10, 0, 2),2)', [12,12,10,10,10,12,12,10,10,10,12]);  //pulse width
-
-
-runTest('sin-named-args', 'round(sin(p=10),2)', [0,0.59,0.95,0.95,0.59,0,-0.59,-0.95,-0.95,-0.59,-0]);
-runTest('sin-named-args', 'round(sin(p=10, ps=1),2)', [0.59,0.95,0.95,0.59,0,-0.59,-0.95,-0.95,-0.59, -0, 0.59]); //phase shift
-runTest('sin-named-args', 'round(sin(p=10, ps=1, a=2),2)', [1.18,1.9,1.9,1.18, 0,-1.18,-1.9,-1.9,-1.18, -0,1.18]); //amplitude
-runTest('sin-named-args', 'round(sin(p=10, ps=1, a=2, c=10),2)', [11.18,11.9,11.9,11.18,10,8.82,8.1,8.1,8.82,10,11.18]); //centre
-runTest('sin-named-args', 'round(sin(p=5, ps=1, a=2, c=10, li=0.5),2)', [11.9,11.18,8.82,0,0,11.9,11.18,8.82,0,0,11.9]); // fractional limit
-runTest('sin-named-args', 'round(sin(p=5, ps=1, a=2, c=10, li=0.5, pw=99),2)', [11.9,11.18,8.82,0,0,11.9,11.18,8.82,0,0,11.9]);  //pulse should be ignored
-
-runTest('sq-named-args', 'round(sq(p=10),2)', [1,1,1,1,1,1,-1,-1,-1,-1,-1]);
-runTest('sq-named-args', 'round(sq(p=10, ps=1),2)', [1,1,1,1,1,-1,-1,-1,-1,-1,1]);  //phase shift
-runTest('sq-named-args', 'round(sq(p=10, ps=1, a=2),2)', [2,2,2,2,2,-2,-2,-2,-2,-2,2]); //amplitude
-runTest('sq-named-args', 'round(sq(p=10, ps=1, a=2, c=10),2)', [12,12,12,12,12,8,8,8,8,8,12]); //centre
-runTest('sq-named-args', 'round(sq(p=5, ps=1, a=2, c=10, li=0.5),2)', [12,12,8,0,0,12,12,8,0,0,12]); // fractional limit
-runTest('sq-named-args', 'round(sq(p=5, ps=1, a=2, c=10, li=0.5, pw=99),2)', [12,12,8,0,0,12,12,8,0,0,12]);  //pulse should be ignored
-
-runTest('tri-named-args', 'round(tri(p=10),2)', [0,0.4,0.8,0.8,0.4,0,-0.4,-0.8,-0.8,-0.4,-0]);
-runTest('tri-named-args', 'round(tri(p=10, ps=1),2)', [0.4,0.8,0.8,0.4,0,-0.4,-0.8,-0.8,-0.4,0,0.4]);  //phase shift
-runTest('tri-named-args', 'round(tri(p=10, ps=1, a=2),2)', [0.8,1.6,1.6,0.8,0,-0.8,-1.6,-1.6,-0.8,0,0.8]); //amplitude
-runTest('tri-named-args', 'round(tri(p=10, ps=1, a=2, c=10),2)', [10.8,11.6,11.6,10.8,10,9.2,8.4,8.4,9.2,10,10.8]); //centre
 runTest('tri-named-args', 'round(tri(p=5, ps=1, a=2, c=10, li=0.5),2)', [11.6,10.8,9.2,0,0,11.6,10.8,9.2,0,0,11.6]); // fractional limit
 runTest('tri-named-args', 'round(tri(p=5, ps=1, a=2, c=10, li=0.5, pw=99),2)', [11.6,10.8,9.2,0,0,11.6,10.8,9.2,0,0,11.6]);  //pulse should be ignored
 
@@ -149,6 +66,9 @@ runTest('condtional', 'if ( 0 or 1) 2', [2,2,2,2,2,2,2,2,2,2,2]);
 runTest('condtional', 'if ( 0 or 1 ) 2', [2,2,2,2,2,2,2,2,2,2,2]);
 
 runTest('precedence', '1+1*5', [6,6,6,6,6,6,6,6,6,6,6]);
+runTest('precedence', '5*1+1', [6,6,6,6,6,6,6,6,6,6,6]);
+runTest('precedence', '(1+1)*5', [10,10,10,10,10,10,10,10,10,10,10]);
+runTest('precedence', '5*(1+1)', [10,10,10,10,10,10,10,10,10,10,10]);
 
 runTest('round', 'round(1)', [1,1,1,1,1,1,1,1,1,1,1]);
 runTest('round', 'round(1.4)', [1,1,1,1,1,1,1,1,1,1,1]);
@@ -297,3 +217,22 @@ runTest('binary-ops', '"a" || ""', [0,0,0,0,0,0,0,0,0,0,0]);
 runTest('binary-ops', '"a" || "a"', [0,0,0,0,0,0,0,0,0,0,0]);
 
 runTest('binary-ops', '"cat" : 0.5', ["(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)","(cat:0.5)",]);
+
+runTest('bez', 'round(bez(), 2)', [5,4.68,3.46,1.54,0.32,0,0.64,3.09,6.91,9.36,10]);
+runTest('bez', 'round(bez(0.1), 2)', [5,3.64,2.15,0.99,0.26,0,2.71,5.69,8.01,9.49,10]);
+runTest('bez', 'round(bez(0.1,0.9), 2)', [5,1.65,0.64,0.2,0.04,0,6.71,8.73,9.59,9.93,10]);
+runTest('bez', 'round(bez(0.1,0.9,0.9), 2)', [5,2.21,1.16,0.54,0.17,0,5.59,7.68,8.92,9.66,10]);
+runTest('bez', 'round(bez(0.1,0.9,0.9,-0.5), 2)', [5,3.36,3.5,3.7,3.39,0,3.28,3,2.6,3.23,10]);
+
+runTest('bez', 'round(bez(from=-10), 2)', [-10,-9.36,-6.91,-3.09,-0.64,-10,-8.71,-3.82,3.82,8.71,-10]);
+runTest('bez', 'round(bez(to=-10), 2)', [5,4.03,0.37,-5.37,-9.03,0,-0.64,-3.09,-6.91,-9.36,10]);
+runTest('bez', 'round(bez(span=3), 2)', [5,3.98,1.02,0,0,0,2.04,7.96,10,10,10]);
+runTest('bez', 'round(bez(from=-10, to=10, span=3), 2)', [-10,-5.93,5.93,10,10,-10,-5.93,5.93,10,10,-10]);
+
+//TODO - these have no tests
+
+//runTest('slide', 'slide()', [0,0,0,0,0,0,0,0,0,0,0]);
+//runTest('info_match', 'info_match()', [0,0,0,0,0,0,0,0,0,0,0]);
+//runTest('info_match_count', 'info_match_count()', [0,0,0,0,0,0,0,0,0,0,0]);
+//runTest('info_match_last', 'info_match_last()', [0,0,0,0,0,0,0,0,0,0,0]);
+//runTest('prev_computed_value', 'prev_computed_value+1', [0,0,0,0,0,0,0,0,0,0,0]);

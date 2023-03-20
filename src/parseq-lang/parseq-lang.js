@@ -10,12 +10,14 @@ const moo = require("moo");
 const NumberLiteralAst = require("./parseq-lang-ast").NumberLiteralAst;
 const StringLiteralAst = require("./parseq-lang-ast").StringLiteralAst;
 const BooleanLiteralAst = require("./parseq-lang-ast").BooleanLiteralAst;
+const NumberWithUnitAst = require("./parseq-lang-ast").NumberWithUnitAst;
 const NegationAst = require("./parseq-lang-ast").NegationAst;
 const FunctionCallAst = require("./parseq-lang-ast").FunctionCallAst;
 const NamedArgAst = require("./parseq-lang-ast").NamedArgAst;
 const UnnamedArgAst = require("./parseq-lang-ast").UnnamedArgAst;
 const IfAst = require("./parseq-lang-ast").IfAst;
 const BinaryOpAst = require("./parseq-lang-ast").BinaryOpAst;
+const VariableReferenceAst = require("./parseq-lang-ast").VariableReferenceAst;
 
 let comment, string_literal, number_literal, identifier, unit, ws;
 
@@ -161,19 +163,14 @@ var grammar = {
                 },
     {"name": "unary_expression", "symbols": ["number"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["identifier"], "postprocess": 
-        d => ({
-            type: "var_reference",
-            var_name: d[0],
-            start: d[0].start,
-            end: d[0].end
-        })
+        d => new VariableReferenceAst(d[0].start, d[0].end, [], d[0].value)
                 },
     {"name": "unary_expression", "symbols": ["call_expression"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["string_literal"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["if_expression"], "postprocess": id},
     {"name": "unary_expression", "symbols": ["boolean_literal"], "postprocess": id},
     {"name": "unary_expression", "symbols": [{"literal":"("}, "_", "expression", "_", {"literal":")"}], "postprocess": 
-        data => data[2]
+        d => d[2]
                 },
     {"name": "boolean_literal", "symbols": [{"literal":"true"}], "postprocess": 
         d => new BooleanLiteralAst(tokenStart(d[0]),tokenEnd(d[0]), [], true)
@@ -191,13 +188,9 @@ var grammar = {
             // a lookbehind regex in the lexer, which breaks Safari.
             let [_, value, unit] = d[0].text.match(/(.*?)([fsb])?$/);
             if (unit) {
-                return {
-                    type: "number_with_unit",
-                    value: Number(value),
-                    unit: unit,
-                    start: d[0].start,
-                    end: d[0].end
-                };
+                return new NumberWithUnitAst(d[0].start, d[0].end, [
+                    new NumberLiteralAst(d[0].start, d[0].end, [], Number(value))
+                ], unit);
             } else {
                 return new NumberLiteralAst(d[0].start, d[0].end, [], Number(value));
             }

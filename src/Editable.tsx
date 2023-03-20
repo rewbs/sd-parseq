@@ -12,7 +12,8 @@ import 'chart.js/auto';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
-import { fieldNametoRGBa, frameToBeats, frameToSeconds } from './utils';
+import { fieldNametoRGBa, } from './utils/utils';
+import { frameToBeats, frameToSeconds } from './utils/maths';
 
 const ChartJSAddPointPlugin = {
     id: 'click',

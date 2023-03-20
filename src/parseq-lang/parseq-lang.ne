@@ -7,12 +7,14 @@ const moo = require("moo");
 const NumberLiteralAst = require("./parseq-lang-ast").NumberLiteralAst;
 const StringLiteralAst = require("./parseq-lang-ast").StringLiteralAst;
 const BooleanLiteralAst = require("./parseq-lang-ast").BooleanLiteralAst;
+const NumberWithUnitAst = require("./parseq-lang-ast").NumberWithUnitAst;
 const NegationAst = require("./parseq-lang-ast").NegationAst;
 const FunctionCallAst = require("./parseq-lang-ast").FunctionCallAst;
 const NamedArgAst = require("./parseq-lang-ast").NamedArgAst;
 const UnnamedArgAst = require("./parseq-lang-ast").UnnamedArgAst;
 const IfAst = require("./parseq-lang-ast").IfAst;
 const BinaryOpAst = require("./parseq-lang-ast").BinaryOpAst;
+const VariableReferenceAst = require("./parseq-lang-ast").VariableReferenceAst;
 
 let comment, string_literal, number_literal, identifier, unit, ws;
 
@@ -209,20 +211,15 @@ unary_expression
     -> number               {% id %}
     | identifier
         {%
-            d => ({
-                type: "var_reference",
-                var_name: d[0],
-                start: d[0].start,
-                end: d[0].end
-            })
+            d => new VariableReferenceAst(d[0].start, d[0].end, [], d[0].value)
         %}
-    |  call_expression      {% id %}
-    |  string_literal       {% id %}
+    |  call_expression    {% id %}
+    |  string_literal     {% id %}
     |  if_expression      {% id %}
-    |  boolean_literal      {% id %}
+    |  boolean_literal    {% id %}
     |  "(" _ expression _ ")"
         {%
-            data => data[2]
+            d => d[2]
         %}
 
 boolean_literal
@@ -249,13 +246,9 @@ number -> %number_literal
                 // a lookbehind regex in the lexer, which breaks Safari.
                 let [_, value, unit] = d[0].text.match(/(.*?)([fsb])?$/);
                 if (unit) {
-                    return {
-                        type: "number_with_unit",
-                        value: Number(value),
-                        unit: unit,
-                        start: d[0].start,
-                        end: d[0].end
-                    };
+                    return new NumberWithUnitAst(d[0].start, d[0].end, [
+                        new NumberLiteralAst(d[0].start, d[0].end, [], Number(value))
+                    ], unit);
                 } else {
                     return new NumberLiteralAst(d[0].start, d[0].end, [], Number(value));
                 }

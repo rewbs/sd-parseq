@@ -1,13 +1,16 @@
-import { Grid, List, ListItem, ListItemButton, ListItemIcon, ListItemText, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Grid, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useMeasure } from "react-use";
 import { defaultFields } from '../data/fields';
 import StyledSwitch from './StyledSwitch';
+import { isDefinedField } from '../utils/utils';
 
 type FieldSelectorProps = {
     selectedFields: string[];
     customFields: InterpolatableFieldDefinition[];
+    keyframes: ParseqKeyframe[];
+    prompts: AdvancedParseqPrompts;
     onChange: (e: any) => void;
 };
 
@@ -137,15 +140,65 @@ export function FieldSelector(props: FieldSelectorProps) {
 
     return <>
         <p><small>Select which fields you'd like to manage with Parseq. Unselected fields are controllable with Deforum.</small></p>
-        <TextField
-            label="Filter"
-            value={filter}
-            sx={{ marginLeft: '16px' }}
-            InputProps={{ style: { fontSize: '0.75em' } }}
-            InputLabelProps={{ shrink: true, }}
-            size="small"
-            onChange={(e: any) => setFilter(e.target.value)}
-        />
+
+        <Grid container xs={12}>
+            <Grid xs={6}>
+                <TextField
+                    label="Filter"
+                    value={filter}
+                    sx={{ marginLeft: '16px' }}
+                    InputProps={{ style: { fontSize: '0.75em' } }}
+                    InputLabelProps={{ shrink: true, }}
+                    size="small"
+                    onChange={(e: any) => setFilter(e.target.value)}
+                />
+            </Grid>
+            <Grid xs={6}>
+                <Box display='flex' justifyContent="right" gap={1} alignItems='center'>
+                    <Tooltip arrow placement="top" title="Uncheck all fields.">
+                        <Button size="small" variant='outlined'
+                            onClick={(e) => setSelectedFields([])}>
+                            None
+                        </Button>
+                    </Tooltip>
+                    <Tooltip arrow placement="top" title="Check all fields.">
+                        <Button size="small" variant='outlined'
+                            onClick={(e) => setSelectedFields(defaultFields.concat(props.customFields).map(f => f.name))}>
+                            All
+                        </Button>
+                    </Tooltip>                        
+                    
+                    {
+                    // TODO Causes infinite loop - TBI.
+                    // Depends on keyframes but also triggers change to keyframes resulting in loop.
+                    <Tooltip arrow placement="top" title="Check only fields that have values set in the keyframes or are used in prompts.">
+                        <Button size="small" variant='outlined'
+                            onClick={(e) => {
+                                const usedFields = new Set<string>();
+                                console.log(props.keyframes);
+                                props.keyframes.forEach(kf => { 
+                                    console.log(kf);
+                                    Object.keys(kf).filter(field => field !="frame" && !field.endsWith("_i")).forEach(field => {
+                                        if (isDefinedField(kf[field]) || isDefinedField(kf[field+"_i"])) {
+                                            usedFields.add(field);
+                                        }
+                                }, [])});
+                                defaultFields.concat(props.customFields).map(f => f.name).forEach(field => {
+                                    const pattern = RegExp(`\\$\\{.*?${field}.*?\\}`);
+                                    if (props.prompts.some(prompt => prompt.positive.match(pattern) || prompt.negative.match(pattern))) {
+                                        usedFields.add(field);
+                                    }
+                                });
+                                setSelectedFields(Array.from(usedFields));
+                            }}>
+                        Used
+                        </Button>
+                    </Tooltip> 
+                    }
+                </Box>
+            </Grid>
+        </Grid>
+
         {list}
         {details}
     </>;

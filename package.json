@@ -82,8 +82,7 @@
     "test": "npm run compile-grammar && react-scripts test --coverage",
     "eject": "react-scripts eject",
     "lint": "eslint .",
-    "lint:fix": "eslint --fix --ext .js,.jsx .",
-    "postinstall": "patch-package"
+    "lint:fix": "eslint --fix --ext .js,.jsx ."
   },
   "eslintConfig": {
     "extends": [

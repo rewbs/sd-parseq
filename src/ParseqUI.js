@@ -36,6 +36,7 @@ import { parseqRender } from './parseq-renderer';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { fieldNametoRGBa, getUTCTimeStamp, getVersionNumber } from './utils/utils';
 import { frameToBeats, frameToSeconds } from './utils/maths';
+//import debounce from 'lodash.debounce';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -1013,6 +1014,7 @@ const ParseqUI = (props) => {
     lastFrame={keyframes[keyframes.length - 1].frame}
     afterFocus={(e) => setTyping(true) }
     afterBlur={(e) => setTyping(false) }
+    //afterChange={debounce((p) => setPrompts(p), 300)}
     afterChange={(p) => setPrompts(p)}
   /> : <></>, [prompts, keyframes]);
 

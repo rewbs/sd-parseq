@@ -712,3 +712,136 @@ test('Tutorial 2 part 1', async () => {
   await loadAndRender(fixture);
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
+
+
+test('Info Matching', async () => {
+  const fixture = {
+
+    "prompts": [
+      {
+        "name": "Prompt 1",
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (cat), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "allFrames": false,
+        "from": 0,
+        "to": 45,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 30,
+          "type": "linear",
+          "custom": "prompt_weight_1"
+        }
+      },
+      {
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (duck), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "from": 16,
+        "to": 75,
+        "allFrames": false,
+        "name": "Prompt 2",
+        "overlap": {
+          "inFrames": 30,
+          "outFrames": 30,
+          "type": "linear",
+          "custom": "prompt_weight_2"
+        }
+      },
+      {
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (fox), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "from": 46,
+        "to": 105,
+        "allFrames": false,
+        "name": "Prompt 3",
+        "overlap": {
+          "inFrames": 30,
+          "outFrames": 30,
+          "type": "linear",
+          "custom": "prompt_weight_3"
+        }
+      },
+      {
+        "positive": "modelshoot style, (extremely detailed 8k wallpaper),a medium shot photo of a (bear), Intricate, High Detail, dramatic",
+        "negative": "watermark, logo, text, signature, copyright, writing, letters, low quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry, cartoon, CGI, computer, video game, painting, drawing, sketch, disfigured, deformed, ugly, duplicate",
+        "from": 76,
+        "to": 120,
+        "allFrames": false,
+        "name": "Prompt 4",
+        "overlap": {
+          "inFrames": 30,
+          "outFrames": 0,
+          "type": "linear",
+          "custom": "prompt_weight_4"
+        }
+      }
+    ],
+    "options": {
+      "input_fps": "",
+      "bpm": 140,
+      "output_fps": "10",
+      "cc_window_width": 0,
+      "cc_window_slide_rate": 1,
+      "cc_use_input": false
+    },
+    "managedFields": [
+      "seed",
+      "prompt_weight_3",
+      "prompt_weight_4",
+      "prompt_weight_1",
+      "prompt_weight_2"
+    ],
+    "displayedFields": [
+      "prompt_weight_2",
+      "prompt_weight_3",
+      "prompt_weight_4",
+      "prompt_weight_1",
+      "seed"
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "seed": 0,
+        "zoom": 1,
+        "zoom_i": "C",
+        "seed_i": "info_match(\"beat\")",
+        "info": "beat: kick",
+        "prompt_weight_3": "",
+        "prompt_weight_3_i": "info_match(\"kick\")",
+        "prompt_weight_4_i": "info_match_count(\"kick$\")",
+        "prompt_weight_1_i": "info_match_last(\"snare\")",
+        "prompt_weight_2_i": "info_match_last(\"^beat\")"
+      },
+      {
+        "frame": 10,
+        "zoom": 0.5,
+        "info": "beat: snare"
+      },
+      {
+        "frame": 20,
+        "info": "beat: kick"
+      },
+      {
+        "frame": 25
+      },
+      {
+        "frame": 30,
+        "info": "beat: snare"
+      },
+      {
+        "frame": 35,
+        "info": "kick not on this row"
+      },
+      {
+        "frame": 40,
+        "info": "beat: kick"
+      },
+      {
+        "frame": 50,
+        "zoom": 1,
+        "info": "beat: snare"
+      }
+    ]
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});

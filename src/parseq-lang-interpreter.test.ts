@@ -229,10 +229,20 @@ runTest('bez', 'round(bez(to=-10), 2)', [5,4.03,0.37,-5.37,-9.03,0,-0.64,-3.09,-
 runTest('bez', 'round(bez(span=3), 2)', [5,3.98,1.02,0,0,0,2.04,7.96,10,10,10]);
 runTest('bez', 'round(bez(from=-10, to=10, span=3), 2)', [-10,-5.93,5.93,10,10,-10,-5.93,5.93,10,10,-10]);
 
-//TODO - these have no tests
 
-//runTest('slide', 'slide()', [0,0,0,0,0,0,0,0,0,0,0]);
+
+runTest('slide', 'slide()', [5,4,3,2,1,0,2,4,6,8,10]);
+runTest('slide', 'slide(from=-10)', [-10,-8,-6,-4,-2,-10,-6,-2,2,6,-10]);
+runTest('slide', 'slide(to=-10)', [5,2,-1,-4,-7,0,-2,-4,-6,-8,10]);
+runTest('slide', 'slide(to=-10, span=3)', [5,0,-5,-10,-10,0,-3.3333333333333335,-6.666666666666667,-10,-10,10]);
+runTest('slide', 'slide(from=-10, to=10, span=3)', [-10,-3.333333333333333,3.333333333333334,10,10,-10,-3.333333333333333,3.333333333333334,10,10,-10]);
+
+
+//TODO - these have no tests
 //runTest('info_match', 'info_match()', [0,0,0,0,0,0,0,0,0,0,0]);
 //runTest('info_match_count', 'info_match_count()', [0,0,0,0,0,0,0,0,0,0,0]);
 //runTest('info_match_last', 'info_match_last()', [0,0,0,0,0,0,0,0,0,0,0]);
 //runTest('prev_computed_value', 'prev_computed_value+1', [0,0,0,0,0,0,0,0,0,0,0]);
+
+// Error cases:
+// 

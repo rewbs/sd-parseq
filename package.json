@@ -62,7 +62,7 @@
     "react-time-ago": "^7.2.1",
     "react-use": "^17.4.0",
     "recharts": "^2.5.0",
-    "roarr": "^7.14.3",
+    "roarr": "^7.14.6",
     "simplify-ts": "^1.0.2",
     "stats-analysis": "^2.0.0",
     "ts-jest": "^29.0.5",
@@ -72,7 +72,7 @@
     "util": "^0.12.5",
     "uuid": "^9.0.0",
     "wavesurfer-react": "^2.2.2",
-    "wavesurfer.js": "^6.6.0",
+    "wavesurfer.js": "^6.6.1",
     "web-vitals": "^3.3.0"
   },
   "scripts": {
@@ -82,7 +82,8 @@
     "test": "npm run compile-grammar && react-scripts test --coverage",
     "eject": "react-scripts eject",
     "lint": "eslint .",
-    "lint:fix": "eslint --fix --ext .js,.jsx ."
+    "lint:fix": "eslint --fix --ext .js,.jsx .",
+    "postinstall": "npm install --force"
   },
   "eslintConfig": {
     "extends": [

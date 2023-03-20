@@ -83,7 +83,7 @@
     "eject": "react-scripts eject",
     "lint": "eslint .",
     "lint:fix": "eslint --fix --ext .js,.jsx .",
-    "postinstall": "npm install --force"
+    "postinstall": "patch-package"
   },
   "eslintConfig": {
     "extends": [

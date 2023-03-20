@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-scripts/package.json b/node_modules/react-scripts/package.json
+index b3bcad7..080ffad 100644
+--- a/node_modules/react-scripts/package.json
++++ b/node_modules/react-scripts/package.json
+@@ -85,7 +85,7 @@
+   },
+   "peerDependencies": {
+     "react": ">= 16",
+-    "typescript": "^3.2.1 || ^4"
++    "typescript": ">= 3.2.1"
+   },
+   "peerDependenciesMeta": {
+     "typescript": {

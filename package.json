@@ -76,7 +76,7 @@
     "web-vitals": "^3.3.0"
   },
   "scripts": {
-    "compile-grammar": "npx tsc --project src/parseq-lang && npx nearleyc src/parseq-lang/parseq-lang.ne -o src/parseq-lang/parseq-lang.js",
+    "compile-grammar": "npx nearleyc src/parseq-lang/parseq-lang.ne -o src/parseq-lang/parseq-lang.js",
     "start": "npm run compile-grammar && react-scripts start",
     "build": "npm run compile-grammar && react-scripts build",
     "test": "npm run compile-grammar && react-scripts test --coverage",

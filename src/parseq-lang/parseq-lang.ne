@@ -1,4 +1,4 @@
-
+@preprocessor esmodule
 @{%
 const moo = require("moo");
 

@@ -1,3 +1,4 @@
 # ignore generated code
 src/parseq-lang/*.js
 src/utils/*.js
+build/

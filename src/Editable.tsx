@@ -72,6 +72,14 @@ export class Editable extends React.Component<{
     xscales: { xmin: number, xmax: number };
 }> {
 
+    constructor(props : any) {
+        super(props);
+        this.state = {xscales: {
+            xmin: this.props.xscales?.xmin ?? 0,
+            xmax: this.props.xscales?.xmax ?? (this.props.renderedData.rendered_frames.length - 1),
+        }};
+      }
+
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
         return this.props.renderedData.keyframes
             .some(frame => frame['frame'] === idx
@@ -84,7 +92,10 @@ export class Editable extends React.Component<{
             .some(frame => frame['frame'] === idx);
     }
 
-    isDecimating = (): boolean => (this.props.xscales?.xmax ?? (this.props.renderedData.rendered_frames.length - 1) - this.props.xscales?.xmin ?? 0) > DECIMATION_THRESHOLD;
+    isDecimating = (): boolean => {
+        //@ts-ignore
+        return (this.state.xscales.xmax - this.state.xscales.xmin) > DECIMATION_THRESHOLD
+    };
 
     render() {
         const annotations = this.props.markers.reduce((acc: any, marker: { x: number, label: string, color: string, top: boolean }, idx: number) => {
@@ -151,7 +162,7 @@ export class Editable extends React.Component<{
             },
             responsive: true,
             onClick: (event: any, elements: any, chart: any) => {
-                if (elements[0] && event.native.shiftKey) {
+                if (!capturedThis.isDecimating() && elements[0] && event.native.shiftKey) {
                     const datasetIndex = elements[0].datasetIndex;
                     const field = chart.data.datasets[datasetIndex].label;
                     const index = Math.round(chart.scales.x.getValueForPixel(event.x));
@@ -184,7 +195,11 @@ export class Editable extends React.Component<{
                         mode: 'x',
                         modifierKey: 'alt',
                         onPanComplete: function (chart: any) {
-                            capturedThis.props.onGraphScalesChanged({ xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) });
+                            const newScales =  { xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) };
+                            capturedThis.setState({
+                                xscales: newScales
+                            })
+                            capturedThis.props.onGraphScalesChanged(newScales);
                         }
                     },
                     limits: {
@@ -204,7 +219,11 @@ export class Editable extends React.Component<{
                         },
                         mode: 'x',
                         onZoomComplete: function (chart: any) {
-                            capturedThis.props.onGraphScalesChanged({ xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) });
+                            const newScales =  { xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) };
+                            capturedThis.setState({
+                                xscales: newScales
+                            })
+                            capturedThis.props.onGraphScalesChanged(newScales);
                         }
 
                     }
@@ -240,13 +259,13 @@ export class Editable extends React.Component<{
                     round: 4,
                     showTooltip: true,
                     onDragStart: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        return this.isKeyframe(point.x);
+                        return !this.isDecimating() && this.isKeyframe(point.x);
                     },
                     onDrag: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        return this.isKeyframe(point.x);
+                        return !this.isDecimating() && this.isKeyframe(point.x);
                     },
                     onDragEnd: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        if (!this.isKeyframe(point.x)) {
+                        if (this.isDecimating() || !this.isKeyframe(point.x)) {
                             return false;
                         }
                         let field = this.props.displayedFields[datasetIndex];
@@ -267,7 +286,7 @@ export class Editable extends React.Component<{
                 },
                 click: {
                     addPoint: (index: number) => {
-                        if (!this.isKeyframe(index)) {
+                        if (!this.isDecimating() && !this.isKeyframe(index)) {
                             this.props.addKeyframe(index);
                         }
                     }
@@ -285,16 +304,16 @@ export class Editable extends React.Component<{
                         label: field,
                         data: this.props.as_percents ? this.props.graphableData[field + "_pc"] : this.props.graphableData[field],
                         borderColor: fieldNametoRGBa(field, 255),
-                        borderWidth: this.isDecimating() ? 1 : 0.25,
+                        borderWidth: capturedThis.isDecimating() ? 1 : 0.25,
                         pointRadius: (ctx: ScriptableContext<'line'>) => {
                             // @ts-ignore
-                            return this.isDecimating() ? 0 : this.isKeyframe(ctx.raw?.x) ? 6 : 2
+                            return capturedThis.isDecimating() ? 0 : this.isKeyframe(ctx.raw?.x) ? 6 : 2
                         },
                         // @ts-ignore
-                        pointBackgroundColor: (ctx: ScriptableContext<'line'>) => this.isKeyframeWithFieldValue(field, ctx.raw?.x) ? fieldNametoRGBa(field, 1) : fieldNametoRGBa(field, 0.2),
+                        pointBackgroundColor: (ctx: ScriptableContext<'line'>) => capturedThis.isKeyframeWithFieldValue(field, ctx.raw?.x) ? fieldNametoRGBa(field, 1) : fieldNametoRGBa(field, 0.2),
                         backgroundColor: fieldNametoRGBa(field, 255),
                         // @ts-ignore
-                        pointStyle: (ctx: ScriptableContext<'line'>) => this.isKeyframe(ctx.raw?.x) ? 'circle' : 'cross',
+                        pointStyle: (ctx: ScriptableContext<'line'>) => (!capturedThis.isDecimating() && capturedThis.isKeyframe(ctx.raw?.x)) ? 'circle' : 'cross',
                     }
                 })
             ]

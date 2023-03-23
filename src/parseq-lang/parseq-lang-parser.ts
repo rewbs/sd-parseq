@@ -1,7 +1,7 @@
 import nearley from 'nearley';
 //@ts-ignore
-import ParserRules from './parseq-lang/parseq-lang.js';
-import { VariableReferenceAst } from './parseq-lang/parseq-lang-ast';
+import ParserRules from './parseq-lang.js';
+import { VariableReferenceAst } from './parseq-lang-ast';
 
 export function parse(input: string) {
   const parser = new nearley.Parser(nearley.Grammar.fromCompiled(ParserRules));

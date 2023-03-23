@@ -2,6 +2,7 @@ import React from 'react';
 //@ts-ignore
 import ParseqUI from './ParseqUI';
 import Header from "./components/Header";
+import { GraphTest } from './GraphTest';
 
 const Deforum = () => {
   return <>
@@ -9,6 +10,7 @@ const Deforum = () => {
       <ParseqUI
         defaultTemplate='catduck'
       />
+      {/* <GraphTest /> */}
   </>;
 };
 

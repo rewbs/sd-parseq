@@ -1,5 +1,5 @@
 import { deepCopy } from '@firebase/util';
-import { Alert, Button, Checkbox, FormControlLabel, Stack, Tooltip as Tooltip2, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, Slider, Stack, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -20,7 +20,7 @@ import clonedeep from 'lodash.clonedeep';
 import range from 'lodash.range';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
-import { Sparklines, SparklinesLine } from 'react-sparklines';
+import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
 import { ExpandableSection } from './components/ExpandableSection';
@@ -29,6 +29,7 @@ import { InitialisationStatus } from "./components/InitialisationStatus";
 import { Preview } from "./components/Preview";
 import { Prompts } from "./components/Prompts";
 import { UploadButton } from "./components/UploadButton";
+import { AudioWaveform } from './components/AudioWaveform';
 import { templates } from './data/templates';
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
@@ -36,6 +37,8 @@ import { parseqRender } from './parseq-renderer';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { fieldNametoRGBa, getUTCTimeStamp, getVersionNumber } from './utils/utils';
 import { frameToBeats, frameToSeconds } from './utils/maths';
+import { DECIMATION_THRESHOLD } from './utils/consts';
+
 //import debounce from 'lodash.debounce';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
@@ -148,6 +151,12 @@ const ParseqUI = (props) => {
   const [gridCursorPos, setGridCursorPos] = useState(0);
   const [rangeSelection, setRangeSelection] = useState({});
   const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
+  const [graphDecimating, setGraphDecimating] = useState(false);
+  const [graphableData, setGraphableData] = useState([]);
+  const [sparklineData, setSparklineData] = useState([]);
+  const [graphScales, setGraphScales] = useState();
+  const [zoomAmount, setZoomAmount] = useState(0);
+  const [panAmount, setPanAmount] = useState(0);
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -492,8 +501,11 @@ const ParseqUI = (props) => {
 
   const navigateToNextCell = useCallback((params) => {
     const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
-    if (graphPromptMarkers) {
-      setGridCursorPos(params.api.getDisplayedRowAtIndex(nextCell.rowIndex).data.frame);
+    if (graphPromptMarkers && nextCell) {
+      const nextRow = params.api.getDisplayedRowAtIndex(nextCell.rowIndex);
+      if (nextRow && nextRow.data && nextRow.data.frame) {
+        setGridCursorPos(nextRow.data.frame);
+      }
     }
     if (params.event.shiftKey) {
       if (rangeSelection.anchor === undefined) {
@@ -788,8 +800,10 @@ const ParseqUI = (props) => {
     setRenderedErrorMessage("");
     setEnqueuedRender(false);
     try {
-      const data = parseqRender(getPersistableState());
-      setRenderedData(data);
+      const { renderedData, graphData, sparklineData } = parseqRender(getPersistableState());
+      setRenderedData(renderedData);
+      setGraphableData(graphData);
+      setSparklineData(sparklineData);
       setlastRenderedState({
         // keyframes stores references to ag-grid rows, which will be updated as the grid changes.
         // So if we want to compare a future grid state to the last rendered state, we need to
@@ -1012,8 +1026,8 @@ const ParseqUI = (props) => {
   const promptsUI = useMemo(() => prompts ? <Prompts
     initialPrompts={prompts}
     lastFrame={keyframes[keyframes.length - 1].frame}
-    afterFocus={(e) => setTyping(true) }
-    afterBlur={(e) => setTyping(false) }
+    afterFocus={(e) => setTyping(true)}
+    afterBlur={(e) => setTyping(false)}
     //afterChange={debounce((p) => setPrompts(p), 300)}
     afterChange={(p) => setPrompts(p)}
   /> : <></>, [prompts, keyframes]);
@@ -1026,17 +1040,17 @@ const ParseqUI = (props) => {
     onChange={(newManagedFields) => {
       const oldManagedFields = managedFields;
       if (newManagedFields.length !== oldManagedFields.length
-        || !newManagedFields.every(f => oldManagedFields.includes(f))) {      
+        || !newManagedFields.every(f => oldManagedFields.includes(f))) {
         // This update MUST be conditional, else we get into an infinite react loop.
         setManagedFields(newManagedFields);
       }
 
       // Update displayedFields to remove any missing fields or add any new fields.
-      const addedManangedFields = newManagedFields.filter((field) => !oldManagedFields.includes(field));       
+      const addedManangedFields = newManagedFields.filter((field) => !oldManagedFields.includes(field));
       if (displayedFields) {
         let newDisplayedFields = displayedFields.filter((field) => newManagedFields.includes(field)).concat(addedManangedFields);
-          if (displayedFields.length !== newDisplayedFields.length
-            || !newDisplayedFields.every(f => displayedFields.includes(f))) {
+        if (displayedFields.length !== newDisplayedFields.length
+          || !newDisplayedFields.every(f => displayedFields.includes(f))) {
           // This update MUST be conditional, else we get into an infinite react loop.
           setDisplayedFields(newDisplayedFields);
         }
@@ -1044,8 +1058,14 @@ const ParseqUI = (props) => {
     }}
   />, [managedFields, displayedFields, prompts, keyframes]);
 
-  const editableGraph = useMemo(() => renderedData && <div>
-    <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
+  const editableGraphHeader = useMemo(() => <>
+    {
+      graphDecimating ? <Alert severity='info'>
+        Graph is not editable when displaying more than {DECIMATION_THRESHOLD} points. Try zooming in.
+      </Alert>
+        : <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
+    }
+
     <FormControlLabel control={
       <Checkbox
         checked={graphAsPercentages}
@@ -1060,58 +1080,86 @@ const ParseqUI = (props) => {
         onChange={(e) => setGraphPromptMarkers(e.target.checked)}
       />}
       label={<Box component="div" fontSize="0.75em">Show prompt markers</Box>} />
-    <Editable
-      renderedData={renderedData}
-      displayedFields={displayedFields}
-      as_percents={graphAsPercentages}
-      markers={
-        (prompts && graphPromptMarkers) ?
-          prompts.flatMap((p, idx) => [{
-            x: p.from,
-            color: 'rgba(50,200,50, 0.8)',
-            label: p.name + 'start',
-            display: !p.allFrames,
-            top: true
-          },
-          {
-            x: p.to,
-            color: 'rgba(200,50,50, 0.8)',
-            label: p.name + ' end',
-            display: !p.allFrames,
-            top: false
-          }
-          ])
-            .concat(
-              [
-                {
-                  x: gridCursorPos,
-                  color: 'rgba(0, 0, 100, 1)',
-                  label: 'Grid cursor',
-                  top: true
-                }
-              ]
-            )
-          : []}
-      updateKeyframe={(field, index, value) => {
-        let rowId = frameToRowId(index)
-        gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
-      }}
-      addKeyframe={(index) => {
-        // If this isn't already a keyframe, add a keyframe
-        if (frameToRowId(index) === undefined) {
-          addRow(index);
+    {/* <Slider min={0} max={1} step={0.01}  aria-label="Zoom" value={zoomAmount} onChange={
+      (e) => {
+        setZoomAmount(e.target.value);
+        const minWindowSize = 10;
+        const maxWindowSize = renderedData.rendered_frames.length;
+        const windowSize = minWindowSize+(maxWindowSize-minWindowSize)*(1-e.target.value);
+        const centre = (graphScales.xmax-graphScales.xmin)/2;
+        setGraphScales({ xmin: centre-windowSize/2, xmax: centre+windowSize/2 })
+
+      }} />
+    <Slider min={1} max={100} aria-label="Pan" value={panAmount} onChange={
+      (e) => {
+        setPanAmount(e.target.value);
+        const gapsize = renderedData.rendered_frames.length - graphScales.xmax;
+        setGraphScales({ xmin: graphScales.xmin + gapsize/e.target.value, xmax: graphScales.xmax + gapsize/e.target.value })
+
+      }} />       */}
+  </>, [graphAsPercentages, graphPromptMarkers, graphDecimating, renderedData, graphScales, panAmount, zoomAmount])
+
+  const editableGraph = useMemo(() => renderedData && renderedData.rendered_frames && <Editable
+    renderedData={renderedData} // just used for keyframes?
+    graphableData={graphableData}
+    displayedFields={displayedFields}
+    as_percents={graphAsPercentages}
+    xscales={graphScales ?? { xmin: 0, xmax: renderedData.rendered_frames?.length ?? 100 }}
+    markers={
+      (prompts && graphPromptMarkers) ?
+        prompts.flatMap((p, idx) => [{
+          x: p.from,
+          color: 'rgba(50,200,50, 0.8)',
+          label: p.name + 'start',
+          display: !p.allFrames,
+          top: true
+        },
+        {
+          x: p.to,
+          color: 'rgba(200,50,50, 0.8)',
+          label: p.name + ' end',
+          display: !p.allFrames,
+          top: false
         }
-      }}
-      clearKeyframe={(field, index) => {
-        // If this is a keyframe, clear it
-        let rowId = frameToRowId(index);
-        if (rowId !== undefined) {
-          gridRef.current.api.getRowNode(rowId).setDataValue(field, "");
-          gridRef.current.api.getRowNode(rowId).setDataValue(field + '_i', "");
-        }
-      }}
-    />
-  </div>, [renderedData, displayedFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId]);
+        ])
+          .concat(
+            [
+              {
+                x: gridCursorPos,
+                color: 'rgba(0, 0, 100, 1)',
+                label: 'Grid cursor',
+                top: true
+              }
+            ]
+          )
+        : []}
+    updateKeyframe={(field, index, value) => {
+      let rowId = frameToRowId(index)
+      gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
+    }}
+    addKeyframe={(index) => {
+      // If this isn't already a keyframe, add a keyframe
+      if (frameToRowId(index) === undefined) {
+        addRow(index);
+      }
+    }}
+    clearKeyframe={(field, index) => {
+      // If this is a keyframe, clear it
+      let rowId = frameToRowId(index);
+      if (rowId !== undefined) {
+        gridRef.current.api.getRowNode(rowId).setDataValue(field, "");
+        gridRef.current.api.getRowNode(rowId).setDataValue(field + '_i', "");
+      }
+    }}
+    onDecimation={(decimation, originalPoints, decimatedPoints) => {
+      setGraphDecimating(decimation);
+    }}
+    onGraphScalesChanged={(scales) => {
+      if (scales.xmin !== graphScales?.xmin || scales.xmax !== graphScales?.xmax) {
+        setGraphScales(scales);
+      }
+    }}
+  />, [renderedData, graphableData, displayedFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId, graphScales]);
 
   const handleClickedSparkline = useCallback((e) => {
     let field = e.currentTarget.id.replace("sparkline_", "");
@@ -1124,48 +1172,66 @@ const ParseqUI = (props) => {
     }
   }, [managedFields, displayedFields]);
 
-  const sparklines = useMemo(() => renderedData && renderedData.rendered_frames && managedFields ? <>
-    <FormControlLabel control={
-      <Checkbox defaultChecked={false}
-        id={"graph_as_percent"}
-        onChange={(e) => setShowFlatSparklines(e.target.checked)}
-      />}
-      label={<Box component="div" fontSize="0.75em">Show {managedFields.filter((field) => !getAnimatedFields(renderedData).includes(field)).length} flat sparklines</Box>} />
-    <Grid container>
-      {
-        managedFields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
-          <Grid key={"sparkline_" + field} xs={1} sx={{ bgcolor: displayedFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
-            <Typography style={{ fontSize: "0.5em" }}>{(displayedFields.includes(field) ? "✔️" : "") + field}</Typography>
-            {defaultFields.find(f => f.name === field)?.labels?.includes("2D") ?
-              <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
-              defaultFields.find(f => f.name === field)?.labels?.includes("3D") ?
-                <Typography style={{ color: 'SteelBlue', fontSize: "0.5em" }} >[3D]</Typography> :
-                <Typography style={{ color: 'grey', fontSize: "0.5em" }} >[2D+3D]</Typography>
-            }
-            {
-              !isNaN(renderedData.rendered_frames[0][field]) &&
-              <Sparklines style={{ bgcolor: 'white' }} data={renderedData.rendered_frames.map(f => f[field])} margin={1} padding={1}>
-                <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
-              </Sparklines>
-            }
-            {
-              !isNaN(renderedData.rendered_frames[0][field + '_delta']) && <>
-                <Typography style={{ fontSize: "0.5em" }}>delta</Typography>
-                <Sparklines data={renderedData.rendered_frames.map(f => f[field + '_delta'])} margin={1} padding={1}>
-                  <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
-                </Sparklines>
-              </>
-            }
-          </Grid>
-        )
-      }
-    </Grid>
-  </> : <></>, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline]);
+  const sparklines = useMemo(() => {
+    return managedFields
+      && renderedData
+      && renderedData.rendered_frames ?
+      <>
+        <FormControlLabel control={
+          <Checkbox defaultChecked={false}
+            id={"graph_as_percent"}
+            onChange={(e) => setShowFlatSparklines(e.target.checked)}
+          />}
+          label={<Box component="div" fontSize="0.75em">Show {managedFields.filter((field) => !getAnimatedFields(renderedData).includes(field)).length} flat sparklines</Box>} />
+        <Grid container>
+          {
+            managedFields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
+              <Grid key={"sparkline_" + field} xs={1} sx={{ bgcolor: displayedFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
+                <Typography style={{ fontSize: "0.5em" }}>{(displayedFields.includes(field) ? "✔️" : "") + field}</Typography>
+                {defaultFields.find(f => f.name === field)?.labels?.includes("2D") ?
+                  <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
+                  defaultFields.find(f => f.name === field)?.labels?.includes("3D") ?
+                    <Typography style={{ color: 'SteelBlue', fontSize: "0.5em" }} >[3D]</Typography> :
+                    <Typography style={{ color: 'grey', fontSize: "0.5em" }} >[2D+3D]</Typography>
+                }
+                {
+                  <Sparklines style={{ bgcolor: 'white' }} data={sparklineData[field]} margin={1} padding={1}>
+                    <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
+                  </Sparklines>
+                }
+                {
+                  <>
+                    <Typography style={{ fontSize: "0.5em" }}>delta</Typography>
+                    <Sparklines data={sparklineData[field+'_delta']} margin={1} padding={1}>
+                      <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
+                    </Sparklines>
+                  </>                    
+                }
+              </Grid>
+            )
+          }
+        </Grid>
+      </>
+      : (renderedData?.rendered_frames?.length > 1000) ?
+        <Alert severity="warning">
+          Sparklines are disabled when frame count &gt; 1000. This will be improved in future versions of Parseq.
+        </Alert>
+        : <></>
+  }, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline, sparklineData]);
 
-  const renderedOutput = useMemo(() => <>
-    <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: '20em', overflow: 'scroll' }}>
-      <pre data-testid="output">{renderedDataJsonString}</pre>
-    </div></>, [renderedDataJsonString]);
+  const renderedOutput = useMemo(() =>
+    renderedDataJsonString && <>
+      {
+        (renderedDataJsonString.length > 1024 * 1024) ?
+          <Alert severity="warning">
+            Rendered output is truncated at 1MB. Use the "copy output" or "upload output" button below to access the full data.
+          </Alert>
+          : <></>
+      }
+      <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', maxHeight: '40em', overflow: 'scroll' }}>
+        <pre data-testid="output">{renderedDataJsonString.substring(0, 1024 * 1024)}</pre>
+      </div>
+    </>, [renderedDataJsonString]);
 
   const stickyFooter = useMemo(() => <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(200,200,200,0.85)', opacity: '99%' }} elevation={3}>
     <Grid container>
@@ -1194,7 +1260,7 @@ const ParseqUI = (props) => {
               <CopyToClipboard text={renderedDataJsonString}>
                 <Button size="small" disabled={needsRender} variant="outlined">📋 Copy output</Button>
               </CopyToClipboard>
-              <Typography fontSize={'0.7em'}>Size: {(renderedDataJsonString.length / 1024).toFixed(2)}kB</Typography>
+              <Typography fontSize={'0.7em'}>Size: {(renderedDataJsonString?.length ?? 0 / 1024).toFixed(2)}kB</Typography>
             </Stack>
           </Grid>
           <Grid xs={4}>
@@ -1281,7 +1347,11 @@ const ParseqUI = (props) => {
         </ExpandableSection>
       </Grid>
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
-        <ExpandableSection title="Keyframes grid for field value flow">
+        <ExpandableSection
+          // TODO: we always have to render the grid currently, else we lose keyframes because they reference grid data.
+          // Figure out how to 
+          renderChildrenWhenCollapsed={true}
+          title="Keyframes grid for field value flow">
           {optionsUI}
           <small>Show/hide fields:</small>
           {displayedFieldSelector}
@@ -1298,9 +1368,15 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Visualised field value flow">
+          {editableGraphHeader}
           {editableGraph}
         </ExpandableSection>
       </Grid>
+      {/* <Grid xs={12}>
+        <ExpandableSection title="Audio">
+          <AudioWaveform />
+        </ExpandableSection>
+      </Grid>       */}
       <Grid xs={12}>
         <ExpandableSection title="Sparklines">
           {sparklines}
@@ -1308,15 +1384,19 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Preview">
-          <Preview data={renderedData} />
+          {renderedData && <Preview data={renderedData} />}
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Output">
-          <Box sx={{ paddingBottom: '150px' }}>
+          <Box>
             {renderedOutput}
           </Box>
         </ExpandableSection>
+      </Grid>
+      <Grid xs={12}>
+        {/* Scroll buffer */}
+        <Box height="200px"></Box>
       </Grid>
       {stickyFooter}
     </Grid>

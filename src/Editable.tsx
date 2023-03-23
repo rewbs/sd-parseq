@@ -3,10 +3,7 @@ import {
     CategoryScale, Chart as ChartJS, Legend, LegendItem, LinearScale, LineElement, PointElement, Title,
     Tooltip
 } from 'chart.js';
-//disabling crosshair plugin because it seems to cause errors on some systems.
-//import { CrosshairPlugin } from 'chartjs-plugin-crosshair';
-import 'chartjs-plugin-dragdata';
-//@ts-ignore
+import './components/chartjs-plugins/drag'
 import 'chart.js/auto';
 //@ts-ignore
 import annotationPlugin from 'chartjs-plugin-annotation';
@@ -14,6 +11,9 @@ import React from 'react';
 import { Line } from 'react-chartjs-2';
 import { fieldNametoRGBa, } from './utils/utils';
 import { frameToBeats, frameToSeconds } from './utils/maths';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import { DECIMATION_THRESHOLD } from './utils/consts';
+
 
 const ChartJSAddPointPlugin = {
     id: 'click',
@@ -21,8 +21,23 @@ const ChartJSAddPointPlugin = {
         chartInstance.canvas.addEventListener('dblclick', (e: MouseEvent) => {
             let x = chartInstance.scales.x.getValueForPixel(e.offsetX);
             const pluginOptions = chartInstance.config.options.plugins.click;
-            pluginOptions.addPoint(x);
+            pluginOptions.addPoint(Math.round(x));
         })
+    }
+}
+
+const ChartJSDetectDecimationPlugin = {
+    id: 'detectDecimation',
+    afterUpdate: function (chartInstance: any) {
+        const pluginOptions = chartInstance.config.options.plugins.detectDecimation;
+        // All my datasets have the same length, so I just check the first one
+        // To generalize, you should check all datasets.
+        const isDecimating = chartInstance.data.datasets[0]._data !== undefined
+            && chartInstance.data.datasets[0].data !== undefined
+            && chartInstance.data.datasets[0].data.length !== chartInstance.data.datasets[0]._data.length;
+        const unDecimatedPointCount = isDecimating ? chartInstance.data.datasets[0]._data?.length : chartInstance.data.datasets[0].data.length;
+        const decimatedPointCount = chartInstance.data.datasets[0].data.length;
+        pluginOptions.onDecimation(isDecimating, unDecimatedPointCount, decimatedPointCount);
     }
 }
 
@@ -35,7 +50,8 @@ ChartJS.register(
     Tooltip,
     Legend,
     ChartJSAddPointPlugin,
-    //    CrosshairPlugin,
+    ChartJSDetectDecimationPlugin,
+    zoomPlugin,
     annotationPlugin
 );
 
@@ -44,12 +60,16 @@ ChartJS.register(
 
 export class Editable extends React.Component<{
     renderedData: RenderedData,
+    graphableData: GraphableData,
     displayedFields: string[],
     as_percents: boolean,
     updateKeyframe: (field: string, index: number, value: number) => void;
     addKeyframe: (index: number) => void;
     clearKeyframe: (field: string, index: number) => void;
+    onDecimation: (isDecimating: boolean, unDecimatedPointCount: number, decimatedPointCount: number) => void;
+    onGraphScalesChanged: ({xmin, xmax}: { xmin: number, xmax: number }) => void;
     markers: { x: number, label: string, color: string, top: boolean }[];
+    xscales: { xmin: number, xmax: number };
 }> {
 
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
@@ -64,8 +84,9 @@ export class Editable extends React.Component<{
             .some(frame => frame['frame'] === idx);
     }
 
-    render() {
+    isDecimating = (): boolean => (this.props.xscales?.xmax ?? (this.props.renderedData.rendered_frames.length - 1) - this.props.xscales?.xmin ?? 0) > DECIMATION_THRESHOLD;
 
+    render() {
         const annotations = this.props.markers.reduce((acc: any, marker: { x: number, label: string, color: string, top: boolean }, idx: number) => {
             return {
                 ...acc,
@@ -98,18 +119,42 @@ export class Editable extends React.Component<{
         const capturedThis = this;
 
         let options: ChartOptions<'line'> = {
+            parsing: false,
+            normalised: true,
+            spanGaps: true,
+            aspectRatio: 4,
             animation: {
                 duration: 175,
                 delay: 0
             },
-            normalised: true,
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: this.props.xscales.xmin,
+                    max: this.props.xscales.xmax,
+                    title: {
+                        display: true,
+                        text: 'Frame',
+                    },
+                    ticks: {
+                        minRotation: 0,
+                        maxRotation: 0
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    ticks: {
+                        minRotation: 0,
+                        maxRotation: 0
+                    }
+                },
+            },
             responsive: true,
-            aspectRatio: 4,
             onClick: (event: any, elements: any, chart: any) => {
                 if (elements[0] && event.native.shiftKey) {
                     const datasetIndex = elements[0].datasetIndex;
                     const field = chart.data.datasets[datasetIndex].label;
-                    const index = chart.scales.x.getValueForPixel(event.x);
+                    const index = Math.round(chart.scales.x.getValueForPixel(event.x));
                     this.props.clearKeyframe(field, index);
                 }
             },
@@ -123,9 +168,52 @@ export class Editable extends React.Component<{
                         }
                     }
                 },
+                decimation: {
+                    enabled: true,
+                    algorithm: 'lttb',
+                    threshold: DECIMATION_THRESHOLD,
+                    samples: DECIMATION_THRESHOLD,
+                },
+                //@ts-ignore
+                detectDecimation: {
+                    onDecimation: this.props.onDecimation
+                },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'x',
+                        modifierKey: 'alt',
+                        onPanComplete: function (chart: any) {
+                            capturedThis.props.onGraphScalesChanged({ xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) });
+                        }
+                    },
+                    limits: {
+                        x: { min: 0, max: capturedThis.props.renderedData.rendered_frames.length - 1, minRange: 10 },
+                    },
+                    zoom: {
+                        drag: {
+                            enabled: false,
+                            modifierKey: 'ctrl',
+                        },
+                        wheel: {
+                            enabled: true,
+                            speed: 0.05,
+                        },
+                        pinch: {
+                            enabled: true
+                        },
+                        mode: 'x',
+                        onZoomComplete: function (chart: any) {
+                            capturedThis.props.onGraphScalesChanged({ xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) });
+                        }
+
+                    }
+                },
                 tooltip: {
                     position: 'nearest',
                     intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    caretSize: 10,
                     callbacks: {
                         label: function (context) {
                             const field: string = context.dataset.label || '';
@@ -133,7 +221,7 @@ export class Editable extends React.Component<{
                             const value = frame[field].toFixed(3);
                             //@ts-ignore
                             const maxValue = capturedThis.props.renderedData.rendered_frames_meta[field].max;
-                            const pcOfMax = (frame[field] / maxValue * 100).toFixed(2)
+                            const pcOfMax = (maxValue === 0 ? 0 : frame[field] / maxValue * 100).toFixed(2);
                             const label = `${context.dataset.label}: ${value} (${pcOfMax}% of max) `;
 
                             return label;
@@ -148,50 +236,34 @@ export class Editable extends React.Component<{
 
                 },
                 //@ts-ignore - additional plugin config data is not declated in type.
-                crosshair: {
-                    line: {
-                        color: '#F66',  // crosshair line color
-                        width: 1        // crosshair line width
-                    },
-                    sync: {
-                        enabled: false,            // enable trace line syncing with other charts
-                    },
-                    zoom: {
-                        enabled: true,                                      // enable zooming
-                        zoomboxBackgroundColor: 'rgba(66,133,244,0.2)',     // background color of zoom box 
-                        zoomboxBorderColor: '#48F',                         // border color of zoom box
-                        zoomButtonText: 'Reset Zoom',                       // reset zoom button text
-                        zoomButtonClass: 'reset-zoom',                      // reset zoom button class
-                    },
-
-                },
-                //@ts-ignore - additional plugin config data is not declated in type.
                 dragData: {
                     round: 4,
                     showTooltip: true,
-                    onDragStart: (e: MouseEvent, element: any) => {
+                    onDragStart: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
+                        return this.isKeyframe(point.x);
                     },
-                    onDrag: (e: MouseEvent, datasetIndex: number, index: number, value: number) => {
-                        return this.isKeyframe(index);
+                    onDrag: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
+                        return this.isKeyframe(point.x);
                     },
-                    onDragEnd: (e: MouseEvent, datasetIndex: number, index: number, value: number) => {
-                        if (!this.isKeyframe(index)) {
-                            return;
+                    onDragEnd: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
+                        if (!this.isKeyframe(point.x)) {
+                            return false;
                         }
                         let field = this.props.displayedFields[datasetIndex];
+                        let newValue = point.y;
                         if (this.props.as_percents) {
                             //@ts-ignore
                             const maxValue = this.props.renderedData.rendered_frames_meta[field].max;
-                            value = value * maxValue / 100;
+                            newValue = point.y * maxValue / 100;
                         }
-                        this.props.updateKeyframe(field, index, value);
+                        this.props.updateKeyframe(field, point.x, newValue);
                     },
                 },
                 scales: {
                     y: {
                         // disables datapoint dragging for the entire axis
                         dragData: false
-                    }
+                    },
                 },
                 click: {
                     addPoint: (index: number) => {
@@ -207,18 +279,22 @@ export class Editable extends React.Component<{
         };
 
         let chartData: ChartData<'line'> = {
-            labels: this.props.renderedData.rendered_frames.map((idx, frame) => frame.toString()),
             datasets: [
                 ...this.props.displayedFields.map((field) => {
                     return {
                         label: field,
-                        data: this.props.renderedData.rendered_frames.map((frame) => this.props.as_percents ? (frame[field + '_pc']) : frame[field] || 0),
+                        data: this.props.as_percents ? this.props.graphableData[field + "_pc"] : this.props.graphableData[field],
                         borderColor: fieldNametoRGBa(field, 255),
-                        borderWidth: 0.25,
-                        pointRadius: (ctx: ScriptableContext<'line'>) => this.isKeyframe(ctx.dataIndex) ? 6 : 2,
-                        pointBackgroundColor: (ctx: ScriptableContext<'line'>) => this.isKeyframeWithFieldValue(field, ctx.dataIndex) ? fieldNametoRGBa(field, 1) : fieldNametoRGBa(field, 0.2),
+                        borderWidth: this.isDecimating() ? 1 : 0.25,
+                        pointRadius: (ctx: ScriptableContext<'line'>) => {
+                            // @ts-ignore
+                            return this.isDecimating() ? 0 : this.isKeyframe(ctx.raw?.x) ? 6 : 2
+                        },
+                        // @ts-ignore
+                        pointBackgroundColor: (ctx: ScriptableContext<'line'>) => this.isKeyframeWithFieldValue(field, ctx.raw?.x) ? fieldNametoRGBa(field, 1) : fieldNametoRGBa(field, 0.2),
                         backgroundColor: fieldNametoRGBa(field, 255),
-                        pointStyle: (ctx: ScriptableContext<'line'>) => this.isKeyframe(ctx.dataIndex) ? 'circle' : 'cross',
+                        // @ts-ignore
+                        pointStyle: (ctx: ScriptableContext<'line'>) => this.isKeyframe(ctx.raw?.x) ? 'circle' : 'cross',
                     }
                 })
             ]

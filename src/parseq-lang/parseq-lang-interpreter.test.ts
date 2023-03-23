@@ -1,6 +1,6 @@
 //@ts-ignore
-import { InvocationContext, ParseqAstNode } from './parseq-lang/parseq-lang-ast';
-import { parse } from './parseq-lang-interpreter';
+import { InvocationContext, ParseqAstNode } from './parseq-lang-ast';
+import { parse } from './parseq-lang-parser';
 
 const basicContext : InvocationContext =  {
   definedFrames: [0,5,10],
@@ -240,6 +240,5 @@ runTest('slide', 'slide(from=-10, to=10, span=3)', [-10,-3.333333333333333,3.333
 //runTest('info_match_count', 'info_match_count()', [0,0,0,0,0,0,0,0,0,0,0]);
 //runTest('info_match_last', 'info_match_last()', [0,0,0,0,0,0,0,0,0,0,0]);
 //
-
 // Error cases:
 // 

@@ -5,8 +5,9 @@ import { defaultValues } from './data/defaultValues';
 
 
 //@ts-ignore
-import { defaultInterpolation, parse } from './parseq-lang-interpreter';
+import { defaultInterpolation, parse } from './parseq-lang/parseq-lang-parser';
 import { InvocationContext, ParseqAstNode } from "./parseq-lang/parseq-lang-ast";
+import { LTTB } from 'downsample';
 
 export class ParseqRendererException {
     message: string;
@@ -27,7 +28,7 @@ function getDefaultValue(field: string) {
     }
 }
 
-export const parseqRender = (input: ParseqPersistableState): RenderedData => {
+export const parseqRender = (input: ParseqPersistableState): {renderedData: RenderedData, graphData: GraphableData, sparklineData: SparklineData } => {
 
     const stats = {
         parseEvents: 0,
@@ -81,11 +82,13 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     // Calculate actual rendered value for all interpolatable fields
     let rendered_frames: ParseqRenderedFrames = [];
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
+    const graphData : GraphableData = {};
     managedFields.forEach((field) => {
+
+        graphData[field] = [];
 
         // Get all keyframes that have a value for this field
         const filtered = sortedKeyframes.filter(kf => isValidNumber(kf[field]));
-
         // Add bookend keyframes if they have a value for this field (implying none were present in the original keyframes)
         //@ts-ignore
         if (isValidNumber(bookendKeyFrames.first[field])) {
@@ -156,6 +159,7 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
                 frame: frame,
                 [field]: Number(computed_value) // TODO type coersion will need to change when we support string fields
             }
+            graphData[field].push({ x: frame, y: Number(computed_value) });
             lastInterpolator = interpolator;
             prev_computed_value = computed_value;
         });
@@ -240,33 +244,49 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
             if (frame === 0) {
                 //@ts-ignore
+                const pcValue = (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field];
+                //@ts-ignore
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
                     //@ts-ignore
                     [field + '_delta']: rendered_frames[0][field],
                     //@ts-ignore
-                    [field + "_pc"]: (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field],
+                    [field + "_pc"]: pcValue,
                 }
+                graphData[field + '_pc'] = [{ x: 0, y:  pcValue}];
+
             } else {
+                //@ts-ignore
+                const pcValue = (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field]
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
                     //[field + '_delta']: (field === 'zoom') ? 1+(rendered_frames[frame][field] - rendered_frames[frame - 1][field]) : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
                     [field + '_delta']: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame - 1][field] : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
-                    [field + "_pc"]: (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field],
+                    [field + "_pc"]: pcValue,
                 }
+                graphData[field + '_pc'].push({ x: frame, y:  pcValue});
             }
         });
     });
 
-    const data: RenderedData = {
+    console.time("decimation");
+    const sparklineData : SparklineData = [];
+    managedFields.forEach((field) => {
+     //@ts-ignore
+     sparklineData[field] = LTTB(graphData[field], 100).map((point) => point.y);
+     //@ts-ignore
+     sparklineData[field + '_delta'] = LTTB(rendered_frames.map((frame) => [frame.frame, frame[field + '_delta']]), 100).map((point) => point[1]);
+    });
+    console.timeEnd("decimation");
+
+    const renderedData: RenderedData = {
         ...input,
         "rendered_frames": rendered_frames,
         "rendered_frames_meta": rendered_frames_meta
     }
 
     console.log("render stats:", stats);
-
-    return data;
+    return {renderedData, graphData, sparklineData};
 }
 
 

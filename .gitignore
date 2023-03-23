@@ -28,3 +28,5 @@ yarn-error.log*
 # Generated code
 src/utils/*.js
 src/parseq-lang/*.js
+src/GraphTest.tsx
+src/Editable copy.tsx

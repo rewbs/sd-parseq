@@ -122,6 +122,14 @@ type ParseqRenderedFramesMeta = [{
     };
 }] | [];
 
+type Point = {x:number, y:number};
+
+type GraphableData = {
+    [key: string]: Point[]
+};
+
+type SparklineData = Indexable<DataPoint>;
+
 type RenderedData = ParseqPersistableState & {
     rendered_frames: ParseqRenderedFrames;
     rendered_frames_meta: ParseqRenderedFramesMeta;

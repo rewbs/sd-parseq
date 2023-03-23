@@ -104,7 +104,7 @@ export function FieldSelector(props: FieldSelectorProps) {
     </StyledList>, [selectedFields, props.customFields, filter, numRows, listRef]);
 
 
-    const details = useMemo(() => detailedField && <Grid container xs={12}>
+    const details = useMemo(() => detailedField && <Grid container>
         <Typography>{detailedField.name}</Typography>
         <Typography >{detailedField.description}</Typography>
         <TextField
@@ -141,8 +141,8 @@ export function FieldSelector(props: FieldSelectorProps) {
     return <>
         <p><small>Select which fields you'd like to manage with Parseq. Unselected fields are controllable with Deforum.</small></p>
 
-        <Grid container xs={12}>
-            <Grid xs={6}>
+        <Grid container item xs={12}>
+            <Grid item xs={6}>
                 <TextField
                     label="Filter"
                     value={filter}
@@ -153,7 +153,7 @@ export function FieldSelector(props: FieldSelectorProps) {
                     onChange={(e: any) => setFilter(e.target.value)}
                 />
             </Grid>
-            <Grid xs={6}>
+            <Grid item xs={6}>
                 <Box display='flex' justifyContent="right" gap={1} alignItems='center'>
                     <Tooltip arrow placement="top" title="Uncheck all fields.">
                         <Button size="small" variant='outlined'
@@ -175,9 +175,7 @@ export function FieldSelector(props: FieldSelectorProps) {
                         <Button size="small" variant='outlined'
                             onClick={(e) => {
                                 const usedFields = new Set<string>();
-                                console.log(props.keyframes);
                                 props.keyframes.forEach(kf => { 
-                                    console.log(kf);
                                     Object.keys(kf).filter(field => field !== "frame" && !field.endsWith("_i")).forEach(field => {
                                         if (isDefinedField(kf[field]) || isDefinedField(kf[field+"_i"])) {
                                             usedFields.add(field);

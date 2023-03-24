@@ -29,8 +29,8 @@ function getDefaultValue(field: string) {
 }
 
 export const parseqRender = (input: ParseqPersistableState): {renderedData: RenderedData, graphData: GraphableData, sparklineData: SparklineData } => {
-
-    const stats = {
+    const stats : {[key:string] : number} = {
+        renderStartTime: Date.now(),
         parseEvents: 0,
         invokeEvents: 0
     };
@@ -56,7 +56,6 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     }
 
     let sortedKeyframes: ParseqKeyframes = keyframes.sort((a, b) => a.frame - b.frame);
-
     let firstKeyFrame = sortedKeyframes[0];
     let lastKeyFrame = sortedKeyframes[keyframes.length - 1];
 
@@ -80,6 +79,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     });
 
     // Calculate actual rendered value for all interpolatable fields
+    const mainEvalStart = Date.now();
     let rendered_frames: ParseqRenderedFrames = [];
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
     const graphData : GraphableData = {};
@@ -164,8 +164,10 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
             prev_computed_value = computed_value;
         });
     });
+    stats.mainEvalTime = Date.now() - mainEvalStart;
 
     // Calculate rendered prompt based on prompts and weights
+    const promptStart = Date.now();
     if (typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled) {
         all_frame_numbers.forEach((frame) => {
 
@@ -185,7 +187,6 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
             };
 
             try {
-
                 let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
                     .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
                     .replace(/(\n)/g, " ");
@@ -205,8 +206,10 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
 
         });
     }
+    stats.promptCalcTimeMs = Date.now() - promptStart;
 
     // Calculate subseed & subseed strength based on fractional part of seed.
+    const subseedStart = Date.now();
     if (managedFields.includes("seed")) {
         all_frame_numbers.forEach((frame) => {
             let subseed = Math.ceil(rendered_frames[frame]['seed'])
@@ -220,7 +223,10 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
             }
         });
     }
+    stats.subseedCalcTimeMs = Date.now() - subseedStart;
 
+    // Calculate min/max of each field
+    const metaStartTime = Date.now();
     var rendered_frames_meta: ParseqRenderedFramesMeta = []
     managedFields.forEach((field) => {
         let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
@@ -234,8 +240,10 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
             }
         }
     });
+    stats.metaCalcTimeMs = Date.now() - metaStartTime;
 
     // Calculate delta variants
+    const deltaStartTime = Date.now();
     all_frame_numbers.forEach((frame) => {
         managedFields.forEach((field) => {
 
@@ -268,8 +276,9 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
             }
         });
     });
+    stats.deltaCalcTimeMs = Date.now() - deltaStartTime;
 
-    console.time("decimation");
+    const decimationStartTime = Date.now();
     const sparklineData : SparklineData = [];
     managedFields.forEach((field) => {
      //@ts-ignore
@@ -277,7 +286,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
      //@ts-ignore
      sparklineData[field + '_delta'] = LTTB(rendered_frames.map((frame) => [frame.frame, frame[field + '_delta']]), 100).map((point) => point[1]);
     });
-    console.timeEnd("decimation");
+    stats.decimationTimeMs = Date.now() - decimationStartTime;
 
     const renderedData: RenderedData = {
         ...input,
@@ -285,7 +294,12 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
         "rendered_frames_meta": rendered_frames_meta
     }
 
+    stats.keyframes = keyframes.length;
+    stats.fields = managedFields.length;    
+    stats.frames = lastKeyFrame.frame;
+    stats.renderTimeMs = Date.now() - stats.renderStartTime;
     console.log("render stats:", stats);
+
     return {renderedData, graphData, sparklineData};
 }
 

@@ -1,5 +1,5 @@
 import { deepCopy } from '@firebase/util';
-import { Alert, Button, Checkbox, FormControlLabel, Slider, Stack, Tooltip as Tooltip2, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, FormControlLabel, Stack, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -29,67 +29,235 @@ import { InitialisationStatus } from "./components/InitialisationStatus";
 import { Preview } from "./components/Preview";
 import { Prompts } from "./components/Prompts";
 import { UploadButton } from "./components/UploadButton";
-import { AudioWaveform } from './components/AudioWaveform';
 import { templates } from './data/templates';
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { parseqRender } from './parseq-renderer';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { fieldNametoRGBa, getUTCTimeStamp, getVersionNumber } from './utils/utils';
-import { frameToBeats, frameToSeconds } from './utils/maths';
-import { DECIMATION_THRESHOLD } from './utils/consts';
+import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
+import { queryStringGetOrCreate } from './utils/utils'
+import { GridTooltip } from './components/GridToolTip'
 
-//import debounce from 'lodash.debounce';
+import debounce from 'lodash.debounce';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
 import { defaultFields } from './data/fields';
-
-
-//////////////////////////////////////////
-// Config
-
-const default_options = {
-  input_fps: "",
-  bpm: 140,
-  output_fps: 20,
-  cc_window_width: 0,
-  cc_window_slide_rate: 1,
-  cc_use_input: false
-}
-
-function queryStringGetOrCreate(key, creator) {
-  let qps = new URLSearchParams(window.location.search);
-  let val = qps.get(key);
-  if (val) {
-    return val;
-  } else {
-    val = creator();
-    qps.set(key, val);
-    window.history.replaceState({}, '', `${window.location.pathname}?${qps.toString()}`);
-    return val;
-  }
-}
-
-const GridTooltip = (props) => {
-  const data = props.api.getDisplayedRowAtIndex(props.rowIndex).data;
-  return (
-    <div style={{ backgroundColor: '#d0ecd0' }}>
-      <div>Frame: {data.frame}</div>
-      <div>Seconds: {frameToSeconds(data.frame, props.getFps()).toFixed(3)}</div>
-      <div>Beat:  {frameToBeats(data.frame, props.getFps(), props.getBpm()).toFixed(3)}</div>
-      <div>Info:  {data.info ? data.info : ""}</div>
-    </div>
-  );
-};
+import deepEqual from 'fast-deep-equal';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
   const defaultTemplate = props.defaultTemplate;
   const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
+
+  //////////////////////////////////////////
+  // App State
+  //////////////////////////////////////////
+  const [renderedData, setRenderedData] = useState([]);
+  const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
+  const [lastRenderedState, setlastRenderedState] = useState("");
+  const [graphAsPercentages, setGraphAsPercentages] = useState(false);
+  const [graphPromptMarkers, setGraphPromptMarkers] = useState(false);
+  const [showFlatSparklines, setShowFlatSparklines] = useState(false);
+  const [keyframes, setKeyframes] = useState();
+  const [managedFields, setManagedFields] = useState();   // The fields that the user has chosen to be managed by Parseq.
+  const [displayedFields, setDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
+  const [prevDisplayedFields, setPrevDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
+  const [options, setOptions] = useState()
+  const [prompts, setPrompts] = useState();
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  const [enqueuedRender, setEnqueuedRender] = useState(false);
+  const [autoRender, setAutoRender] = useState(!preventInitialRender);
+  const [autoUpload, setAutoUpload] = useState(false);
+  const [initStatus, setInitStatus] = useState({});
+  const [uploadStatus, setUploadStatus] = useState(<></>);
+  const [lastRenderTime, setLastRenderTime] = useState(0);
+  const [gridCursorPos, setGridCursorPos] = useState(0);
+  const [rangeSelection, setRangeSelection] = useState({});
+  const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
+  const [graphDecimating, setGraphDecimating] = useState(false);
+  const [graphableData, setGraphableData] = useState([]);
+  const [sparklineData, setSparklineData] = useState([]);
+  const [graphScales, setGraphScales] = useState();
+  const [lastFrame, setLastFrame] = useState(0); // fields referenced in prompts.
+
+  const runOnceTimeout = useRef();
+  const _frameToRowId_cache = useRef();
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Initialisation logic
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Moved out of useEffect()  
+  // Resize grid to fit content and update graph view if last frame changes.
+  // TODO: UI optimisation: only need to do this keyframes have changed, could store a prevKeyframes and deepEquals against it.
+  if (keyframes) {
+    const gridContainer = document.querySelector(".ag-theme-alpine");
+    if (gridContainer) {
+      gridContainer.style.height = 24 * keyframes.length + "px";
+    }
+    const newLastFrame = Math.max(...keyframes.map(kf => kf.frame));
+    if (newLastFrame !== lastFrame) {
+      setLastFrame(newLastFrame);
+      setGraphScales({ xmin: 0, xmax: newLastFrame });
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Initialisation effects
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
+
+  // Run on first load, once all react components are ready and Grid is ready.
+  runOnceTimeout.current = 0;
+  useEffect(() => {
+    function runOnce() {
+      const qps = new URLSearchParams(window.location.search);
+      const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
+      const qsTemplate = qps.get("templateId");
+      const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
+      if (qsLegacyContent) {
+        // Attempt to load content from querystring 
+        // This is to support *LEGACY* parsrq URLs. Doesn't work in all browsers with large data.
+        freshLoadContentToState(JSON.parse(qsLegacyContent));
+        setInitStatus({ severity: "success", message: "Successfully imported legacy Parseq data from query string." });
+        const url = new URL(window.location);
+        url.searchParams.delete('parsec');
+        url.searchParams.delete('parseq');
+        window.history.replaceState({}, '', url);
+        setAutoSaveEnabled(true);
+        if (!preventInitialRender) {
+          setEnqueuedRender(true);
+        }
+      } else if (qsTemplate) {
+        if (templates[qsTemplate]) {
+          freshLoadContentToState(templates[qsTemplate].template);
+          setInitStatus({ severity: "success", message: `Started new document from template "${qsTemplate}".` });
+          const url = new URL(window.location);
+          url.searchParams.delete('templateId');
+          window.history.replaceState({}, '', url);
+          setAutoSaveEnabled(true);
+          if (!preventInitialRender) {
+            setEnqueuedRender(true);
+          }
+        } else {
+          setInitStatus({ severity: "error", message: `Could not find template "${qsTemplate}", using default starting document.` });
+        }
+      } else if (qsImportRemote && qsRemoteImportToken) {
+        setInitStatus({ severity: "warning", message: "Importing remote document..." });
+        const encodedImport = encodeURIComponent(qsImportRemote);
+        const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${encodedImport}?alt=media&token=${qsRemoteImportToken}`
+        fetch(importUrl).then((response) => {
+          if (response.ok) {
+            response.json().then((json) => {
+              freshLoadContentToState(json);
+              setInitStatus({ severity: "success", message: "Successfully imported remote document." });
+              const url = new URL(window.location);
+              url.searchParams.delete('importRemote');
+              url.searchParams.delete('token');
+              window.history.replaceState({}, '', url);
+              setAutoSaveEnabled(true);
+              if (!preventInitialRender) {
+                setEnqueuedRender(true);
+              }
+            }).catch((error) => {
+              console.error(error);
+              setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
+            });
+          } else {
+            console.error(response);
+            setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}. Status: ${response.status}` });
+          }
+        }).catch((error) => {
+          console.error(error);
+          setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
+        });
+      } else {
+        loadVersion(activeDocId).then((loadedContent) => {
+          freshLoadContentToState(loadedContent);
+          setAutoSaveEnabled(true);
+          if (!preventInitialRender) {
+            setEnqueuedRender(true);
+          }
+        });
+      }
+    }
+    if (gridRef.current.api) {
+      clearTimeout(runOnceTimeout.current);
+      runOnce();
+    } else {
+      //log.debug("Couldn't do init, try again in 100ms.");
+      clearTimeout(runOnceTimeout.current);
+      runOnceTimeout.current = setTimeout(runOnce, 100);
+    }
+    // empty dependency array to force one off execution
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // TODO - can this be moved out of an effect to reduce re-renders?
+  // Ensures that whenever any data that might affect the output changes,
+  // we save the doc and notify the user that a render is required.
+  // This is debounced to 200ms to avoid repeated saves if edits happen
+  // in quick succession.
+  useDebouncedEffect(() => {
+    if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields) {
+      saveVersion(activeDocId, getPersistableState());
+    }
+  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields]);
+
+  // TODO - can this be moved out of an effect to reduce re-renders?
+  // Render if there is an enqueued render, but delay if typing.
+  // Deboucing to avoid repeated consecutive renders
+  useDebouncedEffect(() => {
+    if (enqueuedRender) {
+      if (prompts && options && displayedFields && keyframes && keyframes.length > 1) {
+        // This is the only place we should call render explicitly.
+        render();
+      }
+    }
+  }, typing ? 1000 : 200, [enqueuedRender, prompts, options, displayedFields, keyframes]);
+
+
+  // TODO - can this be moved out of an effect to reduce re-renders?
+  // Ensure grid shows all displayed fields columns.
+  useEffect(() => {
+    if (displayedFields && gridRef.current?.columnApi) {
+      let columnsToShow = displayedFields.flatMap(c => [c, c + '_i']);
+      let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
+      gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
+      gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
+      gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
+      gridRef.current.api.onSortChanged();
+      gridRef.current.api.sizeColumnsToFit();
+      if (!deepEqual(displayedFields.sort(), prevDisplayedFields?.sort())) { //TODO convert these to Sets so we can avoid the sorts.
+        setPrevDisplayedFields(displayedFields);
+      }
+    }
+  }, [displayedFields, prevDisplayedFields]);
+
+
+  // Auto-render if something has changed (i.e. needsRender is true) and autorender is enabled
+  const needsRender = useMemo(() => {
+    return !lastRenderedState
+      || !equal(lastRenderedState.keyframes, keyframes)
+      || !equal(lastRenderedState.options, options)
+      || !equal(lastRenderedState.prompts, prompts)
+      || !equal(lastRenderedState.managedFields, managedFields)
+  }, [lastRenderedState, keyframes, options, prompts, managedFields]);
+
+  useEffect(() => {
+    if (needsRender && autoRender) {
+      setEnqueuedRender(true);
+    }
+  }, [needsRender, autoRender, typing]);
+
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Document loading utils
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
   const fillWithDefaults = useCallback((possiblyIncompleteContent) => {
     if (!possiblyIncompleteContent.prompts) {
@@ -108,8 +276,7 @@ const ParseqUI = (props) => {
         : possiblyIncompleteContent.managedFields.slice(0, 5);
     }
     // For options we want to merge the defaults with the existing options.
-    possiblyIncompleteContent.options = { ...default_options, ...(possiblyIncompleteContent.options || {}) };
-
+    possiblyIncompleteContent.options = { ...DEFAULT_OPTIONS, ...(possiblyIncompleteContent.options || {}) };
     return possiblyIncompleteContent;
   }, [defaultTemplate]);
 
@@ -127,42 +294,25 @@ const ParseqUI = (props) => {
     refreshGridFromKeyframes(filledContent.keyframes);
   }, [fillWithDefaults, defaultTemplate]);
 
-  //////////////////////////////////////////
-  // App State
-  //////////////////////////////////////////
-  const [renderedData, setRenderedData] = useState([]);
-  const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
-  const [lastRenderedState, setlastRenderedState] = useState("");
-  const [graphAsPercentages, setGraphAsPercentages] = useState(false);
-  const [graphPromptMarkers, setGraphPromptMarkers] = useState(false);
-  const [showFlatSparklines, setShowFlatSparklines] = useState(false);
-  const [keyframes, setKeyframes] = useState();
-  const [managedFields, setManagedFields] = useState();   // The fields that the user has chosen to be managed by Parseq.
-  const [displayedFields, setDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
-  const [options, setOptions] = useState()
-  const [prompts, setPrompts] = useState();
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
-  const [enqueuedRender, setEnqueuedRender] = useState(false);
-  const [autoRender, setAutoRender] = useState(!preventInitialRender);
-  const [autoUpload, setAutoUpload] = useState(false);
-  const [initStatus, setInitStatus] = useState({});
-  const [uploadStatus, setUploadStatus] = useState(<></>);
-  const [lastRenderTime, setLastRenderTime] = useState(0);
-  const [gridCursorPos, setGridCursorPos] = useState(0);
-  const [rangeSelection, setRangeSelection] = useState({});
-  const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
-  const [graphDecimating, setGraphDecimating] = useState(false);
-  const [graphableData, setGraphableData] = useState([]);
-  const [sparklineData, setSparklineData] = useState([]);
-  const [graphScales, setGraphScales] = useState();
-  const [zoomAmount, setZoomAmount] = useState(0);
-  const [panAmount, setPanAmount] = useState(0);
 
-  const runOnceTimeout = useRef();
-  const _frameToRowId_cache = useRef();
+  // TODO: switch to useMemo that updates when elements change?
+  const getPersistableState = useCallback(() => ({
+    "meta": {
+      "generated_by": "sd_parseq",
+      "version": getVersionNumber(),
+      "generated_at": getUTCTimeStamp(),
+    },
+    prompts: prompts,
+    options: options,
+    managedFields: managedFields,
+    displayedFields: displayedFields,
+    keyframes: keyframes,
+  }), [prompts, options, displayedFields, keyframes, managedFields]);
 
-  useEffect(() => {
-  }, [typing]);
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Grid config & utils - TODO move out into Grid component
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   const isInRangeSelection = useCallback((cell) => {
     return rangeSelection.anchor && rangeSelection.tip && cell
@@ -280,111 +430,6 @@ const ParseqUI = (props) => {
     }
   }), [options]);
 
-  // Ensures that whenever any data that might affect the output changes,
-  // we save the doc and notify the user that a render is required.
-  // This is debounced to 200ms to avoid repeated saves if edits happen
-  // in quick succession.
-  useDebouncedEffect(() => {
-    if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields) {
-      saveVersion(activeDocId, getPersistableState());
-    }
-  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields]);
-
-  useDebouncedEffect(() => {
-    if (enqueuedRender) {
-      if (prompts && options && displayedFields && keyframes && keyframes.length > 1) {
-        // This is the only place we should call render explicitly.
-        render();
-      }
-    }
-  }, typing ? 1000 : 200, [enqueuedRender, prompts, options, displayedFields, keyframes]);
-
-  // Run on first load, once all react components are ready and Grid is ready.
-  runOnceTimeout.current = 0;
-  useEffect(() => {
-    function runOnce() {
-      const qps = new URLSearchParams(window.location.search);
-      const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
-      const qsTemplate = qps.get("templateId");
-      const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
-      if (qsLegacyContent) {
-        // Attempt to load content from querystring 
-        // This is to support *LEGACY* parsrq URLs. Doesn't work in all browsers with large data.
-        freshLoadContentToState(JSON.parse(qsLegacyContent));
-        setInitStatus({ severity: "success", message: "Successfully imported legacy Parseq data from query string." });
-        const url = new URL(window.location);
-        url.searchParams.delete('parsec');
-        url.searchParams.delete('parseq');
-        window.history.replaceState({}, '', url);
-        setAutoSaveEnabled(true);
-        if (!preventInitialRender) {
-          setEnqueuedRender(true);
-        }
-      } else if (qsTemplate) {
-        if (templates[qsTemplate]) {
-          freshLoadContentToState(templates[qsTemplate].template);
-          setInitStatus({ severity: "success", message: `Started new document from template "${qsTemplate}".` });
-          const url = new URL(window.location);
-          url.searchParams.delete('templateId');
-          window.history.replaceState({}, '', url);
-          setAutoSaveEnabled(true);
-          if (!preventInitialRender) {
-            setEnqueuedRender(true);
-          }
-        } else {
-          setInitStatus({ severity: "error", message: `Could not find template "${qsTemplate}", using default starting document.` });
-        }
-      } else if (qsImportRemote && qsRemoteImportToken) {
-        setInitStatus({ severity: "warning", message: "Importing remote document..." });
-        const encodedImport = encodeURIComponent(qsImportRemote);
-        const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${encodedImport}?alt=media&token=${qsRemoteImportToken}`
-        fetch(importUrl).then((response) => {
-          if (response.ok) {
-            response.json().then((json) => {
-              freshLoadContentToState(json);
-              setInitStatus({ severity: "success", message: "Successfully imported remote document." });
-              const url = new URL(window.location);
-              url.searchParams.delete('importRemote');
-              url.searchParams.delete('token');
-              window.history.replaceState({}, '', url);
-              setAutoSaveEnabled(true);
-              if (!preventInitialRender) {
-                setEnqueuedRender(true);
-              }
-            }).catch((error) => {
-              console.error(error);
-              setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
-            });
-          } else {
-            console.error(response);
-            setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}. Status: ${response.status}` });
-          }
-        }).catch((error) => {
-          console.error(error);
-          setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
-        });
-      } else {
-        loadVersion(activeDocId).then((loadedContent) => {
-          freshLoadContentToState(loadedContent);
-          setAutoSaveEnabled(true);
-          if (!preventInitialRender) {
-            setEnqueuedRender(true);
-          }
-        });
-      }
-    }
-    if (gridRef.current.api) {
-      clearTimeout(runOnceTimeout.current);
-      runOnce();
-    } else {
-      //log.debug("Couldn't do init, try again in 100ms.");
-      clearTimeout(runOnceTimeout.current);
-      runOnceTimeout.current = setTimeout(runOnce, 100);
-    }
-    // empty dependency array to force one off execution
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const frameToRowId = useCallback((frame) => {
     if (_frameToRowId_cache.current === undefined) {
       // Refresh cache.
@@ -398,8 +443,6 @@ const ParseqUI = (props) => {
     return _frameToRowId_cache.current.get(frame);
   }, [_frameToRowId_cache]);
 
-  //////////////////////////////////////////
-  // Grid action callbacks 
   const addRow = useCallback((frame) => {
     //console.log(_frameToRowId_cache);
 
@@ -422,8 +465,6 @@ const ParseqUI = (props) => {
   }, [frameToRowId]);
 
   const mergeKeyframes = useCallback((incomingKeyframes) => {
-    //console.log(dataToMerge);
-
     // compute merged keyframes
     var keyframes_local = incomingKeyframes.map((incomingKeyframe) => {
       var existingKeyframe = keyframes.find((candidateKeyframe) => candidateKeyframe.frame === incomingKeyframe.frame);
@@ -443,17 +484,6 @@ const ParseqUI = (props) => {
     setKeyframes(keyframes_local);
     refreshGridFromKeyframes(keyframes_local)
 
-  }, [keyframes]);
-
-
-  // Resize grid to fit content
-  useEffect(() => {
-    if (keyframes) {
-      const gridContainer = document.querySelector(".ag-theme-alpine");
-      if (gridContainer) {
-        gridContainer.style.height = 24 * keyframes.length + "px";
-      }
-    }
   }, [keyframes]);
 
   const deleteRow = useCallback((frame) => {
@@ -539,30 +569,9 @@ const ParseqUI = (props) => {
     }
   }, [addRow, deleteRow]);
 
-
-  // Update displayed columns when displayedFields changes.
-  useEffect(() => {
-    if (displayedFields && gridRef.current.columnApi) {
-      let columnsToShow = displayedFields.flatMap(c => [c, c + '_i']);
-      let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
-      gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
-      gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
-      gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
-      gridRef.current.api.onSortChanged();
-      gridRef.current.api.sizeColumnsToFit();
-    } else {
-      // TODO: if we need this, we also need to cancel the timer in the good path
-      // to avoid nuking displayedFields by mistake. But for now I don't think we need this.
-      //log.debug("Couldn't update columns, try again in 100ms.");
-      // setTimeout(() => {
-      //   setDisplayedFields(Array.isArray(displayedFields) ? [...displayedFields] : []);
-      // }, 100);
-    }
-  }, [displayedFields]);
-
-
   //////////////////////////////////////////
-  // Grid data accesss
+  // Grid/Keyframe data sync utils
+  //////////////////////////////////////////
 
   // Must be called whenever the grid data is changed, so that the updates
   // are reflected in other keyframe observers.
@@ -588,8 +597,10 @@ const ParseqUI = (props) => {
     gridRef.current.api.setRowData(keyframes);
   }
 
-  //////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Other component event callbacks  
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   const handleChangeDisplayedFields = useCallback((e) => {
     let selectedToShow = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value
     setDisplayedFields(selectedToShow);
@@ -770,37 +781,16 @@ const ParseqUI = (props) => {
     </DialogActions>
   </Dialog>, [openDeleteRowDialog, framesToDelete, handleCloseDeleteRowDialog]);
 
-  // TODO: switch to useMemo that updates when elements change?
-  const getPersistableState = useCallback(() => ({
-    "meta": {
-      "generated_by": "sd_parseq",
-      "version": getVersionNumber(),
-      "generated_at": getUTCTimeStamp(),
-    },
-    prompts: prompts,
-    options: options,
-    managedFields: managedFields,
-    displayedFields: displayedFields,
-    keyframes: keyframes,
-  }), [prompts, options, displayedFields, keyframes, managedFields]);
-
-  const needsRender = useMemo(() => {
-    return !lastRenderedState
-      || !equal(lastRenderedState.keyframes, keyframes)
-      || !equal(lastRenderedState.options, options)
-      || !equal(lastRenderedState.prompts, prompts)
-      || !equal(lastRenderedState.managedFields, managedFields)
-  }, [lastRenderedState, keyframes, options, prompts, managedFields]);
-
-  //////////////////////////////////////////
-  // Main render action callback
+  //////////////////////////////////////////////////
+  // Main data rendering management
+  //////////////////////////////////////////////////
 
   const render = useCallback(() => {
     console.time('Render');
     setRenderedErrorMessage("");
-    setEnqueuedRender(false);
     try {
       const { renderedData, graphData, sparklineData } = parseqRender(getPersistableState());
+      setEnqueuedRender(false);
       setRenderedData(renderedData);
       setGraphableData(graphData);
       setSparklineData(sparklineData);
@@ -829,13 +819,108 @@ const ParseqUI = (props) => {
 
   }, [keyframes, prompts, options, managedFields, getPersistableState]);
 
-  const renderButton = useMemo(() =>
-    <Stack>
-      <Button data-testid="render-button" size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Re-render'}</Button>
-      {lastRenderTime ? <Typography fontSize='0.7em' >Last rendered: <ReactTimeAgo date={lastRenderTime} locale="en-US" />.</Typography> : <></>}
-    </Stack>
-    , [needsRender, enqueuedRender, lastRenderTime]);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // UI components
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // Doc manager ------------------------
+
+  const docManager = useMemo(() => <UserAuthContextProvider>
+    <DocManagerUI
+      docId={activeDocId}
+      onLoadContent={(content) => {
+        console.log("Loading version", content);
+        if (content) {
+          freshLoadContentToState(content);
+        }
+      }}
+    />
+  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
+
+  // Prompts ------------------------
+
+  const promptsUI = useMemo(() => prompts ? <Prompts
+    initialPrompts={prompts}
+    lastFrame={lastFrame}
+    afterFocus={(e) => setTyping(true)}
+    afterBlur={(e) => setTyping(false)}
+    afterChange={debounce((p) => setPrompts(p), 200)}
+  /> : <></>, [prompts, lastFrame]);
+
+  // Managed field selection ------------------------
+
+  // Figure out which variables are used in the prompts.
+  const promptVariables = useMemo(() => defaultFields.map(f => f.name).reduce((acc, field) => {
+    const pattern = RegExp(`\\$\\{.*?${field}.*?\\}`);
+    if (prompts?.some(prompt => prompt.positive.match(pattern) || prompt.negative.match(pattern))) {
+      acc.add(field);
+    }
+    return acc;
+  }, new Set([]))
+    , [prompts]);
+
+  const managedFieldSelector = useMemo(() => managedFields && <FieldSelector
+    selectedFields={managedFields}
+    keyframes={keyframes}
+    promptVariables={promptVariables}
+    customFields={[]}
+    onChange={(newManagedFields) => {
+      const oldManagedFields = managedFields;
+      if (newManagedFields.length !== oldManagedFields.length
+        || !newManagedFields.every(f => oldManagedFields.includes(f))) {
+        // This update MUST be conditional, else we get into an infinite react loop.
+        setManagedFields(newManagedFields);
+      }
+
+      // Update displayedFields to remove any missing fields or add any new fields.
+      const addedManangedFields = newManagedFields.filter((field) => !oldManagedFields.includes(field));
+      if (displayedFields) {
+        let newDisplayedFields = displayedFields.filter((field) => newManagedFields.includes(field)).concat(addedManangedFields);
+        if (displayedFields.length !== newDisplayedFields.length
+          || !newDisplayedFields.every(f => displayedFields.includes(f))) {
+          // This update MUST be conditional, else we get into an infinite react loop.
+          setDisplayedFields(newDisplayedFields);
+        }
+      }
+    }}
+  />, [managedFields, displayedFields, promptVariables, keyframes]);
+
+  // Core options ------------------------
+
+  const optionsUI = useMemo(() => options && <span>
+    <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
+      <TextField
+        id={"options_output_fps"}
+        label={"Output FPS"}
+        value={options['output_fps']}
+        onChange={handleChangeOption}
+        onFocus={(e) => setTyping(true)}
+        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
+        style={{ marginBottom: '10px', marginTop: '0px' }}
+        InputLabelProps={{ shrink: true, }}
+        InputProps={{ style: { fontSize: '0.75em' } }}
+        size="small"
+        variant="standard" />
+    </Tooltip2>
+    <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
+      <TextField
+        id={"options_bpm"}
+        label={"BPM"}
+        value={options['bpm']}
+        onChange={handleChangeOption}
+        onFocus={(e) => setTyping(true)}
+        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
+        style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px', marginRight: '30px' }}
+        InputLabelProps={{ shrink: true, }}
+        InputProps={{ style: { fontSize: '0.75em' } }}
+        size="small"
+        variant="standard" />
+    </Tooltip2>
+  </span>, [options, handleChangeOption])
+
+
+  // Grid ------------------------
 
   const grid = useMemo(() => <>
     <div className="ag-theme-alpine" style={{ width: '100%', minHeight: '150px', maxHeight: '1150px', height: '150px' }}>
@@ -896,103 +981,6 @@ const ParseqUI = (props) => {
     </div>
   </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, navigateToNextCell, rangeSelection]);
 
-  const getAnimatedFields = (renderedData) => {
-    if (renderedData && renderedData.rendered_frames_meta) {
-      return Object.keys(renderedData.rendered_frames_meta)
-        .filter(field => !renderedData.rendered_frames_meta[field].isFlat)
-    }
-    return [];
-  }
-
-  useEffect(() => {
-    if (enqueuedRender) {
-      console.time('enqueuedRender');
-    } else {
-      console.timeEnd('enqueuedRender');
-    }
-  }, [enqueuedRender]);
-
-  const renderedDataJsonString = useMemo(() => renderedData && JSON.stringify(renderedData, null, 4), [renderedData]);
-
-  const renderStatus = useMemo(() => {
-    let animated_fields = getAnimatedFields(renderedData);
-    let uses2d = defaultFields.filter(f => f.labels.some(l => l === '2D') && animated_fields.includes(f));
-    let uses3d = defaultFields.filter(f => f.labels.some(l => l === '3D') && animated_fields.includes(f));
-    let message = '';
-    if (uses2d.length > 0 && uses3d.length > 0) {
-      message = `Note: you're animating with both 2D and 3D settings (2D:${uses2d}; 3D:${uses3d}). Some settings will have no effect depending on which Deforum animation mode you choose.`;
-    } else if (uses2d.length > 0) {
-      message = `Note: you're animating with 2D or pseudo-3D settings. Make sure you choose the 2D animation mode in Deforum.`;
-    } else if (uses3d.length > 0) {
-      message = `Note: you're animating with 3D settings. Make sure you choose the 3D animation mode in Deforum.`;
-    }
-
-    let errorMessage = renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></>
-
-    let statusMessage = <></>;
-    if (enqueuedRender) {
-      statusMessage = <Alert severity="warning">
-        Render in progres...
-      </Alert>
-    } else if (renderedErrorMessage || needsRender) {
-      statusMessage = <Alert severity="info">
-        Please render to update the output.
-        <p><small>{message}</small></p>
-      </Alert>
-    } else {
-      statusMessage = <Alert severity="success">
-        Output is up-to-date.
-        <p><small>{message}</small></p>
-      </Alert>;
-    }
-    return <div>
-      {errorMessage}
-      {statusMessage}
-    </div>
-  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender]);
-
-  const docManager = useMemo(() => <UserAuthContextProvider>
-    <DocManagerUI
-      docId={activeDocId}
-      onLoadContent={(content) => {
-        console.log("Loading version", content);
-        if (content) {
-          freshLoadContentToState(content);
-        }
-      }}
-    />
-  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
-
-  const optionsUI = useMemo(() => options && <span>
-    <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
-      <TextField
-        id={"options_output_fps"}
-        label={"Output FPS"}
-        value={options['output_fps']}
-        onChange={handleChangeOption}
-        onFocus={(e) => setTyping(true)}
-        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: default_options['output_fps'] }) } }}
-        style={{ marginBottom: '10px', marginTop: '0px' }}
-        InputLabelProps={{ shrink: true, }}
-        InputProps={{ style: { fontSize: '0.75em' } }}
-        size="small"
-        variant="standard" />
-    </Tooltip2>
-    <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
-      <TextField
-        id={"options_bpm"}
-        label={"BPM"}
-        value={options['bpm']}
-        onChange={handleChangeOption}
-        onFocus={(e) => setTyping(true)}
-        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: default_options['bpm'] }) } }}
-        style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px', marginRight: '30px' }}
-        InputLabelProps={{ shrink: true, }}
-        InputProps={{ style: { fontSize: '0.75em' } }}
-        size="small"
-        variant="standard" />
-    </Tooltip2>
-  </span>, [options, handleChangeOption])
 
   const displayedFieldSelector = useMemo(() => displayedFields && <Select
     id="select-display-fields"
@@ -1023,40 +1011,35 @@ const ParseqUI = (props) => {
     ))}
   </Select>, [displayedFields, handleChangeDisplayedFields, managedFields])
 
-  const promptsUI = useMemo(() => prompts ? <Prompts
-    initialPrompts={prompts}
-    lastFrame={keyframes[keyframes.length - 1].frame}
-    afterFocus={(e) => setTyping(true)}
-    afterBlur={(e) => setTyping(false)}
-    //afterChange={debounce((p) => setPrompts(p), 300)}
-    afterChange={(p) => setPrompts(p)}
-  /> : <></>, [prompts, keyframes]);
+  // Editable Graph ------------------------
 
-  const managedFieldSelector = useMemo(() => managedFields && <FieldSelector
-    selectedFields={managedFields}
-    keyframes={keyframes}
-    prompts={prompts}
-    customFields={[]}
-    onChange={(newManagedFields) => {
-      const oldManagedFields = managedFields;
-      if (newManagedFields.length !== oldManagedFields.length
-        || !newManagedFields.every(f => oldManagedFields.includes(f))) {
-        // This update MUST be conditional, else we get into an infinite react loop.
-        setManagedFields(newManagedFields);
-      }
-
-      // Update displayedFields to remove any missing fields or add any new fields.
-      const addedManangedFields = newManagedFields.filter((field) => !oldManagedFields.includes(field));
-      if (displayedFields) {
-        let newDisplayedFields = displayedFields.filter((field) => newManagedFields.includes(field)).concat(addedManangedFields);
-        if (displayedFields.length !== newDisplayedFields.length
-          || !newDisplayedFields.every(f => displayedFields.includes(f))) {
-          // This update MUST be conditional, else we get into an infinite react loop.
-          setDisplayedFields(newDisplayedFields);
+  // compute markers when prompt or cursor position change
+  const markers = useMemo(() =>
+    (prompts ?? []).flatMap((p, idx) => [{
+      x: p.allFrames ? 0 : p.from,
+      color: 'rgba(50,200,50, 0.8)',
+      label: p.name + 'start',
+      display: !p.allFrames,
+      top: true
+    },
+    {
+      x: p.allFrames ? lastFrame : p.to,
+      color: 'rgba(200,50,50, 0.8)',
+      label: p.name + ' end',
+      display: !p.allFrames,
+      top: false
+    }
+    ]).concat(
+      [
+        {
+          x: gridCursorPos,
+          color: 'rgba(0, 0, 100, 1)',
+          label: 'Grid cursor',
+          top: true
         }
-      }
-    }}
-  />, [managedFields, displayedFields, prompts, keyframes]);
+      ]
+    )
+    , [prompts, gridCursorPos, lastFrame]);
 
   const editableGraphHeader = useMemo(() => <>
     {
@@ -1080,24 +1063,7 @@ const ParseqUI = (props) => {
         onChange={(e) => setGraphPromptMarkers(e.target.checked)}
       />}
       label={<Box component="div" fontSize="0.75em">Show prompt markers</Box>} />
-    {/* <Slider min={0} max={1} step={0.01}  aria-label="Zoom" value={zoomAmount} onChange={
-      (e) => {
-        setZoomAmount(e.target.value);
-        const minWindowSize = 10;
-        const maxWindowSize = renderedData.rendered_frames.length;
-        const windowSize = minWindowSize+(maxWindowSize-minWindowSize)*(1-e.target.value);
-        const centre = (graphScales.xmax-graphScales.xmin)/2;
-        setGraphScales({ xmin: centre-windowSize/2, xmax: centre+windowSize/2 })
-
-      }} />
-    <Slider min={1} max={100} aria-label="Pan" value={panAmount} onChange={
-      (e) => {
-        setPanAmount(e.target.value);
-        const gapsize = renderedData.rendered_frames.length - graphScales.xmax;
-        setGraphScales({ xmin: graphScales.xmin + gapsize/e.target.value, xmax: graphScales.xmax + gapsize/e.target.value })
-
-      }} />       */}
-  </>, [graphAsPercentages, graphPromptMarkers, graphDecimating, renderedData, graphScales, panAmount, zoomAmount])
+  </>, [graphAsPercentages, graphPromptMarkers, graphDecimating])
 
   const editableGraph = useMemo(() => renderedData && renderedData.rendered_frames && <Editable
     renderedData={renderedData} // just used for keyframes?
@@ -1105,34 +1071,7 @@ const ParseqUI = (props) => {
     displayedFields={displayedFields}
     as_percents={graphAsPercentages}
     xscales={graphScales ?? { xmin: 0, xmax: renderedData.rendered_frames?.length ?? 100 }}
-    markers={
-      (prompts && graphPromptMarkers) ?
-        prompts.flatMap((p, idx) => [{
-          x: p.from,
-          color: 'rgba(50,200,50, 0.8)',
-          label: p.name + 'start',
-          display: !p.allFrames,
-          top: true
-        },
-        {
-          x: p.to,
-          color: 'rgba(200,50,50, 0.8)',
-          label: p.name + ' end',
-          display: !p.allFrames,
-          top: false
-        }
-        ])
-          .concat(
-            [
-              {
-                x: gridCursorPos,
-                color: 'rgba(0, 0, 100, 1)',
-                label: 'Grid cursor',
-                top: true
-              }
-            ]
-          )
-        : []}
+    markers={graphPromptMarkers ? markers : []}
     updateKeyframe={(field, index, value) => {
       let rowId = frameToRowId(index)
       gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
@@ -1159,7 +1098,19 @@ const ParseqUI = (props) => {
         setGraphScales(scales);
       }
     }}
-  />, [renderedData, graphableData, displayedFields, graphAsPercentages, graphPromptMarkers, gridCursorPos, prompts, addRow, frameToRowId, graphScales]);
+  />, [renderedData, graphableData, displayedFields, graphAsPercentages, graphPromptMarkers, markers, addRow, frameToRowId, graphScales]);
+
+
+
+  // Sparklines ------------------------
+
+  const getAnimatedFields = (renderedData) => {
+    if (renderedData && renderedData.rendered_frames_meta) {
+      return Object.keys(renderedData.rendered_frames_meta)
+        .filter(field => !renderedData.rendered_frames_meta[field].isFlat)
+    }
+    return [];
+  }
 
   const handleClickedSparkline = useCallback((e) => {
     let field = e.currentTarget.id.replace("sparkline_", "");
@@ -1202,10 +1153,10 @@ const ParseqUI = (props) => {
                 {
                   <>
                     <Typography style={{ fontSize: "0.5em" }}>delta</Typography>
-                    <Sparklines data={sparklineData[field+'_delta']} margin={1} padding={1}>
+                    <Sparklines data={sparklineData[field + '_delta']} margin={1} padding={1}>
                       <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
                     </Sparklines>
-                  </>                    
+                  </>
                 }
               </Grid>
             )
@@ -1218,6 +1169,12 @@ const ParseqUI = (props) => {
         </Alert>
         : <></>
   }, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline, sparklineData]);
+
+
+
+  // Raw output ------------------------
+
+  const renderedDataJsonString = useMemo(() => renderedData && JSON.stringify(renderedData, null, 4), [renderedData]);
 
   const renderedOutput = useMemo(() =>
     renderedDataJsonString && <>
@@ -1232,6 +1189,55 @@ const ParseqUI = (props) => {
         <pre data-testid="output">{renderedDataJsonString.substring(0, 1024 * 1024)}</pre>
       </div>
     </>, [renderedDataJsonString]);
+
+
+  // Footer ------------------------
+
+  const renderStatus = useMemo(() => {
+    let animated_fields = getAnimatedFields(renderedData);
+    let uses2d = defaultFields.filter(f => f.labels.some(l => l === '2D') && animated_fields.includes(f));
+    let uses3d = defaultFields.filter(f => f.labels.some(l => l === '3D') && animated_fields.includes(f));
+    let message = '';
+    if (uses2d.length > 0 && uses3d.length > 0) {
+      message = `Note: you're animating with both 2D and 3D settings (2D:${uses2d}; 3D:${uses3d}). Some settings will have no effect depending on which Deforum animation mode you choose.`;
+    } else if (uses2d.length > 0) {
+      message = `Note: you're animating with 2D or pseudo-3D settings. Make sure you choose the 2D animation mode in Deforum.`;
+    } else if (uses3d.length > 0) {
+      message = `Note: you're animating with 3D settings. Make sure you choose the 3D animation mode in Deforum.`;
+    }
+
+    let errorMessage = renderedErrorMessage ? <Alert severity="error">{renderedErrorMessage}</Alert> : <></>
+
+    let statusMessage = <></>;
+    if (enqueuedRender && !renderedErrorMessage) {
+      console.time("PerceivedRender");
+      statusMessage = <Alert severity="warning">
+        Render in progres...
+      </Alert>
+    } else if (renderedErrorMessage || needsRender) {
+      statusMessage = <Alert severity="info">
+        Please render to update the output.
+        <p><small>{message}</small></p>
+      </Alert>
+    } else {
+      console.timeEnd("PerceivedRender");
+      statusMessage = <Alert severity="success">
+        Output is up-to-date.
+        <p><small>{message}</small></p>
+      </Alert>;
+    }
+    return <div>
+      {errorMessage}
+      {statusMessage}
+    </div>
+  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender]);
+
+  const renderButton = useMemo(() =>
+    <Stack>
+      <Button data-testid="render-button" size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Re-render'}</Button>
+      {lastRenderTime ? <Typography fontSize='0.7em' >Last rendered: <ReactTimeAgo date={lastRenderTime} locale="en-US" />.</Typography> : <></>}
+    </Stack>
+    , [needsRender, enqueuedRender, lastRenderTime]);
 
   const stickyFooter = useMemo(() => <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(200,200,200,0.85)', opacity: '99%' }} elevation={3}>
     <Grid container>
@@ -1299,16 +1305,11 @@ const ParseqUI = (props) => {
   </Paper>, [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender]);
 
 
-  // Auto-render if something has changed (i.e. needsRender is true) and autorender is enabled
-  useEffect(() => {
-    if (needsRender && autoRender) {
-      setEnqueuedRender(true);
-    }
-  }, [needsRender, autoRender, typing]);
-
 
   //////////////////////////////////////////
-  // Page
+  // Main layout
+  ///////////////////////////////////////////////////////////////
+
   return (
     <Grid container paddingLeft={5} paddingRight={5} spacing={2} sx={{
       '--Grid-borderWidth': '1px',

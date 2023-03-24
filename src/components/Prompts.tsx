@@ -523,9 +523,7 @@ export function Prompts(props: PromptsProps) {
             //console.log("resized to", timelineRef.current.offsetWidth);
         }
         window.addEventListener('resize', handleResize)
-
         return (_: any) => window.removeEventListener('resize', handleResize);
-
     }, []);
 
     // update the quick preview when the cursor is dragged or prompts change

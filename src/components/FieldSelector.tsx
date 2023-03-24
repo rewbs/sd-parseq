@@ -10,7 +10,7 @@ type FieldSelectorProps = {
     selectedFields: string[];
     customFields: InterpolatableFieldDefinition[];
     keyframes: ParseqKeyframe[];
-    prompts: AdvancedParseqPrompts;
+    promptVariables: string[];
     onChange: (e: any) => void;
 };
 
@@ -135,7 +135,6 @@ export function FieldSelector(props: FieldSelectorProps) {
 
     useEffect(() => {
         props.onChange(selectedFields);
-
     }, [selectedFields, props]);
 
     return <>
@@ -174,19 +173,13 @@ export function FieldSelector(props: FieldSelectorProps) {
                     <Tooltip arrow placement="top" title="Check only fields that have values set in the keyframes or are used in prompts.">
                         <Button size="small" variant='outlined'
                             onClick={(e) => {
-                                const usedFields = new Set<string>();
+                                const usedFields = new Set<string>(props.promptVariables);
                                 props.keyframes.forEach(kf => { 
                                     Object.keys(kf).filter(field => field !== "frame" && !field.endsWith("_i")).forEach(field => {
                                         if (isDefinedField(kf[field]) || isDefinedField(kf[field+"_i"])) {
                                             usedFields.add(field);
                                         }
                                 }, [])});
-                                defaultFields.concat(props.customFields).map(f => f.name).forEach(field => {
-                                    const pattern = RegExp(`\\$\\{.*?${field}.*?\\}`);
-                                    if (props.prompts.some(prompt => prompt.positive.match(pattern) || prompt.negative.match(pattern))) {
-                                        usedFields.add(field);
-                                    }
-                                });
                                 setSelectedFields(Array.from(usedFields));
                             }}>
                         Used

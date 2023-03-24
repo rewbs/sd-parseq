@@ -319,6 +319,8 @@ export class Editable extends React.Component<{
             ]
         };
 
+        // console.log("Markers", this.props.markers);
+        // console.log("Annotations", annotations);
         return <Line options={options} data={chartData} />;
     }
 }

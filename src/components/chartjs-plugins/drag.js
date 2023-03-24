@@ -49,7 +49,7 @@ const getElement = (e, chartInstance, callback) => {
 
       // if a bar has a data point that is an array of length 2, it's a floating bar
       const samplePoint = chartInstance.data.datasets[0].data[0]
-      floatingBar = (samplePoint !== null) && Array.isArray(samplePoint) && samplePoint.length == 2
+      floatingBar = (samplePoint !== null) && Array.isArray(samplePoint) && samplePoint.length === 2
 
       let data = {}
       let newPos = calcPosition(e, chartInstance, datasetIndex, index, data)

@@ -24,3 +24,17 @@ export function isDefinedField(toTest: any) {
       && toTest !== null
       && toTest !== "";
 }
+
+
+export function queryStringGetOrCreate(key : string, creator : () => string) {
+  let qps = new URLSearchParams(window.location.search);
+  let val = qps.get(key);
+  if (val) {
+    return val;
+  } else {
+    val = creator();
+    qps.set(key, val);
+    window.history.replaceState({}, '', `${window.location.pathname}?${qps.toString()}`);
+    return val;
+  }
+}

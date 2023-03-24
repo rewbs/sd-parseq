@@ -1,9 +1,8 @@
-import { Checkbox, FormControlLabel } from '@mui/material';
-import Collapse from '@mui/material/Collapse';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { useLayoutEffect, useState } from 'react';
-import { PropsWithChildren } from 'react'
+import { Checkbox, FormControlLabel } from '@mui/material';
+import Collapse from '@mui/material/Collapse';
+import { PropsWithChildren, useState } from 'react';
 
 type ExpandableSectionProps = {
     title: string;

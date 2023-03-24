@@ -240,7 +240,7 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | `tri()`  	| Triangle wave oscillator.  	| <img width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205227903-2c7ebdda-981c-4a78-9a82-7b75ef014499.png"> |
 | `saw()`  	| Sawtooth wave oscillator.  	| <img  width="512" src="https://www.evernote.com/l/APbDR-xZ779Jh431tTc2qEc56-EoMETlb2QB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `pulse()`  	| Pulse wave oscillator.  	| <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228355-863dcf8d-3d10-4d63-9c5f-32ce75e7b8b3.png"> |
-| `bez()`  	| Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`  	| <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png"> |
+| `bez()`  	| Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`. Optional parameters include `to`, `from` and `in` to override current and next keyframes as the anchor points (similar to `slide` below).    | <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png"> |
 | `slide()` | Linear slide over a fixed time period. Requires at least one of `to` or `from` parameters (frame value will be used if missing), and `in` parameter defines how long the slide should last. See image for 3 examples. | <img width="512" src="https://www.evernote.com/l/APazj_b3MGRHBbDNHi30Imb-ZnCubVFGI7YB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `min()`  	| Return the minimum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APZX1k4fvOlJP6eyrKSFaw-9KeonwNkS7tEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
 | `max()`  	| Return the maximum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APb9CEaqhEhF6L0FRWovG2Rt-qacyphjc_cB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />	|
@@ -286,6 +286,7 @@ Units can be used to modify numbers representing frame ranges to match second of
 
 | operator  	|  description 	| example  	|
 |---	   |---	|---	|
+| `<expr1> : <expr2>`  | Syntactic sugar for easily creating strings of the format `(<term>:<weight>)`. For example, putting the following in your prompt `${"cat":prompt_weight_1}` will render to `${(cat:0.5)}` where 0.5 is the value of `prompt_weight_1` for that frame. `expr1` must return a string and `expr2` a number. |  |  
 | `<expr1> + <expr2>`   	| Add two expressions. Also acts as string concatenation if either expression is a string (with the same type conversion semantics as Javascript string concatenation). 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
 | `<expr1> - <expr2>` 	| Subtract two expressions. |   	|
 | `<expr1> * <expr2>`  	| Multiply two expressions. |   	|

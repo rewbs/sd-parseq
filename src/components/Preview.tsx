@@ -2,7 +2,7 @@ import { Slider } from "@mui/material";
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useState } from 'react';
-import { percentageToColor } from "../utils";
+import { percentageToColor } from "../utils/utils";
 
 interface PreviewProps {
     data: RenderedData

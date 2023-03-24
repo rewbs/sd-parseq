@@ -10,7 +10,7 @@ import { auth, app} from '../firebase-config';
 import GitInfo from 'react-git-info/macro';
 import '../robin.css';
 import {isSupported, getAnalytics} from "firebase/analytics";
-import { getVersionNumber } from '../utils';
+import { getVersionNumber } from '../utils/utils';
 
 var analytics: any;
 isSupported().then((isSupported) => { 

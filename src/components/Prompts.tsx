@@ -15,45 +15,46 @@ interface PromptsProps {
     afterChange: (event: any) => void
 }
 
+export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) : AdvancedParseqPrompts {
+    if (!oldPrompts) {
+        return [{
+            name: 'Prompt 1',
+            positive: "",
+            negative: "",
+            allFrames: true,
+            from: 0,
+            to: lastFrame,
+            overlap: {
+                inFrames: 0,
+                outFrames: 0,
+                type: "none",
+                custom: "prompt_weight_1",
+            }
+        }]
+    } else if (!Array.isArray(oldPrompts)) {
+        return [{
+            name: 'Prompt 1',
+            positive: oldPrompts.positive,
+            negative: oldPrompts.negative,
+            allFrames: true,
+            from: 0,
+            to: lastFrame,
+            overlap: {
+                inFrames: 0,
+                outFrames: 0,
+                type: "none",
+                custom: "prompt_weight_1",
+            }
+        }]
+    } else {
+        return oldPrompts as AdvancedParseqPrompts;
+    }
+
+}
+
 export function Prompts(props: PromptsProps) {
 
-    const convertPrompts = useCallback((initialPrompts: ParseqPrompts): AdvancedParseqPrompts => {
-        if (!initialPrompts) {
-            return [{
-                name: 'Prompt 1',
-                positive: "",
-                negative: "",
-                allFrames: true,
-                from: 0,
-                to: props.lastFrame,
-                overlap: {
-                    inFrames: 0,
-                    outFrames: 0,
-                    type: "none",
-                    custom: "prompt_weight_1",
-                }
-            }]
-        } else if (!Array.isArray(initialPrompts)) {
-            return [{
-                name: 'Prompt 1',
-                positive: initialPrompts.positive,
-                negative: initialPrompts.negative,
-                allFrames: true,
-                from: 0,
-                to: props.lastFrame,
-                overlap: {
-                    inFrames: 0,
-                    outFrames: 0,
-                    type: "none",
-                    custom: "prompt_weight_1",
-                }
-            }]
-        } else {
-            return initialPrompts as AdvancedParseqPrompts;
-        }
-    }, [props]);
-
-    const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(convertPrompts(props.initialPrompts));
+    const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(convertPrompts(props.initialPrompts, props.lastFrame));
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
 
@@ -523,9 +524,7 @@ export function Prompts(props: PromptsProps) {
             //console.log("resized to", timelineRef.current.offsetWidth);
         }
         window.addEventListener('resize', handleResize)
-
         return (_: any) => window.removeEventListener('resize', handleResize);
-
     }, []);
 
     // update the quick preview when the cursor is dragged or prompts change

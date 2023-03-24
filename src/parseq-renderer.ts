@@ -1,11 +1,13 @@
-import { isValidNumber } from "./utils";
+import { isValidNumber } from "./utils/maths";
 
 import { calculateWeight } from './components/Prompts';
 import { defaultValues } from './data/defaultValues';
 
 
 //@ts-ignore
-import { defaultInterpolation, interpret, InterpreterContext, parse } from './parseq-lang-interpreter';
+import { defaultInterpolation, parse } from './parseq-lang/parseq-lang-parser';
+import { InvocationContext, ParseqAstNode } from "./parseq-lang/parseq-lang-ast";
+import { LTTB } from 'downsample';
 
 export class ParseqRendererException {
     message: string;
@@ -26,7 +28,12 @@ function getDefaultValue(field: string) {
     }
 }
 
-export const parseqRender = (input: ParseqPersistableState): RenderedData => {
+export const parseqRender = (input: ParseqPersistableState): {renderedData: RenderedData, graphData: GraphableData, sparklineData: SparklineData } => {
+    const stats : {[key:string] : number} = {
+        renderStartTime: Date.now(),
+        parseEvents: 0,
+        invokeEvents: 0
+    };
 
     const keyframes = input.keyframes;
     const options = input.options;
@@ -46,10 +53,9 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     }
     if (!options.bpm) {
         throw new ParseqRendererException("No bpm found.");
-    }    
+    }
 
     let sortedKeyframes: ParseqKeyframes = keyframes.sort((a, b) => a.frame - b.frame);
-
     let firstKeyFrame = sortedKeyframes[0];
     let lastKeyFrame = sortedKeyframes[keyframes.length - 1];
 
@@ -73,14 +79,16 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
     });
 
     // Calculate actual rendered value for all interpolatable fields
+    const mainEvalStart = Date.now();
     let rendered_frames: ParseqRenderedFrames = [];
-    var previousContext = {};
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
+    const graphData : GraphableData = {};
     managedFields.forEach((field) => {
+
+        graphData[field] = [];
 
         // Get all keyframes that have a value for this field
         const filtered = sortedKeyframes.filter(kf => isValidNumber(kf[field]));
-
         // Add bookend keyframes if they have a value for this field (implying none were present in the original keyframes)
         //@ts-ignore
         if (isValidNumber(bookendKeyFrames.first[field])) {
@@ -93,11 +101,11 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
         const definedFrames = filtered.map(kf => kf.frame);
         const definedValues = filtered.map(kf => Number(kf[field]));
-        let lastInterpolator = (f: number) => defaultInterpolation(definedFrames, definedValues, f);
+        let lastInterpolator: ParseqAstNode = defaultInterpolation;
 
         let parseResult: any;
         let activeKeyframe = 0;
-        let prev_computed_value = 0;
+        let prev_computed_value: string | number = 0;
         all_frame_numbers.forEach((frame, i) => {
 
             //let declaredRow = gridRef.current.api.getRowNode(frameToRowId(frame));
@@ -110,7 +118,8 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
                 toParse = declaredRow[field + '_i'];
                 if (toParse) {
                     try {
-                        parseResult = parse(toParse);
+                        parseResult = parse(String(toParse));
+                        stats.parseEvents++;
                     } catch (error) {
                         throw new ParseqRendererException(`Error parsing interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
                     }
@@ -123,8 +132,14 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
             // Use the last successfully parsed result to determine the interpolation function.
             if (parseResult) {
-                var context = new InterpreterContext({
-                    ...previousContext, //ensure any additional values added to the context during compilation are carried over.
+                interpolator = parseResult as ParseqAstNode;
+            }
+
+            // invoke the interpolation function
+            let computed_value: number | string = 0;
+            try {
+                const ctx: InvocationContext = {
+                    frame,
                     fieldName: field,
                     activeKeyframe: activeKeyframe,
                     definedFrames: definedFrames,
@@ -132,50 +147,35 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
                     allKeyframes: keyframes,
                     FPS: options.output_fps,
                     BPM: options.bpm,
-                    variableMap: {
-                        prev_computed_value,
-                    }
-                });
-                try {
-                    // New: redetermine the function for every row, using a new context. 
-                    // Increases CPU and memory usage but allows for different context variables on each invocation, e.g. prev_computed_value.
-                    interpolator = interpret(parseResult, context);
-                } catch (error) {
-                    throw new ParseqRendererException(`Error interpreting interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
+                    variableMap: new Map([["prev_computed_value", prev_computed_value]])
                 }
-            }
-
-            // invoke the interpolation function
-            let computed_value = 0;
-            try {
-                computed_value = interpolator(frame)
+                computed_value = interpolator.invoke(ctx);
+                stats.invokeEvents++;
             } catch (error) {
-                throw new ParseqRendererException(`Error evaluating interpolation for ${field} at frame ${frame} (${toParse}): ` + error);
+                throw new ParseqRendererException(`Error calculating ${field} at frame ${frame} (${toParse}): ` + error);
             }
-
             rendered_frames[frame] = {
                 ...rendered_frames[frame] || {},
                 frame: frame,
-                [field]: computed_value
+                [field]: Number(computed_value) // TODO type coersion will need to change when we support string fields
             }
+            graphData[field].push({ x: frame, y: Number(computed_value) });
             lastInterpolator = interpolator;
             prev_computed_value = computed_value;
         });
     });
+    stats.mainEvalTime = Date.now() - mainEvalStart;
 
     // Calculate rendered prompt based on prompts and weights
-    if ( typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled) {
+    const promptStart = Date.now();
+    if (typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled) {
         all_frame_numbers.forEach((frame) => {
 
-            let variableMap = {};
-            managedFields.forEach((field) => {
-                variableMap = {
-                    ...variableMap || {},
-                    [field]: rendered_frames[frame][field]
-                }
-            });
+            const variableMap = managedFields
+                .reduce((acc, field) => acc.set(field, rendered_frames[frame][field]), new Map<string, number | string>());
 
-            var context = new InterpreterContext({
+            const ctx: InvocationContext = {
+                frame,
                 fieldName: "prompt",
                 activeKeyframe: frame,
                 definedFrames: keyframes.map(kf => kf.frame),
@@ -184,22 +184,19 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
                 BPM: options.bpm,
                 allKeyframes: keyframes,
                 variableMap: variableMap
-            });
+            };
 
             try {
-
                 let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
-                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
+                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
                     .replace(/(\n)/g, " ");
                 let negative_prompt = composePromptAtFrame(prompts, frame, false, lastKeyFrame.frame)
-                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = interpret(parse(expr), context)(frame); return typeof result === "number" ? result.toFixed(5) : result; })
+                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
                     .replace(/(\n)/g, " ");
 
                 //@ts-ignore
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
-                    // positive_prompt: positive_prompt,
-                    // negative_prompt: negative_prompt,
                     deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
                 }
             } catch (error) {
@@ -209,8 +206,10 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
         });
     }
+    stats.promptCalcTimeMs = Date.now() - promptStart;
 
     // Calculate subseed & subseed strength based on fractional part of seed.
+    const subseedStart = Date.now();
     if (managedFields.includes("seed")) {
         all_frame_numbers.forEach((frame) => {
             let subseed = Math.ceil(rendered_frames[frame]['seed'])
@@ -224,7 +223,10 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
             }
         });
     }
-    
+    stats.subseedCalcTimeMs = Date.now() - subseedStart;
+
+    // Calculate min/max of each field
+    const metaStartTime = Date.now();
     var rendered_frames_meta: ParseqRenderedFramesMeta = []
     managedFields.forEach((field) => {
         let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
@@ -238,8 +240,10 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
             }
         }
     });
+    stats.metaCalcTimeMs = Date.now() - metaStartTime;
 
     // Calculate delta variants
+    const deltaStartTime = Date.now();
     all_frame_numbers.forEach((frame) => {
         managedFields.forEach((field) => {
 
@@ -248,31 +252,55 @@ export const parseqRender = (input: ParseqPersistableState): RenderedData => {
 
             if (frame === 0) {
                 //@ts-ignore
+                const pcValue = (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field];
+                //@ts-ignore
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
                     //@ts-ignore
                     [field + '_delta']: rendered_frames[0][field],
                     //@ts-ignore
-                    [field + "_pc"]: (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field],
+                    [field + "_pc"]: pcValue,
                 }
+                graphData[field + '_pc'] = [{ x: 0, y:  pcValue}];
+
             } else {
+                //@ts-ignore
+                const pcValue = (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field]
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
                     //[field + '_delta']: (field === 'zoom') ? 1+(rendered_frames[frame][field] - rendered_frames[frame - 1][field]) : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
                     [field + '_delta']: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame - 1][field] : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
-                    [field + "_pc"]: (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field],
+                    [field + "_pc"]: pcValue,
                 }
+                graphData[field + '_pc'].push({ x: frame, y:  pcValue});
             }
         });
     });
+    stats.deltaCalcTimeMs = Date.now() - deltaStartTime;
 
-    const data: RenderedData = {
+    const decimationStartTime = Date.now();
+    const sparklineData : SparklineData = [];
+    managedFields.forEach((field) => {
+     //@ts-ignore
+     sparklineData[field] = LTTB(graphData[field], 100).map((point) => point.y);
+     //@ts-ignore
+     sparklineData[field + '_delta'] = LTTB(rendered_frames.map((frame) => [frame.frame, frame[field + '_delta']]), 100).map((point) => point[1]);
+    });
+    stats.decimationTimeMs = Date.now() - decimationStartTime;
+
+    const renderedData: RenderedData = {
         ...input,
         "rendered_frames": rendered_frames,
         "rendered_frames_meta": rendered_frames_meta
     }
 
-    return data;
+    stats.keyframes = keyframes.length;
+    stats.fields = managedFields.length;    
+    stats.frames = lastKeyFrame.frame;
+    stats.renderTimeMs = Date.now() - stats.renderStartTime;
+    console.log("render stats:", stats);
+
+    return {renderedData, graphData, sparklineData};
 }
 
 

@@ -1,7 +1,6 @@
-import React from 'react';
+import Header from "./components/Header";
 //@ts-ignore
 import ParseqUI from './ParseqUI';
-import Header from "./components/Header";
 
 const Deforum = () => {
   return <>

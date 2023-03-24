@@ -4,7 +4,6 @@ import {
     Tooltip
 } from 'chart.js';
 import './components/chartjs-plugins/drag'
-import 'chart.js/auto';
 //@ts-ignore
 import annotationPlugin from 'chartjs-plugin-annotation';
 import React from 'react';

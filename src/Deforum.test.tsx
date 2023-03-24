@@ -53,6 +53,7 @@ async function loadAndRender(fixture: {}) {
   // Mock version number and timestamp to ensure consistent snapshots.
   jest.spyOn(utils, 'getUTCTimeStamp').mockReturnValue('0.0.test');
   jest.spyOn(utils, 'getVersionNumber').mockReturnValue('Sun, 01 Jan 2023 14:00:00 GMT');
+  jest.spyOn(utils, 'getOutputTruncationLimit').mockReturnValue(Number.MAX_VALUE);
 
   // Mock query params with test fixture.
   // TODO this overrides all query param lookups, when we really only want to override when the key is "parseq".

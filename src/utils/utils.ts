@@ -14,6 +14,10 @@ export function getVersionNumber() {
   return packageJson.version;
 }
 
+export function getOutputTruncationLimit() {
+  return 1024*1024;
+}
+
 export function percentageToColor(percentage:number, maxHue = 120, minHue = 0, alpha=1) {
   const hue = percentage * (maxHue - minHue) + minHue;
   return `hsla(${hue}, 100%, 50%, ${alpha})`;

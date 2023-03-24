@@ -25,19 +25,18 @@ import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
 import { ExpandableSection } from './components/ExpandableSection';
 import { FieldSelector } from "./components/FieldSelector";
+import { GridTooltip } from './components/GridToolTip';
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { Preview } from "./components/Preview";
-import { Prompts } from "./components/Prompts";
+import { convertPrompts, Prompts } from "./components/Prompts";
 import { UploadButton } from "./components/UploadButton";
 import { templates } from './data/templates';
 import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { parseqRender } from './parseq-renderer';
 import { UserAuthContextProvider } from "./UserAuthContext";
-import { fieldNametoRGBa, getUTCTimeStamp, getVersionNumber } from './utils/utils';
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
-import { queryStringGetOrCreate } from './utils/utils'
-import { GridTooltip } from './components/GridToolTip'
+import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
 
 import debounce from 'lodash.debounce';
 
@@ -46,7 +45,6 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
 import { defaultFields } from './data/fields';
-import deepEqual from 'fast-deep-equal';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
@@ -232,7 +230,8 @@ const ParseqUI = (props) => {
       gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
       gridRef.current.api.onSortChanged();
       gridRef.current.api.sizeColumnsToFit();
-      if (!deepEqual(displayedFields.sort(), prevDisplayedFields?.sort())) { //TODO convert these to Sets so we can avoid the sorts.
+      if (displayedFields.length !== prevDisplayedFields?.length
+        || displayedFields.some(f => !prevDisplayedFields.includes(f))) {
         setPrevDisplayedFields(displayedFields);
       }
     }
@@ -286,7 +285,7 @@ const ParseqUI = (props) => {
       loadedContent = templates[defaultTemplate].template;
     }
     const filledContent = fillWithDefaults(loadedContent || {});
-    setPrompts(filledContent.prompts);
+    setPrompts(convertPrompts(filledContent.prompts, Math.max(...filledContent.keyframes.map(kf=>kf.frame))));
     setOptions(filledContent.options);
     setManagedFields([...filledContent.managedFields]);
     setDisplayedFields([...filledContent.displayedFields]);
@@ -1179,14 +1178,14 @@ const ParseqUI = (props) => {
   const renderedOutput = useMemo(() =>
     renderedDataJsonString && <>
       {
-        (renderedDataJsonString.length > 1024 * 1024) ?
+        (renderedDataJsonString.length > getOutputTruncationLimit()) ?
           <Alert severity="warning">
-            Rendered output is truncated at 1MB. Use the "copy output" or "upload output" button below to access the full data.
+            Rendered output is truncated at {getOutputTruncationLimit()/1024} MB. Use the "copy output" or "upload output" button below to access the full data.
           </Alert>
           : <></>
       }
       <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', maxHeight: '40em', overflow: 'scroll' }}>
-        <pre data-testid="output">{renderedDataJsonString.substring(0, 1024 * 1024)}</pre>
+        <pre data-testid="output">{renderedDataJsonString.substring(0, getOutputTruncationLimit())}</pre>
       </div>
     </>, [renderedDataJsonString]);
 

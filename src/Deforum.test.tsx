@@ -34,6 +34,17 @@ jest.mock('chartjs-plugin-annotation', () => ({
   annotationPlugin: () => null
 }));
 
+AudioContext = jest.fn().mockImplementation(() => {
+  return {}
+});
+
+jest.mock("wavesurfer.js/dist/plugin/wavesurfer.timeline.min", () => null);
+jest.mock("wavesurfer.js/src/plugin/markers", () => null);
+
+jest.mock("wavesurfer-react", () => ({
+  WaveForm: () => null,
+  WaveSurfer: () => null
+}));
 
 jest.mock('chart.js', () => ({
   Chart: {

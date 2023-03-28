@@ -25,9 +25,8 @@ type AudioWaveformProps = {
 
 export function AudioWaveform(props: AudioWaveformProps) {
 
-    console.log("Initialising Waveform with props: ", props);
+    //console.log("Initialising Waveform with props: ", props);
 
-    const audioContext = new AudioContext();
     const wavesurferRef = useRef<WaveSurfer>();
     const fileInput = useRef<HTMLInputElement>("" as any);
     const waveformRef = useRef<HTMLDivElement>(null);
@@ -39,9 +38,9 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const [lastViewport, setLastViewport] = useState({ startFrame: 0, endFrame: 0 });
 
     // Triggered when user makes viewport changes outside of wavesurfer, and we need to update wavesurfer.
-    const scrollToPosition = (startFrame: number) => {
+    const scrollToPosition = useCallback((startFrame: number) => {
         if (!trackLength) {
-            console.log('No track loaded');
+            //console.log('No track loaded');
             return;
         }
         if (!wavesurferRef.current?.drawer?.wrapper) {
@@ -57,7 +56,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
         // Update the scroll position
         wavesurferRef.current.drawer.wrapper.scrollLeft = startPx;
-    }
+    }, [trackLength, props.fps]);
 
 
     // Triggered when user scrolls wavesurfer itself
@@ -97,6 +96,8 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
     }, [props, lastViewport, trackLength]), 50);
 
+    const debouncedOnCursorMove = useCallback(debounce(props.onCursorMove, 200), [props]);
+
     const updatePlaybackPos = useCallback(() => {
         const lengthFrames = trackLength * props.fps;
         const curPosSeconds = wavesurferRef.current?.getCurrentTime() || 0;
@@ -106,9 +107,9 @@ export function AudioWaveform(props: AudioWaveformProps) {
             (frame: ${curPosFrames.toFixed(0)}/${lengthFrames.toFixed(0)})
     (beat: ${frameToBeat(curPosFrames, props.fps, props.bpm).toFixed(2)}/${frameToBeat(lengthFrames, props.fps, props.bpm).toFixed(2)})`);
     
-        props.onCursorMove(curPosFrames);
+        debouncedOnCursorMove(curPosFrames);
 
-    }, [trackLength, props]);
+    }, [trackLength, debouncedOnCursorMove, props]);
 
     //Update wavesurfer's seek callback on track length change and fps change
     useEffect(() => {
@@ -192,6 +193,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             // Prepare audio buffer for analysis.
             const selectedFile = selectedFiles[0];
             const arrayBuffer = await selectedFile.arrayBuffer();
+            const audioContext = new AudioContext();
             const newAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
             //setAudioBuffer(newAudioBuffer);
             setTrackLength(newAudioBuffer.duration);

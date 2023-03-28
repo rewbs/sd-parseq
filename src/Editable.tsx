@@ -194,8 +194,6 @@ export class Editable extends React.Component<{
             }), {})
             : {};
     
-        console.log(beatAnnotations);
-
         const annotations = {
             ...promptAnnotations,
             ...audioCursorAnnotation,

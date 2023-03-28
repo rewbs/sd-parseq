@@ -539,9 +539,13 @@ const ParseqUI = (props) => {
 
   const navigateToNextCell = useCallback((params) => {
     const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
-    if (showPromptMarkers && nextCell) {
+    if (!nextCell || nextCell.rowIndex < 0) {
+      return;
+    }
+
+    if (showCursors) {
       const nextRow = params.api.getDisplayedRowAtIndex(nextCell.rowIndex);
-      if (nextRow && nextRow.data && nextRow.data.frame) {
+      if (nextRow && nextRow.data && !isNaN(nextRow.data.frame)) {
         setGridCursorPos(nextRow.data.frame);
       }
     }
@@ -967,7 +971,9 @@ const ParseqUI = (props) => {
           }
         }}
         onCellClicked={(e) => {
-          setGridCursorPos(e.data.frame);
+          if (showCursors) {
+            setGridCursorPos(e.data.frame);
+          }
           if (e.event.shiftKey) {
             setRangeSelection({
               anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
@@ -1179,7 +1185,6 @@ const ParseqUI = (props) => {
       gridCursorPos={showCursors ? gridCursorPos : -1}
       viewport={{ startFrame: graphScales.xmin, endFrame: graphScales.xmax }}
       onScroll={(newViewport) => {
-        console.log(newViewport);
         if (newViewport.startFrame !== graphScales.xmin || newViewport.endFrame !== graphScales.xmax) {
           setGraphScales({ xmin: newViewport.startFrame, xmax: newViewport.endFrame })
         }

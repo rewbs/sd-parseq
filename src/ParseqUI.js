@@ -1175,7 +1175,7 @@ const ParseqUI = (props) => {
 
   // Audio waveform ---------------------
   const audioWaveform = useMemo(() =>
-    options && <AudioWaveform
+    options && graphScales && <AudioWaveform
       xaxisType={xaxisType}
       bpm={options.bpm}
       fps={options.output_fps}

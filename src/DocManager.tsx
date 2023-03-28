@@ -225,6 +225,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
 
     // TODO break this into separate functions.
     const handleCloseLoadDialog = (e: any): void => {
+        setOpenLoadDialog(false);
         if (e.target.id === "load" && selectedDocIdForLoad) {
             navigateToDocId(selectedDocIdForLoad);
         } else if (e.target.id === "import" && dataToImport) {
@@ -259,8 +260,6 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
             } catch (e: any) {
                 setImportError(e.message);
             }
-        } else if (e.target.id === "cancel_load") {
-            setOpenLoadDialog(false);
         }
     };
 

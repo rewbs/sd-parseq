@@ -12,6 +12,9 @@ import { fieldNametoRGBa, } from './utils/utils';
 import { frameToBeats, frameToSeconds } from './utils/maths';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { DECIMATION_THRESHOLD } from './utils/consts';
+import debounce from 'lodash.debounce';
+//@ts-ignore
+import range from 'lodash.range';
 
 
 const ChartJSAddPointPlugin = {
@@ -25,20 +28,20 @@ const ChartJSAddPointPlugin = {
     }
 }
 
-const ChartJSDetectDecimationPlugin = {
-    id: 'detectDecimation',
-    afterUpdate: function (chartInstance: any) {
-        const pluginOptions = chartInstance.config.options.plugins.detectDecimation;
-        // All my datasets have the same length, so I just check the first one
-        // To generalize, you should check all datasets.
-        const isDecimating = chartInstance.data.datasets[0]._data !== undefined
-            && chartInstance.data.datasets[0].data !== undefined
-            && chartInstance.data.datasets[0].data.length !== chartInstance.data.datasets[0]._data.length;
-        const unDecimatedPointCount = isDecimating ? chartInstance.data.datasets[0]._data?.length : chartInstance.data.datasets[0].data.length;
-        const decimatedPointCount = chartInstance.data.datasets[0].data.length;
-        pluginOptions.onDecimation(isDecimating, unDecimatedPointCount, decimatedPointCount);
-    }
-}
+// const ChartJSDetectDecimationPlugin = {
+//     id: 'detectDecimation',
+//     afterUpdate: function (chartInstance: any) {
+//         // const pluginOptions = chartInstance.config.options.plugins.detectDecimation;
+//         // // All my datasets have the same length, so I just check the first one
+//         // // To generalize, you should check all datasets.
+//         // const isDecimating = chartInstance.data.datasets[0]._data !== undefined
+//         //     && chartInstance.data.datasets[0].data !== undefined
+//         //     && chartInstance.data.datasets[0].data.length !== chartInstance.data.datasets[0]._data.length;
+//         // const unDecimatedPointCount = isDecimating ? chartInstance.data.datasets[0]._data?.length : chartInstance.data.datasets[0].data.length;
+//         // const decimatedPointCount = chartInstance.data.datasets[0].data.length;
+//         // pluginOptions.onDecimation(isDecimating, unDecimatedPointCount, decimatedPointCount);
+//     }
+// }
 
 ChartJS.register(
     CategoryScale,
@@ -49,7 +52,7 @@ ChartJS.register(
     Tooltip,
     Legend,
     ChartJSAddPointPlugin,
-    ChartJSDetectDecimationPlugin,
+//    ChartJSDetectDecimationPlugin,
     zoomPlugin,
     annotationPlugin
 );
@@ -66,18 +69,14 @@ export class Editable extends React.Component<{
     addKeyframe: (index: number) => void;
     clearKeyframe: (field: string, index: number) => void;
     onDecimation: (isDecimating: boolean, unDecimatedPointCount: number, decimatedPointCount: number) => void;
-    onGraphScalesChanged: ({xmin, xmax}: { xmin: number, xmax: number }) => void;
-    markers: { x: number, label: string, color: string, top: boolean }[];
+    onGraphScalesChanged: ({ xmin, xmax }: { xmin: number, xmax: number }) => void;
+    promptMarkers: { x: number, label: string, color: string, top: boolean }[];
+    beatMarkerInterval : number;
+    gridCursorPos : number;
+    audioCursorPos : number;
     xscales: { xmin: number, xmax: number };
+    xaxisType: string
 }> {
-
-    constructor(props : any) {
-        super(props);
-        this.state = {xscales: {
-            xmin: this.props.xscales?.xmin ?? 0,
-            xmax: this.props.xscales?.xmax ?? (this.props.renderedData.rendered_frames.length - 1),
-        }};
-      }
 
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
         return this.props.renderedData.keyframes
@@ -92,15 +91,16 @@ export class Editable extends React.Component<{
     }
 
     isDecimating = (): boolean => {
-        //@ts-ignore
-        return (this.state.xscales.xmax - this.state.xscales.xmin) > DECIMATION_THRESHOLD
+        return (this.props.xscales.xmax - this.props.xscales.xmin) > DECIMATION_THRESHOLD;
     };
 
     render() {
-        const annotations = this.props.markers.reduce((acc: any, marker: { x: number, label: string, color: string, top: boolean }, idx: number) => {
+        // TODO - annotation construction is horrible here, need some utility functions to reduce duplication.
+        const promptAnnotations = this.props.promptMarkers.reduce((acc: any, marker: { x: number, label: string, color: string, top: boolean }, idx: number) => {
             return {
                 ...acc,
-                ['line' + idx]: {
+                ['prompt' + idx]: {
+                    type: 'line',
                     xMin: marker.x,
                     xMax: marker.x,
                     borderColor: marker.color,
@@ -109,7 +109,7 @@ export class Editable extends React.Component<{
                     label: {
                         display: true,
                         content: marker.label,
-                        ...(marker.top ? { position: 'end', yAdjust: -5 } : { position: 'start', yAdjust: 5 }),
+                        ...(marker.top ? { position: 'end', yAdjust: -5 } : { position: 'start', yAdjust: this.props.beatMarkerInterval > 0?-10:5 }),
                         font: { size: '8' },
                         backgroundColor: 'rgba(0,0,0,0.6)',
                         padding: 3
@@ -121,12 +121,110 @@ export class Editable extends React.Component<{
             }
         }, {});
 
+        const gridCursorAnnotation = this.props.gridCursorPos >= 0 ? {
+            ['gridCursor'] : {
+                type: 'line',
+            xMin: this.props.gridCursorPos,
+            xMax: this.props.gridCursorPos,
+            borderColor: 'rgba(200,0,100,0.6)',
+            borderDash: [],
+            borderWidth: 1,
+            label: {
+                display: true,
+                content: 'Grid cursor',
+                position: 'end',
+                yAdjust: -5,
+                font: { size: '8' },
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                padding: 3
+            },
+            callout: {
+                display: true,
+            }
+        }
+        } : {};
+
+        const audioCursorAnnotation = this.props.audioCursorPos >= 0 ? {
+            ['audioCursor'] : {
+                type: 'line',
+            xMin: this.props.audioCursorPos,
+            xMax: this.props.audioCursorPos,
+            borderColor: 'rgba(100,0,200,0.6)',
+            borderDash: [],
+            borderWidth: 1,
+            label: {
+                display: true,
+                content: 'Audio cursor',
+                position: 'end',
+                yAdjust: -5,
+                font: { size: '8' },
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                padding: 3
+            },
+            callout: {
+                display: true,
+            }
+        }
+        } : {};
+
+        const beatAnnotations = this.props.beatMarkerInterval > 0
+            ? range(0, this.props.renderedData.rendered_frames.length - 1, this.props.beatMarkerInterval * this.props.renderedData.options.output_fps / (this.props.renderedData.options.bpm/60))
+              .reduce((acc : any, x:number) => ({
+                ...acc,
+                ['beat' + x] : {
+                    type: 'line',
+                    xMin: x,
+                    xMax: x,
+                    borderColor: 'rgba(0,0,200,0.6)',
+                    borderDash: [1],
+                    borderWidth: 0.5,
+                    label: {
+                        display: true,
+                        content: 'Beat ' + Math.round(x*frameToBeats(1, this.props.renderedData.options.output_fps, this.props.renderedData.options.bpm)),
+                        position: 'start',
+                        yAdjust: 5,
+                        font: { size: '8' },
+                        backgroundColor: 'rgba(0,0,0,0.6)',
+                        padding: 3
+                    },
+                    callout: {
+                        display: true,
+                    }
+                }
+            }), {})
+            : {};
+    
+        console.log(beatAnnotations);
+
+        const annotations = {
+            ...promptAnnotations,
+            ...audioCursorAnnotation,
+            ...gridCursorAnnotation,
+            ...beatAnnotations
+        }
+
         if ((!this.props.renderedData.rendered_frames)) {
             //log.debug("Editable input not set.")
             return <></>;
         }
 
         const capturedThis = this;
+
+        const xaxisLabel = (() => {
+            switch (this.props.xaxisType) {
+                case 'frames': return 'Frames';
+                case 'seconds': return `Seconds (assuming ${this.props.renderedData.options.output_fps} fps)`;
+                case 'beats': return `Beats (assuming ${this.props.renderedData.options.bpm} bpm and ${this.props.renderedData.options.output_fps} fps)`;
+            }
+        })();
+
+        const onPanCompleteDebounced = debounce(function (chart: any) {
+            const newScales = { xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) };
+            capturedThis.setState({
+                xscales: newScales
+            });
+            capturedThis.props.onGraphScalesChanged(newScales);
+        }, 100);
 
         let options: ChartOptions<'line'> = {
             parsing: false,
@@ -144,11 +242,18 @@ export class Editable extends React.Component<{
                     max: this.props.xscales.xmax,
                     title: {
                         display: true,
-                        text: 'Frame',
+                        text: xaxisLabel
                     },
                     ticks: {
                         minRotation: 0,
-                        maxRotation: 0
+                        maxRotation: 0,
+                        callback: function (value, index, ticks) {
+                            switch (capturedThis.props.xaxisType) {
+                                case 'frames': return Number(value).toFixed(0);
+                                case 'seconds': return frameToSeconds(Number(value), capturedThis.props.renderedData.options.output_fps).toFixed(3);
+                                case 'beats': return frameToBeats(Number(value), capturedThis.props.renderedData.options.output_fps, capturedThis.props.renderedData.options.bpm).toFixed(2);
+                            }
+                        }
                     }
                 },
                 y: {
@@ -170,7 +275,7 @@ export class Editable extends React.Component<{
             },
             plugins: {
                 legend: {
-                    position: 'bottom' as const,
+                    position: 'top' as const,
                     labels: {
                         usePointStyle: true,
                         sort: (a: LegendItem, b: LegendItem) => {
@@ -185,21 +290,15 @@ export class Editable extends React.Component<{
                     samples: DECIMATION_THRESHOLD,
                 },
                 //@ts-ignore
-                detectDecimation: {
-                    onDecimation: this.props.onDecimation
-                },
+                // detectDecimation: {
+                //     onDecimation: this.props.onDecimation
+                // },
                 zoom: {
                     pan: {
                         enabled: true,
                         mode: 'x',
-                        modifierKey: 'alt',
-                        onPanComplete: function (chart: any) {
-                            const newScales =  { xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) };
-                            capturedThis.setState({
-                                xscales: newScales
-                            })
-                            capturedThis.props.onGraphScalesChanged(newScales);
-                        }
+                        //modifierKey: 'alt',
+                        onPanComplete: onPanCompleteDebounced
                     },
                     limits: {
                         x: { min: 0, max: capturedThis.props.renderedData.rendered_frames.length - 1, minRange: 10 },
@@ -207,10 +306,11 @@ export class Editable extends React.Component<{
                     zoom: {
                         drag: {
                             enabled: false,
-                            modifierKey: 'ctrl',
+                            modifierKey: 'shift',
                         },
                         wheel: {
                             enabled: true,
+                            modifierKey: 'alt',
                             speed: 0.05,
                         },
                         pinch: {
@@ -218,7 +318,7 @@ export class Editable extends React.Component<{
                         },
                         mode: 'x',
                         onZoomComplete: function (chart: any) {
-                            const newScales =  { xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) };
+                            const newScales = { xmin: Math.round(chart.chart.scales.x.min), xmax: Math.round(chart.chart.scales.x.max) };
                             capturedThis.setState({
                                 xscales: newScales
                             })

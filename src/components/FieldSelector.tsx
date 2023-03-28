@@ -140,6 +140,7 @@ export function FieldSelector(props: FieldSelectorProps) {
     return <>
         <p><small>Select which fields you'd like to manage with Parseq. Unselected fields are controllable with Deforum.</small></p>
 
+        {/* TODO: user Grid v2 like everywhere else */}
         <Grid container item xs={12}>
             <Grid item xs={6}>
                 <TextField

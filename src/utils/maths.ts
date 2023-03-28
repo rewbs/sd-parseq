@@ -27,6 +27,17 @@ export function isValidNumber(toTest: any) {
         && !isNaN(toTest);
 }
 
+export function frameToXAxisType(frame : number, xaxisType: "frames" | "seconds" | "beats", fps: number, bpm: number) {
+    switch (xaxisType) {
+        case "frames":
+            return frame.toFixed(0);
+        case "seconds":
+            return frameToSec(frame, fps).toFixed(3);
+        case "beats":
+            return frameToBeat(frame, fps, bpm).toFixed(2);
+    }
+}
+
 export function frameToBeat(frame: number, fps: number, bpm: number): number {
     return frame / ((fps * 60) / bpm);
 }

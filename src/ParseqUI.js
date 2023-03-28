@@ -37,7 +37,10 @@ import { parseqRender } from './parseq-renderer';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
+import { AudioWaveform } from './components/AudioWaveform'
+import { Viewport } from './components/Viewport';
 
+import prettyBytes from 'pretty-bytes';
 import debounce from 'lodash.debounce';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
@@ -59,7 +62,9 @@ const ParseqUI = (props) => {
   const [renderedErrorMessage, setRenderedErrorMessage] = useState("");
   const [lastRenderedState, setlastRenderedState] = useState("");
   const [graphAsPercentages, setGraphAsPercentages] = useState(false);
-  const [graphPromptMarkers, setGraphPromptMarkers] = useState(false);
+  const [showPromptMarkers, setShowPromptMarkers] = useState(false);
+  const [showCursors, setShowCursors] = useState(false);
+  const [beatMarkerInterval, setBeatMarkerInterval] = useState(0);  
   const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
   const [managedFields, setManagedFields] = useState();   // The fields that the user has chosen to be managed by Parseq.
@@ -75,13 +80,14 @@ const ParseqUI = (props) => {
   const [uploadStatus, setUploadStatus] = useState(<></>);
   const [lastRenderTime, setLastRenderTime] = useState(0);
   const [gridCursorPos, setGridCursorPos] = useState(0);
+  const [audioCursorPos, setAudioCursorPos] = useState(0);
   const [rangeSelection, setRangeSelection] = useState({});
   const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
-  const [graphDecimating, setGraphDecimating] = useState(false);
   const [graphableData, setGraphableData] = useState([]);
   const [sparklineData, setSparklineData] = useState([]);
   const [graphScales, setGraphScales] = useState();
-  const [lastFrame, setLastFrame] = useState(0); // fields referenced in prompts.
+  const [lastFrame, setLastFrame] = useState(0);
+  const [xaxisType, setXaxisType] = useState("frames");
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -102,6 +108,7 @@ const ParseqUI = (props) => {
     if (newLastFrame !== lastFrame) {
       setLastFrame(newLastFrame);
       setGraphScales({ xmin: 0, xmax: newLastFrame });
+      //setViewport({ xmin: 0, xmax: newLastFrame });
     }
   }
 
@@ -285,7 +292,7 @@ const ParseqUI = (props) => {
       loadedContent = templates[defaultTemplate].template;
     }
     const filledContent = fillWithDefaults(loadedContent || {});
-    setPrompts(convertPrompts(filledContent.prompts, Math.max(...filledContent.keyframes.map(kf=>kf.frame))));
+    setPrompts(convertPrompts(filledContent.prompts, Math.max(...filledContent.keyframes.map(kf => kf.frame))));
     setOptions(filledContent.options);
     setManagedFields([...filledContent.managedFields]);
     setDisplayedFields([...filledContent.displayedFields]);
@@ -335,7 +342,9 @@ const ParseqUI = (props) => {
         sort: 'asc',
         valueSetter: (params) => {
           var newValue = parseInt(params.newValue);
-          params.data.frame = newValue;
+          if (newValue && !isNaN(newValue)) {
+            params.data.frame = newValue;
+          }
         },
         pinned: 'left',
         suppressMovable: true,
@@ -530,7 +539,7 @@ const ParseqUI = (props) => {
 
   const navigateToNextCell = useCallback((params) => {
     const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
-    if (graphPromptMarkers && nextCell) {
+    if (showPromptMarkers && nextCell) {
       const nextRow = params.api.getDisplayedRowAtIndex(nextCell.rowIndex);
       if (nextRow && nextRow.data && nextRow.data.frame) {
         setGridCursorPos(nextRow.data.frame);
@@ -552,7 +561,7 @@ const ParseqUI = (props) => {
       setRangeSelection({});
     }
     return nextCell;
-  }, [rangeSelection, graphPromptMarkers]);
+  }, [rangeSelection, showPromptMarkers]);
 
   const onCellKeyPress = useCallback((e) => {
     if (e.event) {
@@ -949,7 +958,7 @@ const ParseqUI = (props) => {
               for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
                 for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
                   const col = e.columnApi.getAllGridColumns()[colInstanceId];
-                  if (col.visible) {
+                  if (col.visible && col.colId !== 'frame') {
                     e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
                   }
                 }
@@ -1012,57 +1021,103 @@ const ParseqUI = (props) => {
 
   // Editable Graph ------------------------
 
-  // compute markers when prompt or cursor position change
-  const markers = useMemo(() =>
-    (prompts ?? []).flatMap((p, idx) => [{
-      x: p.allFrames ? 0 : p.from,
-      color: 'rgba(50,200,50, 0.8)',
-      label: p.name + 'start',
-      display: !p.allFrames,
-      top: true
-    },
-    {
-      x: p.allFrames ? lastFrame : p.to,
-      color: 'rgba(200,50,50, 0.8)',
-      label: p.name + ' end',
-      display: !p.allFrames,
-      top: false
-    }
-    ]).concat(
-      [
-        {
-          x: gridCursorPos,
-          color: 'rgba(0, 0, 100, 1)',
-          label: 'Grid cursor',
-          top: true
-        }
-      ]
-    )
-    , [prompts, gridCursorPos, lastFrame]);
+  // Prompt markers (also used on audio graph)
+  const promptMarkers = useMemo(() => (prompts && showPromptMarkers) 
+    ? prompts.flatMap((p, idx) => [{
+        x: p.allFrames ? 0 : p.from,
+        color: 'rgba(50,200,50, 0.8)',
+        label: p.name + 'start',
+        display: !p.allFrames,
+        top: true
+      },
+      {
+        x: p.allFrames ? lastFrame : p.to,
+        color: 'rgba(200,50,50, 0.8)',
+        label: p.name + ' end',
+        display: !p.allFrames,
+        top: false
+      }
+      ])
+    : [], [prompts, showPromptMarkers, lastFrame]);
 
   const editableGraphHeader = useMemo(() => <>
     {
-      graphDecimating ? <Alert severity='info'>
-        Graph is not editable when displaying more than {DECIMATION_THRESHOLD} points. Try zooming in.
-      </Alert>
-        : <p><small>Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.</small></p>
+      (graphScales && (graphScales.xmax - graphScales.xmin) > DECIMATION_THRESHOLD)
+        ? <Alert severity='info' paddingBottom={"5px"}>
+          Graph is not editable when displaying more than {DECIMATION_THRESHOLD} points. Try zooming in.
+        </Alert>
+        : <Typography fontSize="0.75em" paddingBottom={"5px"}>
+          <strong>Graph is editable.</strong> Drag to edit keyframe values, double-click to add keyframes, shift-click to clear keyframe values.
+        </Typography>
     }
 
-    <FormControlLabel control={
-      <Checkbox
-        checked={graphAsPercentages}
-        id={"graph_as_percent"}
-        onChange={(e) => setGraphAsPercentages(e.target.checked)}
-      />}
-      label={<Box component="div" fontSize="0.75em">Show as % of max</Box>} />
-    <FormControlLabel control={
-      <Checkbox
-        checked={graphPromptMarkers}
-        id={"graph_as_percent"}
-        onChange={(e) => setGraphPromptMarkers(e.target.checked)}
-      />}
-      label={<Box component="div" fontSize="0.75em">Show prompt markers</Box>} />
-  </>, [graphAsPercentages, graphPromptMarkers, graphDecimating])
+    <Grid container>
+      <Grid xs={6}>
+        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
+          <TextField
+            select
+            fullWidth={false}
+            size="small"
+            style={{ width: '7em', marginLeft: '5px' }}
+            label={"Show time as: "}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            value={xaxisType}
+            onChange={(e) => setXaxisType(e.target.value)}
+          >
+            <MenuItem value={"frames"}>Frames</MenuItem>
+            <MenuItem value={"seconds"}>Seconds</MenuItem>
+            <MenuItem value={"beats"}>Beats</MenuItem>
+          </TextField>
+          <FormControlLabel control={
+            <Checkbox
+              checked={graphAsPercentages}
+              id={"graph_as_percent"}
+              onChange={(e) => setGraphAsPercentages(e.target.checked)}
+            />}
+            label={<Box component="div" fontSize="0.75em">Values as % of max</Box>} />
+        </Stack>
+      </Grid>
+      <Grid xs={6}>
+        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
+        <Typography fontSize="0.75em">Markers:</Typography>
+          <FormControlLabel control={
+            <Checkbox
+              checked={showPromptMarkers}
+              onChange={(e) => setShowPromptMarkers(e.target.checked)}
+            />}
+            label={<Box component="div" fontSize="0.75em">Prompt positions</Box>} />
+          <FormControlLabel control={
+            <Checkbox
+              checked={showCursors}
+              onChange={(e) => setShowCursors(e.target.checked)}
+            />}
+            label={<Box component="div" fontSize="0.75em">Cursors</Box>} />
+          <FormControlLabel control={
+            <Checkbox
+              checked={beatMarkerInterval != 0}
+              onChange={(e) => setBeatMarkerInterval( e.target.checked ? 1 : 0 )}
+            />}
+            label={<Box component="div" fontSize="0.75em">Beats</Box>} />
+          <TextField
+            select
+            fullWidth={false}
+            size="small"
+            style={{ width: '7em', marginLeft: '5px' }}
+            label={"Beat interval: "}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            value={beatMarkerInterval}
+            onChange={(e) => setBeatMarkerInterval(e.target.value)}
+          >
+            {[0, 1,2,3,4,5,6,7,8].map((v,idx)=><MenuItem key={idx} value={v+""}>{v>0?v:'(none)'}</MenuItem>)}
+          </TextField>            
+        </Stack>
+      </Grid>
+    </Grid>
+
+
+  </>, [graphAsPercentages, showPromptMarkers, showCursors, beatMarkerInterval, graphScales, xaxisType])
 
   const editableGraph = useMemo(() => renderedData && renderedData.rendered_frames && <Editable
     renderedData={renderedData} // just used for keyframes?
@@ -1070,7 +1125,11 @@ const ParseqUI = (props) => {
     displayedFields={displayedFields}
     as_percents={graphAsPercentages}
     xscales={graphScales ?? { xmin: 0, xmax: renderedData.rendered_frames?.length ?? 100 }}
-    markers={graphPromptMarkers ? markers : []}
+    xaxisType={xaxisType}
+    promptMarkers={promptMarkers}
+    gridCursorPos={showCursors ? gridCursorPos : -1}
+    audioCursorPos={showCursors ? audioCursorPos : -1}
+    beatMarkerInterval={beatMarkerInterval}
     updateKeyframe={(field, index, value) => {
       let rowId = frameToRowId(index)
       gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
@@ -1089,16 +1148,48 @@ const ParseqUI = (props) => {
         gridRef.current.api.getRowNode(rowId).setDataValue(field + '_i', "");
       }
     }}
-    onDecimation={(decimation, originalPoints, decimatedPoints) => {
-      setGraphDecimating(decimation);
-    }}
     onGraphScalesChanged={(scales) => {
       if (scales.xmin !== graphScales?.xmin || scales.xmax !== graphScales?.xmax) {
         setGraphScales(scales);
       }
     }}
-  />, [renderedData, graphableData, displayedFields, graphAsPercentages, graphPromptMarkers, markers, addRow, frameToRowId, graphScales]);
+  />, [renderedData, graphableData, displayedFields, graphAsPercentages,  promptMarkers, showCursors, gridCursorPos, audioCursorPos, addRow, frameToRowId, graphScales, xaxisType, beatMarkerInterval]);
 
+
+  const viewport = useMemo(() => options && graphScales && <Viewport
+    xaxisType={xaxisType}
+    bpm={options.bpm}
+    fps={options.output_fps}
+    viewport={{ startFrame: graphScales.xmin, endFrame: graphScales.xmax, }}
+    lastFrame={lastFrame}
+    onChange={(v) => {
+      setGraphScales({ xmin: v.startFrame, xmax: v.endFrame });
+    }}
+  />, [graphScales, xaxisType, options, lastFrame]);
+
+  // Audio waveform ---------------------
+  const audioWaveform = useMemo(() =>
+    options && <AudioWaveform
+      xaxisType={xaxisType}
+      bpm={options.bpm}
+      fps={options.output_fps}
+      promptMarkers={promptMarkers}
+      beatMarkerInterval={beatMarkerInterval}
+      keyframesPositions={keyframes.map(kf => kf.frame)}
+      gridCursorPos={showCursors ? gridCursorPos : -1}
+      viewport={{ startFrame: graphScales.xmin, endFrame: graphScales.xmax }}
+      onScroll={(newViewport) => {
+        console.log(newViewport);
+        if (newViewport.startFrame !== graphScales.xmin || newViewport.endFrame !== graphScales.xmax) {
+          setGraphScales({ xmin: newViewport.startFrame, xmax: newViewport.endFrame })
+        }
+      }}
+      onCursorMove={(frame) => {
+        if (frame !== audioCursorPos) {
+          setAudioCursorPos(frame);
+        }
+      }}
+    />, [options, xaxisType, graphScales, keyframes, promptMarkers, showCursors, gridCursorPos, audioCursorPos, beatMarkerInterval]);
 
 
   // Sparklines ------------------------
@@ -1180,7 +1271,7 @@ const ParseqUI = (props) => {
       {
         (renderedDataJsonString.length > getOutputTruncationLimit()) ?
           <Alert severity="warning">
-            Rendered output is truncated at {getOutputTruncationLimit()/1024} MB. Use the "copy output" or "upload output" button below to access the full data.
+            Rendered output is truncated at {getOutputTruncationLimit() / 1024} MB. Use the "copy output" or "upload output" button below to access the full data.
           </Alert>
           : <></>
       }
@@ -1265,7 +1356,7 @@ const ParseqUI = (props) => {
               <CopyToClipboard text={renderedDataJsonString}>
                 <Button size="small" disabled={needsRender} variant="outlined">📋 Copy output</Button>
               </CopyToClipboard>
-              <Typography fontSize={'0.7em'}>Size: {(renderedDataJsonString?.length ?? 0 / 1024).toFixed(2)}kB</Typography>
+              <Typography fontSize={'0.7em'}>Size: {prettyBytes(renderedDataJsonString.length)}</Typography>
             </Stack>
           </Grid>
           <Grid xs={4}>
@@ -1294,7 +1385,6 @@ const ParseqUI = (props) => {
           <Grid xs={4} sx={{ float: "right" }}>
             <Stack direction={'column'} justifyContent={'right'} justifyItems={'right'} justifySelf={'right'} >
               {uploadStatus}
-
             </Stack>
           </Grid>
         </Grid>
@@ -1370,13 +1460,17 @@ const ParseqUI = (props) => {
         <ExpandableSection title="Visualised field value flow">
           {editableGraphHeader}
           {editableGraph}
+          {viewport}
         </ExpandableSection>
       </Grid>
-      {/* <Grid xs={12}>
-        <ExpandableSection title="Audio">
-          <AudioWaveform />
+      <Grid xs={12}>
+        <ExpandableSection title="Audio reference"
+          // Ensure we don't lose state when collapsing.
+          renderChildrenWhenCollapsed={true}
+        >
+          {audioWaveform}
         </ExpandableSection>
-      </Grid>       */}
+      </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Sparklines">
           {sparklines}

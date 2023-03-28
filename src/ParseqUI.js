@@ -565,7 +565,7 @@ const ParseqUI = (props) => {
       setRangeSelection({});
     }
     return nextCell;
-  }, [rangeSelection, showPromptMarkers]);
+  }, [rangeSelection, showCursors]);
 
   const onCellKeyPress = useCallback((e) => {
     if (e.event) {
@@ -993,7 +993,7 @@ const ParseqUI = (props) => {
         }}
       />
     </div>
-  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, navigateToNextCell, rangeSelection]);
+  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, navigateToNextCell, rangeSelection, showCursors]);
 
 
   const displayedFieldSelector = useMemo(() => displayedFields && <Select

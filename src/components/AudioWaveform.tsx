@@ -1,6 +1,6 @@
 import { Box, Alert, Typography, Button, Stack } from "@mui/material";
 import Grid from '@mui/material/Unstable_Grid2';
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WaveForm, WaveSurfer } from "wavesurfer-react";
 //@ts-ignore
 import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
@@ -96,7 +96,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
     }, [props, lastViewport, trackLength]), 50);
 
-    const debouncedOnCursorMove = useCallback(debounce(props.onCursorMove, 200), [props]);
+    const debouncedOnCursorMove = useMemo(() => debounce(props.onCursorMove, 100), [props]);
 
     const updatePlaybackPos = useCallback(() => {
         const lengthFrames = trackLength * props.fps;

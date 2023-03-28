@@ -116,7 +116,7 @@ export function Viewport(props: ViewportProps) {
     );
 
     function getViewportColour(action: any) {
-        if (Math.round(action.start) == 0 && Math.round(action.end) == props.lastFrame) {
+        if (Math.round(action.start) === 0 && Math.round(action.end) === props.lastFrame) {
             return 'rgba(60,250,60,0.5)';
         } else if (Math.round(action.end) > props.lastFrame) {
             return 'rgba(250,60,60,0.5)';

@@ -95,7 +95,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             //console.log("Scrolled viewport to:", newViewport);         
         }
 
-    }, [props, lastViewport]), 50);
+    }, [props, lastViewport, trackLength]), 50);
 
     const updatePlaybackPos = useCallback(() => {
         const lengthFrames = trackLength * props.fps;
@@ -108,7 +108,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     
         props.onCursorMove(curPosFrames);
 
-    }, [trackLength, props.fps, props.bpm]);
+    }, [trackLength, props]);
 
     //Update wavesurfer's seek callback on track length change and fps change
     useEffect(() => {
@@ -263,7 +263,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             }
         }
 
-    }, [props]);
+    }, [props, trackLength]);
 
     useEffect(() => {
         updateMarkers();
@@ -327,7 +327,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             // Force the wavesurfer to redraw the timeline
             wavesurferRef.current.drawBuffer();
         }
-    }, [formatTimeCallback]);
+    }, [formatTimeCallback, props.viewport.startFrame, scrollToPosition]);
 
     const waveSurferPlugins = [
         {

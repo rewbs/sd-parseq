@@ -1095,7 +1095,7 @@ const ParseqUI = (props) => {
             label={<Box component="div" fontSize="0.75em">Cursors</Box>} />
           <FormControlLabel control={
             <Checkbox
-              checked={beatMarkerInterval != 0}
+              checked={beatMarkerInterval !== 0}
               onChange={(e) => setBeatMarkerInterval( e.target.checked ? 1 : 0 )}
             />}
             label={<Box component="div" fontSize="0.75em">Beats</Box>} />

@@ -122,7 +122,7 @@ export class Editable extends React.Component<{
         }, {});
 
         const gridCursorAnnotation = this.props.gridCursorPos >= 0 ? {
-            ['gridCursor'] : {
+            gridCursor : {
                 type: 'line',
             xMin: this.props.gridCursorPos,
             xMax: this.props.gridCursorPos,
@@ -145,7 +145,7 @@ export class Editable extends React.Component<{
         } : {};
 
         const audioCursorAnnotation = this.props.audioCursorPos >= 0 ? {
-            ['audioCursor'] : {
+            audioCursor : {
                 type: 'line',
             xMin: this.props.audioCursorPos,
             xMax: this.props.audioCursorPos,

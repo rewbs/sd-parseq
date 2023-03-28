@@ -23,9 +23,9 @@ p {
 }
 
 #waveform .marker-label span  {
-  font-size: 0.2em !important;
+  font-size: 0.5em !important;
 }
 
 #waveform .marker-label span:hover  {
-  font-size: 0.5em !important;
+  font-size: 0.75em !important;
 }

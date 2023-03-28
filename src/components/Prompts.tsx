@@ -381,7 +381,10 @@ export function Prompts(props: PromptsProps) {
     }, [props]);
 
     const handleCloseSpacePromptsDialog = useCallback((e: any): void => {
-        setOpenSpacePromptsDialog(false);
+        setOpenSpacePromptsDialog(false);        
+        if (e.target.id !== "space") {
+            return;
+        }
 
         const span = (spacePromptsLastFrame + 1) / prompts.length;
         const newPrompts = prompts.map((p, idx) => {
@@ -523,6 +526,7 @@ export function Prompts(props: PromptsProps) {
             }
             //console.log("resized to", timelineRef.current.offsetWidth);
         }
+        handleResize();
         window.addEventListener('resize', handleResize)
         return (_: any) => window.removeEventListener('resize', handleResize);
     }, []);

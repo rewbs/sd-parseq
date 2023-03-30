@@ -4,10 +4,12 @@ import { linear, polynomial } from 'everpolate';
 import Spline from 'cubic-spline';
 import BezierEasing from "bezier-easing";
 import { toFixedNumber, toFixedCeil, toFixedFloor, frameToBeat, frameToSec } from '../utils/maths';
+import seedrandom from 'seedrandom';
 
 export type InvocationContext = {
   fieldName: string;
   activeKeyframe: number;
+  activeNode?: ParseqAstNode;
   definedFrames: number[];
   definedValues: number[];
   allKeyframes: { //TODO - should be using ParseqKeyframe type
@@ -39,7 +41,49 @@ export abstract class ParseqAstNode {
     }
   }
 
-  abstract invoke(ctx: InvocationContext): string | number;
+  // Store aribtrary state in the AST node. Useful for
+  // functions that depend on the result of a previous invocation.
+  protected nodeState: Map<string, any> = new Map();
+  public hasState(key: string): boolean {
+    return this.nodeState.has(key);
+  } 
+  public setState(key: string, value: any) {
+    this.nodeState.set(key, value);
+  }
+  public getState(key: string) {
+    return this.nodeState.get(key);
+  }  
+  public getOrComputeState(key: string, compute: () => object): object {
+    if (this.nodeState.has(key)) {
+      //@ts-ignore - we know this is an object
+      return this.nodeState.get(key);
+    } else {
+      const value = compute();
+      this.nodeState.set(key, value);
+      return value;
+    }
+  }
+
+  public invoke(ctx: InvocationContext): number | string {
+
+    ctx.activeNode = this;
+
+    this.preInvoke(ctx);
+    const retval = this.innerInvoke(ctx);
+    this.postInvoke(ctx);
+
+    return retval;
+  }
+
+  public preInvoke(ctx: InvocationContext) {
+    //console.log("Calling node: ", this.debug());
+  }
+
+  public postInvoke(ctx: InvocationContext) {
+    //console.log("Called node: ", this.debug());
+  }  
+  
+  protected abstract innerInvoke(ctx: InvocationContext): string | number;
 
   public debug(): any {
     const currentNode = `${this.constructor.name}:{${this.value ?? ''}} (${this.start?.line}:${this.start?.col}->${this.end?.line}:${this.end?.col})`;
@@ -54,24 +98,24 @@ export abstract class ParseqAstNode {
 }
 
 export class NumberLiteralAst extends ParseqAstNode {
-  invoke(ctx: InvocationContext): number {
+  innerInvoke(ctx: InvocationContext): number {
     return Number(this.value ?? 0);
   }
 }
 
 export class StringLiteralAst extends ParseqAstNode {
-  invoke(ctx: InvocationContext): string {
+  innerInvoke(ctx: InvocationContext): string {
     return String(this.value ?? '');
   }
 }
 export class BooleanLiteralAst extends ParseqAstNode {
-  invoke(ctx: InvocationContext): number {
+  innerInvoke(ctx: InvocationContext): number {
     return this.value ? 1 : 0;
   }
 }
 
 export class NegationAst extends ParseqAstNode {
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     const negatable = this.children[0].invoke(ctx);
     if (typeof negatable === 'string') {
       return "-" + negatable;
@@ -82,7 +126,7 @@ export class NegationAst extends ParseqAstNode {
 }
 
 export class NumberWithUnitAst extends ParseqAstNode {
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     const unit = this.value;
     const number = Number(this.children[0].invoke(ctx));
     switch (unit) {
@@ -103,7 +147,7 @@ export class VariableReferenceAst extends ParseqAstNode {
 
   private variableName = String(this.value);
 
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     switch (this.variableName) {
       case 'L':
         return linearInterpolation(ctx.definedFrames, ctx.definedValues, ctx.frame);
@@ -145,7 +189,7 @@ export class BinaryOpAst extends ParseqAstNode {
   private leftNode = this.children[0];
   private rightNode = this.children[1];
 
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     const left = this.leftNode.invoke(ctx);
     const right = this.rightNode.invoke(ctx);
     switch (this.value) {
@@ -204,7 +248,7 @@ export class IfAst extends ParseqAstNode {
   private consequentNode = this.children[1];
   private alternateNode = this.children[2] || null;
 
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     //@ts-ignore - fall back to JS type juggling.
     if (this.conditionNode.invoke(ctx) > 0) {
       return this.consequentNode.invoke(ctx);
@@ -234,10 +278,10 @@ export class FunctionCallAst extends ParseqAstNode {
     return this.children.length > 0 && this.children[0] instanceof NamedArgAst;
   }
 
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     this.validateArgs();
     const args = this.evaluateArgs(ctx);
-    return this.funcDef.call(ctx, args);
+    return this.funcDef.call(ctx, args, this);
   }
 
 
@@ -248,7 +292,7 @@ export class FunctionCallAst extends ParseqAstNode {
       requiredArgs.some(arg => arg.names.every(name => !this.children.some(child => (child as NamedArgAst).getName() === name)))
       : this.children.length < requiredArgs.length;
     if (missingArgs) {
-      throw new Error(`Missing required argument(s) for function '${this.value} (${this.funcDef.description})'. Required arguments: ${requiredArgs.map(arg => arg.names.join('/')).join(', ')}`);
+      throw new Error(`1 or more missing required arguments for function '${this.value} (${this.funcDef.description})'. Required arguments: ${requiredArgs.map(arg => arg.names.join('/')).join(', ')}`);
     }
 
     // Check that all args are known
@@ -267,7 +311,7 @@ export class FunctionCallAst extends ParseqAstNode {
       };
     }
     if (extraArgs.names.length > 0) {
-      throw new Error(`Unrecognised argument(s) for function '${this.value} (${this.funcDef.description})': ${extraArgs.names.join(', ')}. Supported arguments: ${this.funcDef.argDefs.map(arg => arg.names.join('/')).join(', ')}`);
+      throw new Error(`1 or more unrecognised arguments for function '${this.value} (${this.funcDef.description})': ${extraArgs.names.join(', ')}. Supported arguments: ${this.funcDef.argDefs.map(arg => arg.names.join('/')).join(', ')}`);
     } else if (extraArgs.extras > 0) {
       throw new Error(`Too many arguments for function '${this.value} (${this.funcDef.description})'. Expected ${this.funcDef.argDefs.length} arguments, got ${this.children.length}`);
     }
@@ -317,13 +361,13 @@ export class NamedArgAst extends ParseqAstNode {
   getName(): string {
     return this.value as string ?? '';
   }
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     return this.children[0].invoke(ctx);
   }
 }
 
 export class UnnamedArgAst extends ParseqAstNode {
-  invoke(ctx: InvocationContext): number | string {
+  innerInvoke(ctx: InvocationContext): number | string {
     return this.children[0].invoke(ctx);
   }
 }
@@ -339,7 +383,7 @@ type ArgDef = {
 type ParseqFunction = {
   description: string;
   argDefs: ArgDef[];
-  call(ctx: InvocationContext, args: (number | string)[]): number | string;
+  call(ctx: InvocationContext, args: (number | string)[], node: ParseqAstNode): number | string;
 }
 
 
@@ -398,7 +442,6 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     ],
     call: (ctx, args) => toFixedFloor(Number(args[0]), Number(args[1]))
   },
-
   "ceil": {
     description: "returns 'v' rounded up to precision 'p' decimal places (default 0)",
     argDefs: [
@@ -407,6 +450,30 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     ],
     call: (ctx, args) => toFixedCeil(Number(args[0]), Number(args[1]))
   },
+  "rand": {
+    description: "returns a random number between 'min' and 'max' (default 0 and 1), using seed 's' (default current time using high precison timer), holding that value for 'h' frames (default 1)",
+    argDefs: [
+      { description: "min", names: ["min", "n"], type: "number", required: false, default: 0 },
+      { description: "max", names: ["max", "x"], type: "number", required: false, default: 1 },
+      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now() },
+      { description: "hold", names: ["hold", "h"], type: "number", required: false, default: 1 },
+    ],
+    call: (ctx, args, node) => {
+      const [ min, max, seed, hold ] = [ Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]) ];
+      const lastComputedAt = Number(node.getState('randValueComputedAt'));
+      if (isNaN(lastComputedAt)
+          || Math.floor((lastComputedAt-ctx.activeKeyframe)/hold) < Math.floor((ctx.frame - ctx.activeKeyframe)/hold)
+          || !node.hasState('randValue')) { 
+        const generator : (() => number) = node.getOrComputeState('randGen', () => seedrandom(seed.toString())) as (() => number);
+        const value = generator() * (max - min) + min;
+        node.setState('randValue', value);
+        node.setState('randValueComputedAt', ctx.frame);
+        return value;
+      } else {
+        return node.getState('randValue');
+      }
+    }
+  },  
 
   /////////////////////
   // Transitions

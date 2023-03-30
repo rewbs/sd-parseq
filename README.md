@@ -3,7 +3,7 @@
 # Stable Diffusion Parseq
 
   * [What is this?](#what-is-this)
-  * [What's new?](#what-s-new)
+  * [What's new?](#whats-new)
     + [Version 0.1.50](#version-0150) 
     + [Version 0.1.45](#version-0145) 
     + [Version 0.1.40](#version-0140)
@@ -11,6 +11,7 @@
     + [Version 0.1.14](#version-0114)
     + [Version 0.1.0](#version-010)
   * [Installation](#installation)
+  * [Getting started](#getting-started)  
   * [Examples](#examples)
   * [Usage](#usage)
     + [Step 1: Create your parameter manifest](#step-1-create-your-parameter-manifest)
@@ -23,6 +24,7 @@
       - [Functions](#functions)
       - [Units](#units)
       - [Other operators and expressions](#other-operators-and-expressions)
+    + [Reference audio file visualisation](#reference-audio-file-visualisation)      
     + [Audio analyser for automatic keyframe creation from audio data](#audio-analyser-for-automatic-keyframe-creation-from-audio-data)
       - [Audio analyer general info (read this first)](#audio-analyer-general-info-read-this-first)
       - [Using the Audio analyser](#using-the-audio-analyser)
@@ -31,10 +33,12 @@
         * [Conversion to Parseq keyframes](#conversion-to-parseq-keyframes)
   * [Deforum integration features](#deforum-integration-features)
     + [Keyframable parameters](#keyframable-parameters)
-    + [Prompt interpolation](#prompt-interpolation)
+    + [Prompt manipulation](#prompt-manipulation)
+    + [Using multiple prompts](#using-multiple-prompts)    
     + [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
     + [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
-  * [Development](#development)
+  * [Working with large number of frames (performance tips)](#working-with-large-number-of-frames-performance-tips)
+  * [Development & running locally](#development--running-locally)
     + [Deployment](#deployment)
   * [Credits](#credits)
 
@@ -68,6 +72,12 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 * Buttons to quickly switch the managed fields to none, all, or currently used fields.
 
 Here's a short video demonstrating some of the above (no sound):
+
+
+
+https://user-images.githubusercontent.com/74455/228861184-755fd83c-3808-478b-974a-dd0736021537.mp4
+
+
 
 
 ### Version 0.1.45
@@ -141,6 +151,18 @@ https://user-images.githubusercontent.com/74455/222586768-05073ce8-70d5-4b35-b2a
 <img width="500" alt="image" src="https://i.imgur.com/pGC8im8.png">
 
 
+## Getting started
+
+The best way to get your head around Parseq's capabilities and core concepts is to watch the following tutorials:
+
+| Part 1 | Part 2 | Part 3 |
+|--- |--- |---
+| [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | Coming soon...	|
+
+
+
+
+
 ## Examples
 
 Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate.
@@ -159,7 +181,7 @@ https://user-images.githubusercontent.com/74455/209022677-568bd283-3e2a-457c-93a
 https://user-images.githubusercontent.com/74455/199890420-9c939e3a-ae8e-4262-9805-da0f45b4c0bc.mp4
 
 
-- Loopback using Deforum video where we oscillate between a few famous faces with some 3d movement and occasional denoising spikes to reset the context:
+- Oscillating between a few famous faces with some 3d movement and occasional denoising spikes to reset the context:
 
 https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91f-8e9e89e252dc.mp4
 
@@ -167,6 +189,22 @@ https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91
 - Using pitch to influence prompt weight. A higher pitch generates a more luxurious house, and a lower pitch a more decrepit house. The audio analyser was used to to autodetect the notes, create keyframes for each note, and assign the pitch to a prompt weight value. Because Parseq support expression evaluation directly in the prompt, we can then have a positive prompt like: `Photo of the outside of a (${if prompt_weight_1>=0 "modern:"  else "crumbling old:"} ${abs(prompt_weight_1)}) realistic house. <rest of your positive prompt>` and a negative prompt like `(${if prompt_weight_1<0 "modern:"  else "crumbling old:"} ${abs(prompt_weight_1)}) <rest of your negative prompt>`.
 
 https://user-images.githubusercontent.com/74455/213343711-c66c25d6-9ad1-4070-950f-7122db7a1a07.mp4
+
+- Seed travelling example featured in [Parseq Tutorial 2](https://www.youtube.com/watch?v=PvWckT0Pik8):
+
+https://user-images.githubusercontent.com/74455/228868895-75da2d24-2fa0-49a3-ba7b-6ac644014935.mp4
+
+- Prompt manipulation example featured in [Parseq Tutorial 2](https://www.youtube.com/watch?v=PvWckT0Pik8):
+
+https://user-images.githubusercontent.com/74455/228870311-0f59ea4b-880b-449f-8552-daeba5a8d7c9.mp4
+
+- Combining 3D y-axis rotation with x-axis pan to rotate around a subject:
+
+
+
+https://user-images.githubusercontent.com/74455/228871042-a7a26e6f-aa42-4b24-837a-b5dc93812602.mp4
+
+
 
 
 ## Usage
@@ -315,28 +353,20 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `<expr1> and <expr2>`  	| 1 if <expr1> and <expr2> are non-zero, 0 otherwise.  	   |   	|
 | `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
 
-### Reference audio file
 
-To help you align your keyframes and formula with audio, you can load an audio file to view its waveform alongside the your parameter graph. 
+### Reference audio file visualisation
+ 
+To help you align your keyframes and formula with audio, you can load an audio file to view its waveform alongside the your parameter graph. Zooming and panning the graph will apply to the audio (click and drag to pan, hold alt/option and mouse wheel to zoom). Scrolling the audio will pan the graph. A viewport control is available between the graph and audio. Prompt, beat and cursor markers are displayed on both visualisations.
 
-
-
-
-### Working with large number of frames (performance tips)
-
-Parseq can become slow when working with a large number of frames. If you see performance degradations, try the following:
-* In the Managed Fields section, select only the fields you want to control with Parseq.
-* Close the sections you're not using. For example, if you're not using Sparklines or the test Output view, close them using the ^ next to the section title. 
-* Hide the fields you're not actively working with by unselecting them in the "show/hide fields" selection box (or toggle them by clicking their sparklines).
-* Disable autorender (and remember to manually hit the render button every few changes).
-* Note that the graph becomes uneditable when displaying more than 1000 frames, and does not show keyframes. To restore editing, zoom in to a section less than 1000 frames.
+This is not yet a full integration of the audio Analyser: you'll still need to use the Analyser tool for beat detection, audio event detection & pitch detection.
 
 
+https://user-images.githubusercontent.com/74455/228865210-be0a3202-3c9e-4037-8d9f-cd5bb3c8fd65.mp4
 
 
 ### Audio analyser for automatic keyframe creation from audio data
 
-Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to generate keyframes and values based on beats, events and pitch of an input audio file. This is not to be confused with the Reference Audio visualisation described above.
+Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to generate keyframes and values based on beats, events and pitch of an input audio file. This is not to be confused with the Reference audio visualisation in the main UI.
 
 #### Audio analyer general info (read this first)
 * ⚠️ This feature is experimental. That's why it's quite separate from the main Parseq UI for now. The keyframes it generates can be merged into an existing Parseq document using the "Merge keyframes" button in the main UI.
@@ -566,13 +596,22 @@ To reconcile this, Parseq supplies _delta values_ to Deforum for certain paramet
 For most parameters the delta value for a given field is simply the difference between the current and previous frame's value for that field. However, a few parameters such as 2D zoom (which is actually a scale factor) are multiplicative, so the delta is the ratio between the previous and current value.
 
 
-## Development
+## Working with large number of frames (performance tips)
+
+Parseq can become slow when working with a large number of frames. If you see performance degradations, try the following:
+* In the Managed Fields section, select only the fields you want to control with Parseq.
+* Close the sections you're not using. For example, if you're not using Sparklines or the test Output view, close them using the ^ next to the section title. 
+* Hide the fields you're not actively working with by unselecting them in the "show/hide fields" selection box (or toggle them by clicking their sparklines).
+* Disable autorender (and remember to manually hit the render button every few changes).
+* Note that the graph becomes uneditable when displaying more than 1000 frames, and does not show keyframes. To restore editing, zoom in to a section less than 1000 frames.
+
+
+
+## Development & running locally
 
 Parseq is currently a front-end React app. It is part way through a conversion from Javascript to Typescript. There is currently very little back-end: by default, persistence is entirely in browser indexdb storage via [Dexie.js](https://dexie.org/). Signed-in users can optionally upload data to a Firebase-backed datastore.
 
 You'll need `node` and `npm` on your system before you get started.
-
-There is a severe lack of tests, which I will remedy one day. :)
 
 If you want to dive in:
    - Run `npm install` to pull dependencies.

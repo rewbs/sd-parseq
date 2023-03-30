@@ -4,6 +4,7 @@
 
   * [What is this?](#what-is-this)
   * [What's new?](#what-s-new)
+    + [Version 0.1.50](#version-0150) 
     + [Version 0.1.45](#version-0145) 
     + [Version 0.1.40](#version-0140)
     + [Version 0.1.22](#version-0122)
@@ -56,6 +57,18 @@ You can jump straight into the UI here: https://sd-parseq.web.app/ .
 For now Parseq is almost entirely front-end and stores all state in browser local storage by default. Signed-in users can optionally upload their work from the UI for easier sharing.
 
 ## What's new?
+
+### Version 0.1.50
+
+* Major performance improvements. It should now be possible to work with 1000s of frames without the UI flaking out. For some techniques to improve the UX when working with large documents, see below.
+* By popular demand, you can now load an audio file and see it alongside your keyframe data. Zoom, pan and markers are synchronized. This is **not** yet a full integration of the audio Analyser: you'll still need to use the Analyser tool for beat detection, audio event detection & pitch detection.
+* Optionally enable markers to show beat positions on graph and audio waveform, given the document's BPM and FPS.
+* Time units in the visual views can be switched between frames/seconds/beats.
+* New `rand()` function for generating random values, optionally with seed for recreatability. See below for details.
+* Buttons to quickly switch the managed fields to none, all, or currently used fields.
+
+Here's a short video demonstrating some of the above (no sound):
+
 
 ### Version 0.1.45
 
@@ -248,6 +261,7 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | `round()`  	| Return the rounded value of the argument. Second argument specifies precision (default: 0). | <img src="https://www.evernote.com/l/APZWLyA1YPVMWao-Zke_v7X2adVxjk_0rEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
 | `floor()`  	| Return the value of the argument rounded down.  Second argument specifies precision (default: 0). | |
 | `ceil()`  	| Return the value of the argument rounded up.  Second argument specifies precision (default: 0). | |
+| `rand()`     | Returns a random number between 'min' and 'max' (default 0 and 1), using seed 's' (default current time using high precison timer), holding that value for 'h' frames (default 1). See the image for 3 examples. `prompt_weight_1` changes value between 0 and 1 on every frame and will get a new set of values on every render. `prompt_weight_2` gets a new random value between 1 and 2 every 40 frames, and will also get a new set of values on every render.  `prompt_weight_3` gets a new random value between 2 and 3 every beat, and will use the same series of values on every render. | <img src="https://www.evernote.com/shard/s246/sh/69b7115e-e3af-4561-a1ad-a5050653cd44/xXB0OKsJ9CVaoSZy7lmzGLwZaIxOgTKwRIOKXrnLaWUe3N4gP8LAtCIaaw/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 | `info_match()` | Takes a **regular expression** as an argument. Returns 1 if the info label of the current active kefframe matches the regex, 0 otherwise.  | <img src="https://www.evernote.com/l/APbS0YKyh2ZHw7ZKEIwCvRTyjIMGL5h2ZNkB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_count()` | Takes a **regular expression** as an argument. Returns the number of keyframes that have info labels that matched the regex so far. | <img src="https://www.evernote.com/l/APaln7KfMdNNwI1I6vKNwORBzE0Br_BfTxYB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_last()` | Takes a **regular expression** as an argument. Returns the frame number of the last keyframe that matched the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
@@ -301,10 +315,28 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `<expr1> and <expr2>`  	| 1 if <expr1> and <expr2> are non-zero, 0 otherwise.  	   |   	|
 | `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
 
+### Reference audio file
+
+To help you align your keyframes and formula with audio, you can load an audio file to view its waveform alongside the your parameter graph. 
+
+
+
+
+### Working with large number of frames (performance tips)
+
+Parseq can become slow when working with a large number of frames. If you see performance degradations, try the following:
+* In the Managed Fields section, select only the fields you want to control with Parseq.
+* Close the sections you're not using. For example, if you're not using Sparklines or the test Output view, close them using the ^ next to the section title. 
+* Hide the fields you're not actively working with by unselecting them in the "show/hide fields" selection box (or toggle them by clicking their sparklines).
+* Disable autorender (and remember to manually hit the render button every few changes).
+* Note that the graph becomes uneditable when displaying more than 1000 frames, and does not show keyframes. To restore editing, zoom in to a section less than 1000 frames.
+
+
+
 
 ### Audio analyser for automatic keyframe creation from audio data
 
-Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to generate keyframes and values based on beats, events and pitch of an input audio file.
+Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to generate keyframes and values based on beats, events and pitch of an input audio file. This is not to be confused with the Reference Audio visualisation described above.
 
 #### Audio analyer general info (read this first)
 * ⚠️ This feature is experimental. That's why it's quite separate from the main Parseq UI for now. The keyframes it generates can be merged into an existing Parseq document using the "Merge keyframes" button in the main UI.

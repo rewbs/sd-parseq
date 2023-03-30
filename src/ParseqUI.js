@@ -1463,7 +1463,9 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Visualised field value flow">
-          {editableGraphHeader}
+          <span id='graphHeader'>
+            {editableGraphHeader}
+          </span>
           {editableGraph}
           {viewport}
         </ExpandableSection>
@@ -1509,5 +1511,5 @@ export default ParseqUI;
 
 /*
 // Prep for screenshot:
-['p', 'h3', '#gridControls', 'label'].forEach((n)=>$$(n).forEach((e) => e.style.display='none')); $$('.ag-theme-alpine')[0].style.height='110px'
+['p', 'h3', '.MuiCheckbox-root', '#gridControls', '#graphHeader'].forEach((n)=>$$(n).forEach((e) => e.style.display='none')); $$('.ag-theme-alpine')[0].style.height='110px'; $$('.ag-theme-alpine')[0].style['min-height']='110px';
 */

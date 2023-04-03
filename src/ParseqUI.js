@@ -39,6 +39,7 @@ import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
 import { AudioWaveform } from './components/AudioWaveform'
 import { Viewport } from './components/Viewport';
+import {TimeSeriesDialog}  from './components/TimeSeriesDialog';
 
 import prettyBytes from 'pretty-bytes';
 import debounce from 'lodash.debounce';
@@ -1441,6 +1442,11 @@ const ParseqUI = (props) => {
           {managedFieldSelector}
         </ExpandableSection>
       </Grid>
+      <Grid xs={12}>
+        <ExpandableSection title="Custom time series">
+          <TimeSeriesDialog />
+        </ExpandableSection>
+      </Grid>      
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <ExpandableSection
           // TODO: we always have to render the grid currently, else we lose keyframes because they reference grid data.

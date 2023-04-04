@@ -268,8 +268,8 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
                 const pcValue = (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field]
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
-                    //[field + '_delta']: (field === 'zoom') ? 1+(rendered_frames[frame][field] - rendered_frames[frame - 1][field]) : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
-                    [field + '_delta']: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame - 1][field] : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
+                    [field + '_delta']: (field === 'zoom') ? 1+(rendered_frames[frame][field] - rendered_frames[frame - 1][field]) : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
+                    //[field + '_delta']: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame - 1][field] : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
                     [field + "_pc"]: pcValue,
                 }
                 graphData[field + '_pc'].push({ x: frame, y:  pcValue});

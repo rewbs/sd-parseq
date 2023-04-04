@@ -960,10 +960,10 @@ const ParseqUI = (props) => {
               const x2 = Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
               const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
               const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);
-              for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
-                for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
-                  const col = e.columnApi.getAllGridColumns()[colInstanceId];
-                  if (col.visible && col.colId !== 'frame') {
+              for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
+                const col = e.columnApi.getAllGridColumns().find(c => c.instanceId === colInstanceId);
+                if (col && col.visible && col.colId !== 'frame') {
+                  for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
                     e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
                   }
                 }

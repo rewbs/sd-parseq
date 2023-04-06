@@ -1,9 +1,10 @@
 import * as d3 from 'd3';
 import * as _ from 'lodash';
 
+
 export interface TimeSeriesData {
-    timestamp: number;
-    value: number;
+    x: number;
+    y: number;
 }
 
 export enum TimestampType {
@@ -18,78 +19,146 @@ export enum InterpolationType {
 }
 
 export class TimeSeries {
-    readonly data: TimeSeriesData[] = [];
-    private readonly timestampType: TimestampType;
+
     private static readonly MAX_DATA_POINTS = 2000;
 
-    private constructor(data: TimeSeriesData[], timestampType: TimestampType) {
+    readonly data: TimeSeriesData[] = [];
+    readonly timestampType: TimestampType;
+
+    constructor(data: TimeSeriesData[], timestampType: TimestampType) {
         this.data = data;
         this.timestampType = timestampType;
     }
 
-      public static loadFromCSV(
-        file: File,
-        maxOffset: number,
-        timestampType: TimestampType
-      ): Promise<TimeSeries> {
-        return new Promise((resolve, reject) => {
-          const fileReader = new FileReader();
-          fileReader.onload = async (event) => {
-            const rawData = d3.csvParseRows(event.target?.result as string);
-      
-
-            const tempData: TimeSeriesData[] = rawData.map((row) => ({
-                timestamp: Number(row[0]),
-                value: Number(row[1]),
-            }));
-    
-            const decimationFactor = Math.ceil(tempData.length / TimeSeries.MAX_DATA_POINTS);
-            const data = tempData.filter((_, index) => index % decimationFactor === 0);
-    
-            const truncatedData = TimeSeries.truncateData(data, maxOffset);
-      
-            const timeSeries = new TimeSeries(truncatedData, timestampType);
-            resolve(timeSeries);
-            return timeSeries;
-          };
-      
-          fileReader.onerror = () => {
-            reject(new Error('Error reading CSV file.'));
-          };
-      
-          fileReader.readAsText(file);
-        });
-      }
-      
-
-    private static truncateData(data: TimeSeriesData[], maxOffset: number): TimeSeriesData[] {
-        return data.filter((datum) => datum.timestamp <= maxOffset);
+    static fromPoints(points: { x: number; y: number; }[], timestampType: TimestampType) {
+        return new TimeSeries(_.cloneDeep(points), timestampType);
     }
 
-    public normalize(): TimeSeries {
-        const minValue = _.minBy(this.data, (datum) => datum.value)?.value || 0;
-        const maxValue = _.maxBy(this.data, (datum) => datum.value)?.value || 1;
+    public static loadSingleSeries(
+        rawData: number[],
+        intervalMs: number
+    ): TimeSeries {
 
-        const normalizedData = this.data.map((datum) => ({
-            timestamp: datum.timestamp,
-            value: (datum.value - minValue) / (maxValue - minValue),
+        const decimationFactor = Math.ceil(rawData.length / TimeSeries.MAX_DATA_POINTS);
+
+        const data: TimeSeriesData[] = rawData
+            .filter((_, index) => index % decimationFactor === 0)
+            .map((value, idx) => ({
+                x: idx * decimationFactor * intervalMs,
+                y: value,
+            }));
+
+        return new TimeSeries(data, TimestampType.Millisecond);
+    }
+
+    public static loadFromCSV(
+        file: File,
+        timestampType: TimestampType
+    ): Promise<TimeSeries> {
+        return new Promise((resolve, reject) => {
+            const fileReader = new FileReader();
+            fileReader.onload = async (event) => {
+                const rawData = d3.csvParseRows(event.target?.result as string);
+
+                const tempData: TimeSeriesData[] = rawData.map((row) => ({
+                    x: Number(row[0]),
+                    y: Number(row[1]),
+                }));
+
+                const decimationFactor = Math.ceil(tempData.length / TimeSeries.MAX_DATA_POINTS);
+                const data = tempData.filter((_, index) => index % decimationFactor === 0);
+
+                //const truncatedData = TimeSeries.truncateData(data, maxOffset);
+
+                const timeSeries = new TimeSeries(data, timestampType);
+                resolve(timeSeries);
+                return timeSeries;
+            };
+
+            fileReader.onerror = () => {
+                reject(new Error('Error reading CSV file.'));
+            };
+
+            fileReader.readAsText(file);
+        });
+    }
+
+    public DEBUG_findNaNs() {
+        const NaNs = this.data.filter(({x,y}) => isNaN(x) || isNaN(y) || x === null || y===null || x===undefined || y ===undefined);
+        console.log("NaNs:", NaNs);
+        return NaNs;
+    }
+
+    public normalize(targetMin: number = 0, targetMax: number = 1): TimeSeries {
+        if (this.data.length === 0) {
+            return this;
+        }
+
+        const minValue = Math.min(...this.data.map((point) => point.y));
+        const maxValue = Math.max(...this.data.map((point) => point.y));
+
+        const range = maxValue - minValue;
+        const targetRange = targetMax - targetMin;
+
+        if (range === 0) {
+            return new TimeSeries(
+                this.data.map(({ x }) => ({ x, y: targetMin })),
+                this.timestampType
+            );
+        }
+
+        const normalizedData = this.data.map(({ x, y }) => ({
+            x,
+            y: ((y - minValue) / range) * targetRange + targetMin,
         }));
 
         return new TimeSeries(normalizedData, this.timestampType);
     }
 
     public limit(minValue: number, maxValue: number): TimeSeries {
-        const limitedData = this.data.map((datum) => ({
-            timestamp: datum.timestamp,
-            value: Math.min(Math.max(datum.value, minValue), maxValue),
+        const limitedData = this.data.map(({ x, y }) => ({
+            x: x,
+            y: Math.min(Math.max(y, minValue), maxValue),
         }));
 
         return new TimeSeries(limitedData, this.timestampType);
     }
 
+    public abs(): TimeSeries {
+        const absData = this.data.map(({ x, y }) => ({
+            x: x,
+            y: Math.abs(y),
+        }));
+
+        return new TimeSeries(absData, this.timestampType);
+    }
+
+    movingAverage(windowSize: number): TimeSeries {
+        if (windowSize <= 1) {
+            return this;
+        }
+
+        const smoothedData: { x: number, y: number }[] = [];
+        const halfWindowSize = Math.floor(windowSize / 2);
+
+        for (let i = 0; i < this.data.length; i++) {
+            const windowStart = Math.max(0, i - halfWindowSize);
+            const windowEnd = Math.min(this.data.length, i + halfWindowSize);
+            const windowData = this.data.slice(windowStart, windowEnd);
+
+            const sum = windowData.reduce((acc, dp) => acc + dp.y, 0);
+            const average = sum / windowData.length;
+
+            smoothedData.push({ x: this.data[i].x, y: average });
+        }
+
+        return new TimeSeries(smoothedData, this.timestampType);
+
+    }
+
     public filter(minValue: number, maxValue: number): TimeSeries {
         const filteredData = this.data.filter(
-            (datum) => datum.value >= minValue && datum.value <= maxValue
+            (datum) => datum.y >= minValue && datum.y <= maxValue
         );
 
         return new TimeSeries(filteredData, this.timestampType);
@@ -104,43 +173,28 @@ export class TimeSeries {
             frame = (frame / framesPerSecond) * 1000;
         }
 
-        const dataIndex = _.findIndex(this.data, (datum) => datum.timestamp >= frame);
+        const dataIndex = _.findIndex(this.data, (datum) => datum.x >= frame);
 
-        if (dataIndex === -1 || dataIndex === 0) {
-            return undefined;
+        if (dataIndex === -1) {
+            return _.last(this.data)?.y;
+        }
+
+        if (dataIndex === 0) {
+            return this.data[dataIndex].y;
         }
 
         const prevDatum = this.data[dataIndex - 1];
         const nextDatum = this.data[dataIndex];
 
         if (interpolation === InterpolationType.Step) {
-            return prevDatum.value;
+            return prevDatum.y;
         }
 
         if (interpolation === InterpolationType.Linear) {
-            const t = (frame - prevDatum.timestamp) / (nextDatum.timestamp - prevDatum.timestamp);
-            return prevDatum.value + t * (nextDatum.value - prevDatum.value);
+            const t = (frame - prevDatum.x) / (nextDatum.x - prevDatum.x);
+            return prevDatum.y + t * (nextDatum.y - prevDatum.y);
         }
-
-        // if (interpolation === InterpolationType.CubicSpline) {
-        //     const prevPrevDatum = dataIndex > 1 ? this.data[dataIndex - 2] : prevDatum;
-        //     const nextNextDatum = dataIndex < this.data.length - 1 ? this.data[dataIndex + 1] : nextDatum;
-
-        //     const t = (frame - prevDatum.timestamp) / (nextDatum.timestamp - prevDatum.timestamp);
-
-        //     return _.clamp(
-        //         _.interpolateCubic(
-        //             t,
-        //             prevPrevDatum.value,
-        //             prevDatum.value,
-        //             nextDatum.value,
-        //             nextNextDatum.value
-        //         ),
-        //         _.min([prevDatum.value, nextDatum.value]),
-        //         _.max([prevDatum.value, nextDatum.value])
-        //     );
-        // }
-
+        
         return undefined;
     }
 }

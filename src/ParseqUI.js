@@ -39,7 +39,7 @@ import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
 import { AudioWaveform } from './components/AudioWaveform'
 import { Viewport } from './components/Viewport';
-import {TimeSeriesDialog}  from './components/TimeSeriesDialog';
+import { TimeSeriesUI } from './components/TimeSeriesUI';
 
 import prettyBytes from 'pretty-bytes';
 import debounce from 'lodash.debounce';
@@ -65,10 +65,11 @@ const ParseqUI = (props) => {
   const [graphAsPercentages, setGraphAsPercentages] = useState(false);
   const [showPromptMarkers, setShowPromptMarkers] = useState(false);
   const [showCursors, setShowCursors] = useState(false);
-  const [beatMarkerInterval, setBeatMarkerInterval] = useState(0);  
+  const [beatMarkerInterval, setBeatMarkerInterval] = useState(0);
   const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
   const [managedFields, setManagedFields] = useState();   // The fields that the user has chosen to be managed by Parseq.
+  const [timeSeries, setTimeSeries] = useState([]);   // The fields that the user has chosen to be managed by Parseq.
   const [displayedFields, setDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
   const [prevDisplayedFields, setPrevDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
   const [options, setOptions] = useState()
@@ -209,10 +210,10 @@ const ParseqUI = (props) => {
   // This is debounced to 200ms to avoid repeated saves if edits happen
   // in quick succession.
   useDebouncedEffect(() => {
-    if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields) {
+    if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields && timeSeries) {
       saveVersion(activeDocId, getPersistableState());
     }
-  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields]);
+  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries]);
 
   // TODO - can this be moved out of an effect to reduce re-renders?
   // Render if there is an enqueued render, but delay if typing.
@@ -253,7 +254,8 @@ const ParseqUI = (props) => {
       || !equal(lastRenderedState.options, options)
       || !equal(lastRenderedState.prompts, prompts)
       || !equal(lastRenderedState.managedFields, managedFields)
-  }, [lastRenderedState, keyframes, options, prompts, managedFields]);
+      || !equal(lastRenderedState.timeSeries, timeSeries)
+  }, [lastRenderedState, keyframes, options, prompts, managedFields, timeSeries]);
 
   useEffect(() => {
     if (needsRender && autoRender) {
@@ -282,6 +284,9 @@ const ParseqUI = (props) => {
         ? deepCopy(possiblyIncompleteContent.managedFields)
         : possiblyIncompleteContent.managedFields.slice(0, 5);
     }
+    if (!possiblyIncompleteContent.timeSeries) {
+      possiblyIncompleteContent.timeSeries = [];
+    }    
     // For options we want to merge the defaults with the existing options.
     possiblyIncompleteContent.options = { ...DEFAULT_OPTIONS, ...(possiblyIncompleteContent.options || {}) };
     return possiblyIncompleteContent;
@@ -298,6 +303,7 @@ const ParseqUI = (props) => {
     setManagedFields([...filledContent.managedFields]);
     setDisplayedFields([...filledContent.displayedFields]);
     setKeyframes(filledContent.keyframes);
+    setTimeSeries([...filledContent.timeSeries]);
     refreshGridFromKeyframes(filledContent.keyframes);
   }, [fillWithDefaults, defaultTemplate]);
 
@@ -314,7 +320,8 @@ const ParseqUI = (props) => {
     managedFields: managedFields,
     displayedFields: displayedFields,
     keyframes: keyframes,
-  }), [prompts, options, displayedFields, keyframes, managedFields]);
+    timeSeries: timeSeries
+  }), [prompts, options, displayedFields, keyframes, managedFields, timeSeries]);
 
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -814,7 +821,8 @@ const ParseqUI = (props) => {
         keyframes: clonedeep(keyframes),
         prompts: clonedeep(prompts),
         options: clonedeep(options),
-        managedFields: clonedeep(managedFields)
+        managedFields: clonedeep(managedFields),
+        timeSeries: clonedeep(timeSeries)
       });
       setLastRenderTime(Date.now());
     } catch (e) {
@@ -830,7 +838,7 @@ const ParseqUI = (props) => {
       console.timeEnd('Render');
     }
 
-  }, [keyframes, prompts, options, managedFields, getPersistableState]);
+  }, [keyframes, prompts, options, managedFields, timeSeries, getPersistableState]);
 
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -902,20 +910,6 @@ const ParseqUI = (props) => {
   // Core options ------------------------
 
   const optionsUI = useMemo(() => options && <span>
-    <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
-      <TextField
-        id={"options_output_fps"}
-        label={"Output FPS"}
-        value={options['output_fps']}
-        onChange={handleChangeOption}
-        onFocus={(e) => setTyping(true)}
-        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
-        style={{ marginBottom: '10px', marginTop: '0px' }}
-        InputLabelProps={{ shrink: true, }}
-        InputProps={{ style: { fontSize: '0.75em' } }}
-        size="small"
-        variant="standard" />
-    </Tooltip2>
     <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
       <TextField
         id={"options_bpm"}
@@ -925,6 +919,20 @@ const ParseqUI = (props) => {
         onFocus={(e) => setTyping(true)}
         onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
         style={{ marginBottom: '10px', marginTop: '0px', marginLeft: '10px', marginRight: '30px' }}
+        InputLabelProps={{ shrink: true, }}
+        InputProps={{ style: { fontSize: '0.75em' } }}
+        size="small"
+        variant="standard" />
+    </Tooltip2>
+    <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
+      <TextField
+        id={"options_output_fps"}
+        label={"Output FPS"}
+        value={options['output_fps']}
+        onChange={handleChangeOption}
+        onFocus={(e) => setTyping(true)}
+        onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
+        style={{ marginBottom: '10px', marginTop: '0px' }}
         InputLabelProps={{ shrink: true, }}
         InputProps={{ style: { fontSize: '0.75em' } }}
         size="small"
@@ -1029,22 +1037,22 @@ const ParseqUI = (props) => {
   // Editable Graph ------------------------
 
   // Prompt markers (also used on audio graph)
-  const promptMarkers = useMemo(() => (prompts && showPromptMarkers) 
+  const promptMarkers = useMemo(() => (prompts && showPromptMarkers)
     ? prompts.flatMap((p, idx) => [{
-        x: p.allFrames ? 0 : p.from,
-        color: 'rgba(50,200,50, 0.8)',
-        label: p.name + 'start',
-        display: !p.allFrames,
-        top: true
-      },
-      {
-        x: p.allFrames ? lastFrame : p.to,
-        color: 'rgba(200,50,50, 0.8)',
-        label: p.name + ' end',
-        display: !p.allFrames,
-        top: false
-      }
-      ])
+      x: p.allFrames ? 0 : p.from,
+      color: 'rgba(50,200,50, 0.8)',
+      label: p.name + 'start',
+      display: !p.allFrames,
+      top: true
+    },
+    {
+      x: p.allFrames ? lastFrame : p.to,
+      color: 'rgba(200,50,50, 0.8)',
+      label: p.name + ' end',
+      display: !p.allFrames,
+      top: false
+    }
+    ])
     : [], [prompts, showPromptMarkers, lastFrame]);
 
   const editableGraphHeader = useMemo(() => <>
@@ -1087,7 +1095,7 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={6}>
         <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
-        <Typography fontSize="0.75em">Markers:</Typography>
+          <Typography fontSize="0.75em">Markers:</Typography>
           <FormControlLabel control={
             <Checkbox
               checked={showPromptMarkers}
@@ -1103,7 +1111,7 @@ const ParseqUI = (props) => {
           <FormControlLabel control={
             <Checkbox
               checked={beatMarkerInterval !== 0}
-              onChange={(e) => setBeatMarkerInterval( e.target.checked ? 1 : 0 )}
+              onChange={(e) => setBeatMarkerInterval(e.target.checked ? 1 : 0)}
             />}
             label={<Box component="div" fontSize="0.75em">Beats</Box>} />
           <TextField
@@ -1117,8 +1125,8 @@ const ParseqUI = (props) => {
             value={beatMarkerInterval}
             onChange={(e) => setBeatMarkerInterval(e.target.value)}
           >
-            {[0, 1,2,3,4,5,6,7,8].map((v,idx)=><MenuItem key={idx} value={v+""}>{v>0?v:'(none)'}</MenuItem>)}
-          </TextField>            
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((v, idx) => <MenuItem key={idx} value={v + ""}>{v > 0 ? v : '(none)'}</MenuItem>)}
+          </TextField>
         </Stack>
       </Grid>
     </Grid>
@@ -1160,7 +1168,7 @@ const ParseqUI = (props) => {
         setGraphScales(scales);
       }
     }}
-  />, [renderedData, graphableData, displayedFields, graphAsPercentages,  promptMarkers, showCursors, gridCursorPos, audioCursorPos, addRow, frameToRowId, graphScales, xaxisType, beatMarkerInterval]);
+  />, [renderedData, graphableData, displayedFields, graphAsPercentages, promptMarkers, showCursors, gridCursorPos, audioCursorPos, addRow, frameToRowId, graphScales, xaxisType, beatMarkerInterval]);
 
 
   const viewport = useMemo(() => options && graphScales && <Viewport
@@ -1444,9 +1452,17 @@ const ParseqUI = (props) => {
       </Grid>
       <Grid xs={12}>
         <ExpandableSection title="Custom time series">
-          <TimeSeriesDialog />
+          {options && lastFrame && <TimeSeriesUI
+            lastFrame={lastFrame}
+            fps={options.output_fps}
+            allTimeSeries={timeSeries}
+            onChange={(allTimeSeries) => setTimeSeries([...allTimeSeries])}
+            afterFocus={(e) => setTyping(true)}
+            afterBlur={(e) => setTyping(false)}
+          />
+          }
         </ExpandableSection>
-      </Grid>      
+      </Grid>
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <ExpandableSection
           // TODO: we always have to render the grid currently, else we lose keyframes because they reference grid data.

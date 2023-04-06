@@ -1,3 +1,5 @@
+import { TimeSeries } from "./parseq-lang/parseq-timeseries";
+
 declare module 'uuid4';
 declare module 'lodash.debounce';
 declare module 'chartjs-plugin-crosshair';
@@ -24,6 +26,12 @@ type ParseqPersistableState = {
     options: ParseqOptions;
     displayedFields?: string[];
     managedFields: string[];
+    timeSeries: [
+        {
+            alias: string;
+            ts: TimeSeries;
+        }
+    ]
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
 }

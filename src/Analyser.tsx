@@ -180,13 +180,13 @@ export default function Analyser() {
 
         if (wavesurferRef.current) {
             wavesurferRef.current.on("loading", (data) => {
-                console.log("Wavesurfer loading --> ", data);
+                //console.log("Wavesurfer loading --> ", data);
             });
             wavesurferRef.current.on("ready", () => {
-                console.log("WaveSurfer is ready");
+                //console.log("WaveSurfer is ready");
             });
             wavesurferRef.current.on("error", (data) => {
-                console.error("WaveSurfer error: ", data);
+                //console.error("WaveSurfer error: ", data);
             });
             wavesurferRef.current.on("finish", (data) => {
                 setIsPlaying(false);

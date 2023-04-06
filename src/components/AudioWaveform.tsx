@@ -106,7 +106,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             ${curPosSeconds.toFixed(3)}/${trackLength.toFixed(3)}s
             (frame: ${curPosFrames.toFixed(0)}/${lengthFrames.toFixed(0)})
     (beat: ${frameToBeat(curPosFrames, props.fps, props.bpm).toFixed(2)}/${frameToBeat(lengthFrames, props.fps, props.bpm).toFixed(2)})`);
-    
+
         debouncedOnCursorMove(curPosFrames);
 
     }, [trackLength, debouncedOnCursorMove, props]);
@@ -220,7 +220,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             wavesurferRef.current?.markers.add(
                 {
                     ...marker,
-                    time: frameToSec(marker.x ,props.fps),
+                    time: frameToSec(marker.x, props.fps),
                     position: marker.top ? "top" : "bottom" as const,
                     //@ts-ignore - extra metadata
                     meta: "prompt"
@@ -229,7 +229,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
         props.keyframesPositions.forEach((frame) => {
             wavesurferRef.current?.markers.add({
-                time: frameToSec(frame,props.fps),
+                time: frameToSec(frame, props.fps),
                 color: "rgba(255, 120, 220, 0.5)",
                 position: "bottom" as const,
                 draggable: false,
@@ -252,13 +252,13 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
 
         if (props.beatMarkerInterval > 0) {
-            for (var i = 0; i < trackLength; i += props.beatMarkerInterval*60/props.bpm) {
+            for (var i = 0; i < trackLength; i += props.beatMarkerInterval * 60 / props.bpm) {
                 wavesurferRef.current?.markers.add({
                     time: i,
                     color: "rgba(0, 0, 0, 0.5)",
                     position: "top" as const,
                     draggable: false,
-                    label: `Beat ${(i/60*props.bpm).toFixed(0)}`,
+                    label: `Beat ${(i / 60 * props.bpm).toFixed(0)}`,
                     //@ts-ignore - extra metadata
                     meta: "beat"
                 });
@@ -318,14 +318,14 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 container: "#timeline",
                 formatTimeCallback: formatTimeCallback,
                 timeInterval: timeInterval,
-                }));
+            }));
             wavesurferRef.current.initPlugin('timeline');
             // HACK to force the timeline position to update.
             if (props.viewport.startFrame > 0) {
-                scrollToPosition(props.viewport.startFrame-1);
+                scrollToPosition(props.viewport.startFrame - 1);
                 scrollToPosition(props.viewport.startFrame);
             }
-            
+
             // Force the wavesurfer to redraw the timeline
             wavesurferRef.current.drawBuffer();
         }
@@ -350,6 +350,15 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
     return <>
         <Grid container>
+        <Grid xs={12}>
+                <Box padding='5px'>
+                    <strong>File:</strong><input type="file" ref={fileInput} onChange={loadFile} />
+                    <Typography fontSize="0.75em">
+                        Note: audio data is not saved with Parseq documents. You will need to reload your reference audio file when you reload your Parseq document.
+                    </Typography>
+                </Box>
+            </Grid>
+
             <Grid xs={12} ref={waveformRef}>
                 <WaveSurfer
                     plugins={waveSurferPlugins}
@@ -366,33 +375,31 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 </WaveSurfer>
             </Grid>
             <Grid xs={12}>
-                <Stack direction="row" spacing={1} alignItems="center" alignContent="center">
-                <Button disabled={!wavesurferRef.current?.isReady || isPlaying} variant="contained" onClick={(e) => {
-                    setIsPlaying(true);
-                    updatePlaybackPos();
-                    wavesurferRef.current?.play();
-                }}>
-                    ▶️ Play
-                </Button>
-                <Button disabled={!wavesurferRef.current?.isReady || !isPlaying} variant="contained" onClick={(e) => {
-                    setIsPlaying(false);
-                    updatePlaybackPos();
-                    wavesurferRef.current?.pause()
-                }}>
-                    ⏸️ Pause
-                </Button>
-                <Typography fontSize={"0.75em"}>
-                    {playbackPos}
-                </Typography>
-                </Stack>
-            </Grid>
-            <Grid xs={12}>
-                <Box padding='5px'>
-                    <strong>File:</strong> <input type="file" ref={fileInput} onChange={loadFile} />
-                    <Typography fontSize="0.75em">
-                        Note: audio data is not saved with Parseq documents. You will need to reload your reference audio file when you reload your Parseq document.
+                <Stack direction="row" spacing={1} alignItems="flex-start">
+                    <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined' onClick={(e) => {
+                        if (isPlaying) {
+                            wavesurferRef.current?.pause();
+                        } else {
+                            wavesurferRef.current?.play();
+                        }
+                        setIsPlaying(!isPlaying);
+                        updatePlaybackPos();
+                    }}>
+                        {isPlaying ? "⏸️ Pause" : "▶️ Play"}
+                    </Button>
+                    <Stack direction="column" justifyContent={"center"} alignItems="center" >
+                        <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined'>Estimate BPM</Button>
+                        <Typography fontFamily={"monospace"}  fontSize={"0.75em"}>Approx 100bpm</Typography>
+                    </Stack>
+                    <Stack direction="column" justifyContent={"center"} alignItems="center" >
+                        <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined'>Detect events</Button>
+                        <Typography fontFamily={"monospace"}  fontSize={"0.75em"}>N events</Typography>
+                    </Stack>                        
+                    <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined'>Generate keyframes</Button>                    
+                    <Typography alignSelf={"center"} fontSize={"0.75em"}>
+                        {playbackPos}
                     </Typography>
-                </Box>
+                </Stack>
             </Grid>
             <Grid xs={12}>
                 {statusMessage}

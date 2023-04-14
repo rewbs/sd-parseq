@@ -34,6 +34,7 @@ type ParseqPersistableState = {
     ]
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
+    keyframeLock: "frames" | "seconds" | "beats";
 }
 
 

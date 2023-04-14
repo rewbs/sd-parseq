@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -8,7 +9,6 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
-  InputLabel,
   MenuItem,
   Stack,
   Tab,
@@ -115,6 +115,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
 
+  const [status, setStatus] = useState(<></>);
 
 
   const handleTimestampTypeChange = (event: any) => {
@@ -183,7 +184,10 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       if (!showValuesAtFrames) {
         datasets.push({
           label: 'Frame positions',
-          data: range(0, lastFrame).map((x) => ({ x: frameToSec(x, fps) * 1000, y: processed.getValueAt(x, fps, InterpolationType.Step) })),
+          data: range(0, lastFrame).map((x) => ({
+              x: (processed.timestampType === TimestampType.Millisecond) ? frameToSec(x, fps) * 1000 : x,
+              y: processed.getValueAt(x, fps, InterpolationType.Step)
+            })),
           yAxisID: 'processed',
           pointRadius: 2,
           pointStyle: 'circle',
@@ -263,6 +267,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
 
   // TODO: can be optimised to fewer full walks over the data.
   const handleProcess = useCallback(() => {
+    setStatus(<></>);
+
     if (rawTimeSeries) {
       let processedTimeSeries = rawTimeSeries;
 
@@ -274,16 +280,31 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
         processedTimeSeries = processedTimeSeries.movingAverage(Number(mAwindowSize));
       }
 
-      if (filterMin && filterMax) {
-        processedTimeSeries = processedTimeSeries.filter(Number(filterMin), Number(filterMax));
+      if (filterMin.length || filterMax.length) {
+        const min = isNaN(parseInt(filterMin)) ? Number.MIN_VALUE : parseInt(filterMin);
+        const max = isNaN(parseInt(filterMax)) ? Number.MAX_VALUE : parseInt(filterMax);
+        if (min >= max) {
+          setStatus(<Alert severity="error">Filter min must be less than filter max</Alert>);
+          return;
+        }
+        processedTimeSeries = processedTimeSeries.filter(min, max);
       }
 
-      if (limitMin && limitMax) {
-        processedTimeSeries = processedTimeSeries.limit(Number(limitMin), Number(limitMax));
+      if (limitMin || limitMax) {
+        const min = isNaN(parseInt(limitMin)) ? Number.MIN_VALUE : parseInt(limitMin);
+        const max = isNaN(parseInt(limitMax)) ? Number.MAX_VALUE : parseInt(limitMax);
+        if (min >= max) {
+          setStatus(<Alert severity="error">Limit min must be less than limit max</Alert>);
+          return;
+        }
+        processedTimeSeries = processedTimeSeries.limit(min, max);
       }
 
       if (normalizeMin && normalizeMax) {
         processedTimeSeries = processedTimeSeries.normalize(Number(normalizeMin), Number(normalizeMax));
+      } else if (normalizeMin || normalizeMax) {
+        setStatus(<Alert severity="error">Normalization requires both a min and max.</Alert>);
+        return;
       }
 
       setSetProcessedTimeSeries(processedTimeSeries);
@@ -500,21 +521,22 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
           }
         </TabPanel>
         <TabPanel index={2} activeTab={tab}>
-          <Stack direction="row" alignContent={"center"} gap="1" >
+          <Stack direction="row" alignItems={"center"} gap="1" >
             <input type="file" onChange={handleLoadFromCSV} />
             <FormControl fullWidth>
-              <InputLabel>Timestamp Type</InputLabel>
               <TextField value={timestampType}
                 select
+                label="Timestamp type"
                 size='small'
                 fullWidth={true}
                 InputProps={{ style: { fontSize: '0.75em', width: '20em' } }}
                 onChange={handleTimestampTypeChange}>
-                <MenuItem value={TimestampType.Millisecond}>Millisecond</MenuItem>
                 <MenuItem value={TimestampType.Frame}>Frame</MenuItem>
+                <MenuItem value={TimestampType.Millisecond}>Millisecond</MenuItem>
               </TextField>
             </FormControl>
           </Stack>
+          <Typography fontSize="0.75em">Each row of the supplied file must be formatted like &nbsp;&nbsp; <span><code>timestamp,value</code></span> &nbsp;&nbsp; where the type of the timestamp can be milliseconds or frames as selected above.</Typography>
         </TabPanel>
 
         {/* <FormControl fullWidth>
@@ -679,10 +701,11 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
               }}
               size='small' />
           } label={<Box component="div" fontSize="0.75em">Only show values at frame positions</Box>} />
+      {status}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Close</Button>
-        <Button variant='contained' onClick={handleAddTimeSeries} disabled={!processedTimeSeries} >Add Timeseries</Button>
+        <Button variant='contained' onClick={handleAddTimeSeries} disabled={!processedTimeSeries || status.props['severity'] === 'error'} >Add Timeseries</Button>
       </DialogActions>
 
     </Dialog>

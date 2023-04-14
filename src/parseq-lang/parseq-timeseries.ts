@@ -66,7 +66,7 @@ export class TimeSeries {
                 }));
 
                 const decimationFactor = Math.ceil(tempData.length / TimeSeries.MAX_DATA_POINTS);
-                const data = tempData.filter((_, index) => index % decimationFactor === 0);
+                const data = tempData.filter((point, index) => !isNaN(point.x) && !isNaN(point.y) && index % decimationFactor === 0);
 
                 //const truncatedData = TimeSeries.truncateData(data, maxOffset);
 
@@ -89,7 +89,7 @@ export class TimeSeries {
         return NaNs;
     }
 
-    public normalize(targetMin: number = 0, targetMax: number = 1): TimeSeries {
+    public normalize(targetMin: number, targetMax: number): TimeSeries {
         if (this.data.length === 0) {
             return this;
         }

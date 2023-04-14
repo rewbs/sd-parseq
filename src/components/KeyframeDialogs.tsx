@@ -623,63 +623,65 @@ export const MergeKeyframesDialog: FC<MergeKeyframesDialogProps> = ({
         }
     }
 
-    return <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>🌪️ Merge keyframes</DialogTitle>
-        <DialogContent>
-            <DialogContentText>
-                Merge keyframes from another source into the current document. For example:
-                <ul>
-                    <li>Try the <a href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">browser</a> to find keyframe data from your other documents.</li>
-                    <li>⚠️ Experimental: try the <a href={'/analyser?fps=' + (fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">analyser</a> to generate keyframes from audio.</li>
-                </ul>
-            </DialogContentText>
-            <TextField
-                style={{ width: '100%', paddingTop: '10px' }}
-                id="merge-data"
-                multiline
-                onFocus={event => event.target.select()}
-                rows={10}
-                InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                placeholder="<Paste your Keyframes JSON here>"
-                value={dataToMerge}
-                onChange={(e) => {
-                    setMergeEnabled(false);
-                    setDataToMerge(e.target.value);
+    return <>
+        <Dialog open={openDialog} onClose={handleCloseDialog}>
+            <DialogTitle>🌪️ Merge keyframes</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    Merge keyframes from another source into the current document. For example:
+                    <ul>
+                        <li>Try the <a href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">browser</a> to find keyframe data from your other documents.</li>
+                        <li>⚠️ Experimental: try the <a href={'/analyser?fps=' + (fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">analyser</a> to generate keyframes from audio.</li>
+                    </ul>
+                </DialogContentText>
+                <TextField
+                    style={{ width: '100%', paddingTop: '10px' }}
+                    id="merge-data"
+                    multiline
+                    onFocus={event => event.target.select()}
+                    rows={10}
+                    InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                    placeholder="<Paste your Keyframes JSON here>"
+                    value={dataToMerge}
+                    onChange={(e) => {
+                        setMergeEnabled(false);
+                        setDataToMerge(e.target.value);
 
-                    let newKeyframes;
-                    let json;
+                        let newKeyframes;
+                        let json;
 
-                    try {
-                        json = JSON.parse(e.target.value);
-                    } catch (e: any) {
-                        setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON. Got error: {e.message}</Alert>);
-                        return;
-                    }
+                        try {
+                            json = JSON.parse(e.target.value);
+                        } catch (e: any) {
+                            setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON. Got error: {e.message}</Alert>);
+                            return;
+                        }
 
-                    if (json['keyframes'] && Array.isArray(json['keyframes'])) {
-                        newKeyframes = json['keyframes'];
-                    } else if (Array.isArray(json)) {
-                        newKeyframes = json;
-                    } else {
-                        setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON array, or JSON object with top-level array named 'keyframes'.</Alert>);
-                        return;
-                    }
+                        if (json['keyframes'] && Array.isArray(json['keyframes'])) {
+                            newKeyframes = json['keyframes'];
+                        } else if (Array.isArray(json)) {
+                            newKeyframes = json;
+                        } else {
+                            setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON array, or JSON object with top-level array named 'keyframes'.</Alert>);
+                            return;
+                        }
 
-                    if (!newKeyframes.every((kf) => typeof kf.frame === "number")) {
-                        setKeyFrameMergeStatus(<Alert severity="error">All keyframes must have a numeric 'frame' field.</Alert>);
-                        return;
-                    }
+                        if (!newKeyframes.every((kf) => typeof kf.frame === "number")) {
+                            setKeyFrameMergeStatus(<Alert severity="error">All keyframes must have a numeric 'frame' field.</Alert>);
+                            return;
+                        }
 
-                    setKeyFrameMergeStatus(<Alert severity="success">Found {newKeyframes.length} keyframes to merge.</Alert>);
-                    setMergeEnabled(true);
-                }}
-            />
-            {keyFrameMergeStatus}
-        </DialogContent>
-        <DialogActions>
-            <Button size="small" id="cancel_add" onClick={handleCloseDialog}>Cancel</Button>
-            <Button disabled={!mergeEnabled} size="small" variant="contained" id="merge" onClick={handleCloseDialog}>🌪️ Merge</Button>
-        </DialogActions>
+                        setKeyFrameMergeStatus(<Alert severity="success">Found {newKeyframes.length} keyframes to merge.</Alert>);
+                        setMergeEnabled(true);
+                    }}
+                />
+                {keyFrameMergeStatus}
+            </DialogContent>
+            <DialogActions>
+                <Button size="small" id="cancel_add" onClick={handleCloseDialog}>Cancel</Button>
+                <Button disabled={!mergeEnabled} size="small" variant="contained" id="merge" onClick={handleCloseDialog}>🌪️ Merge</Button>
+            </DialogActions>
+        </Dialog>
         <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenDialog(true)}>🌪️ Merge</Button>
-    </Dialog>
+    </>
 }

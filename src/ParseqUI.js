@@ -613,7 +613,15 @@ const ParseqUI = (props) => {
       console.log("Could not refresh grid from keyframes: grid not ready.")
       return;
     }
+    console.log(gridRef.current);
     gridRef.current.api.setRowData(keyframes);
+
+    // gridRef.current.api.forEachNodeAfterFilterAndSort((node) => console.log(node));
+    // gridRef.current.api.setRowData([{frame:0}, {frame:1}]);
+    // gridRef.current.api.forEachNodeAfterFilterAndSort((node) => console.log(node));
+    // gridRef.current.api.refreshCells({force: true});
+    // gridRef.current.api.redrawRows();
+
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -832,7 +840,6 @@ const ParseqUI = (props) => {
     <div className="ag-theme-alpine" style={{ width: '100%', minHeight: '150px', maxHeight: '1150px', height: '150px' }}>
       <AgGridReact
         ref={gridRef}
-        rowData={[]}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         onCellValueChanged={onCellValueChanged}
@@ -840,10 +847,7 @@ const ParseqUI = (props) => {
         onGridReady={onGridReady}
         animateRows={true}
         columnHoverHighlight={true}
-        undoRedoCellEditing={true}
-        undoRedoCellEditingLimit={20}
         enableCellChangeFlash={true}
-        //rowSelection='multiple' 
         tooltipShowDelay={0}
         navigateToNextCell={navigateToNextCell}
         onCellKeyDown={(e) => {
@@ -943,7 +947,7 @@ const ParseqUI = (props) => {
   const editableGraphHeader = useMemo(() => <>
     {
       (graphScales && (graphScales.xmax - graphScales.xmin) > DECIMATION_THRESHOLD)
-        ? <Alert severity='info' paddingBottom={"5px"}>
+        ? <Alert severity='info'>
           Graph is not editable when displaying more than {DECIMATION_THRESHOLD} points. Try zooming in.
         </Alert>
         : <Typography fontSize="0.75em" paddingBottom={"5px"}>

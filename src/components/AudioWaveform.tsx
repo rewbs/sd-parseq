@@ -29,7 +29,7 @@ type AudioWaveformProps = {
 
 export function AudioWaveform(props: AudioWaveformProps) {
 
-    console.log("Initialising Waveform with props: ", props);
+    //console.log("Initialising Waveform with props: ", props);
 
     const analysisBufferSize = 4096;
     const analysisHopSize = 256;
@@ -131,12 +131,10 @@ export function AudioWaveform(props: AudioWaveformProps) {
         const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
         //@ts-ignore
         setManualEvents(newMarkers);
-        console.log(manualEvents.length);
-
     }, [manualEvents]);
 
     const handleMarkerDrop = useCallback(() => (marker: Marker) => {
-        console.log("In handleMarkerDrop", marker);
+        //console.log("In handleMarkerDrop", marker);
         const draggedEventType = deduceMarkerType(marker);
         const newEvents = (wavesurferRef.current?.markers.markers||[])
             .filter(m => deduceMarkerType(m) === draggedEventType)

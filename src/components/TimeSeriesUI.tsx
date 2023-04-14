@@ -15,7 +15,7 @@ import {
   Tabs,
   Typography
 } from '@mui/material';
-import TextField, { TextFieldProps } from '@mui/material/TextField';
+import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2/Grid2';
 import { PitchMethod } from 'aubiojs';
 import { range } from 'lodash';
@@ -26,37 +26,8 @@ import { InterpolationType, TimeSeries, TimestampType } from '../parseq-lang/par
 import { DECIMATION_THRESHOLD } from '../utils/consts';
 import { frameToSec } from '../utils/maths';
 import WavesurferAudioWaveform from './WavesurferWaveform';
-
-
-const SmallTextField = (props: TextFieldProps) => (
-  <TextField
-    size="small"
-    InputLabelProps={{ shrink: true }}
-    InputProps={{ style: { fontSize: "0.75em", fontFamily: "monospace", width: "9em" } }}
-    margin="dense"
-    {...props}
-  />
-);
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  activeTab: number;
-}
-
-const TabPanel = ({ children, activeTab, index, ...other }: TabPanelProps) => <div
-  role="tabpanel"
-  hidden={activeTab !== index}
-  id={`simple-tabpanel-${index}`}
-  aria-labelledby={`simple-tab-${index}`}
-  {...other}
->
-  {activeTab === index && (
-    <Box sx={{ p: 3 }}>
-      {children}
-    </Box>
-  )}
-</div>;
+import { TabPanel } from './TabPanel';
+import { SmallTextField } from './SmallTextField';
 
 type TimeSeriesUIProps = {
   lastFrame: number,
@@ -329,7 +300,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
     rawTimeSeries,
     updateChartData]);
 
-  useEffect(() => handleProcess(), [showValuesAtFrames]);
+    /*eslint-disable react-hooks/exhaustive-deps */
+    useEffect(() => handleProcess(), [showValuesAtFrames]);
 
 
   const extractAmplitude = () => {
@@ -450,10 +422,12 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       <DialogTitle>Load TimeSeries</DialogTitle>
       <DialogContent>
         <h3>Load from...</h3>
-        <Tabs value={tab} onChange={(event: React.SyntheticEvent, newValue: number) => setTab(newValue)} aria-label="basic tabs example">
-          <Tab label="Audio file" value={1} />
-          <Tab label="CSV file" value={2} />
-        </Tabs>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tab} onChange={(event: React.SyntheticEvent, newValue: number) => setTab(newValue)}>
+            <Tab label="Audio file" value={1} />
+            <Tab label="CSV file" value={2} />
+          </Tabs>
+        </Box>
         <TabPanel index={1} activeTab={tab}>
           <Stack direction="row" alignContent={"center"} justifyContent="space-between">
             <Box>

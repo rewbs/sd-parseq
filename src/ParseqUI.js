@@ -3,11 +3,6 @@ import { Alert, Button, Checkbox, FormControlLabel, Stack, Tooltip as Tooltip2, 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Paper from '@mui/material/Paper';
@@ -23,26 +18,27 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
+import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
+import { Editable } from './Editable';
+import { UserAuthContextProvider } from "./UserAuthContext";
+import { AudioWaveform } from './components/AudioWaveform';
 import { ExpandableSection } from './components/ExpandableSection';
 import { FieldSelector } from "./components/FieldSelector";
 import { GridTooltip } from './components/GridToolTip';
 import { InitialisationStatus } from "./components/InitialisationStatus";
+import { AddKeyframesDialog, BulkEditDialog, DeleteKeyframesDialog, MergeKeyframesDialog } from './components/KeyframeDialogs';
 import { Preview } from "./components/Preview";
-import { convertPrompts, Prompts } from "./components/Prompts";
+import { Prompts, convertPrompts } from "./components/Prompts";
+import { TimeSeriesUI } from './components/TimeSeriesUI';
 import { UploadButton } from "./components/UploadButton";
+import { Viewport } from './components/Viewport';
 import { templates } from './data/templates';
-import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
-import { Editable } from './Editable';
 import { parseqRender } from './parseq-renderer';
-import { UserAuthContextProvider } from "./UserAuthContext";
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
-import { AudioWaveform } from './components/AudioWaveform'
-import { Viewport } from './components/Viewport';
-import { TimeSeriesUI } from './components/TimeSeriesUI';
 
-import prettyBytes from 'pretty-bytes';
 import debounce from 'lodash.debounce';
+import prettyBytes from 'pretty-bytes';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -110,7 +106,6 @@ const ParseqUI = (props) => {
     if (newLastFrame !== lastFrame) {
       setLastFrame(newLastFrame);
       setGraphScales({ xmin: 0, xmax: newLastFrame });
-      //setViewport({ xmin: 0, xmax: newLastFrame });
     }
   }
 
@@ -286,7 +281,7 @@ const ParseqUI = (props) => {
     }
     if (!possiblyIncompleteContent.timeSeries) {
       possiblyIncompleteContent.timeSeries = [];
-    }    
+    }
     // For options we want to merge the defaults with the existing options.
     possiblyIncompleteContent.options = { ...DEFAULT_OPTIONS, ...(possiblyIncompleteContent.options || {}) };
     return possiblyIncompleteContent;
@@ -502,6 +497,10 @@ const ParseqUI = (props) => {
 
   }, [keyframes]);
 
+  const addRows = useCallback((frames, infoLabel) => {
+    mergeKeyframes(frames.map((frame) => ({ "frame": frame, "info": infoLabel })));
+  }, [mergeKeyframes]);
+
   const deleteRow = useCallback((frame) => {
     //console.log(_frameToRowId_cache);
 
@@ -635,171 +634,57 @@ const ParseqUI = (props) => {
     setOptions({ ...options, [optionId]: value });
   }, [options]);
 
-  const [frameToAdd, setFrameToAdd] = useState();
-  const [openAddRowDialog, setOpenAddRowDialog] = useState(false);
-  const handleClickOpenAddRowDialog = () => {
-    setOpenAddRowDialog(true);
-  };
-  const handleCloseAddRowDialog = useCallback((e) => {
-    setOpenAddRowDialog(false);
-    if (e.target.id === "add") {
-      addRow(parseInt(frameToAdd));
-    }
-  }, [addRow, frameToAdd]);
-  const addRowDialog = useMemo(() =>
-    <Dialog open={openAddRowDialog} onClose={handleCloseAddRowDialog}>
-      <DialogTitle>➕ Add keyframe</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          Add a keyframe at the following position:
-        </DialogContentText>
-        <TextField
-          autoFocus
-          margin="dense"
-          id="add_keyframe_at"
-          label="Frame"
-          variant="standard"
-          defaultValue={frameToAdd}
-          onChange={(e) => setFrameToAdd(e.target.value)}
-        />
-        <DialogContentText>
-          <small><small>TODO: warning here if frame doesn't exist</small></small>
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button size="small" id="cancel_add" onClick={handleCloseAddRowDialog}>Cancel</Button>
-        <Button size="small" variant="contained" id="add" onClick={handleCloseAddRowDialog}>Add</Button>
-      </DialogActions>
-    </Dialog>
-    , [openAddRowDialog, frameToAdd, handleCloseAddRowDialog]);
+  const addRowDialog = useMemo(() => options && <AddKeyframesDialog
+    keyframes={keyframes}
+    initialFramesToAdd={[]}
+    bpm={options.bpm}
+    fps={options.output_fps}
+    lastFrame={lastFrame}
+    addKeyframes={(frames) => addRows(frames, '')}
+  />, [options, keyframes, lastFrame, addRows]);
 
-  const [openMergeKeyframesDialog, setOpenMergeKeyframesDialog] = useState(false);
-  const [dataToMerge, setDataToMerge] = useState("");
-  const [keyFrameMergeStatus, setKeyFrameMergeStatus] = useState(<></>);
-  const [mergeEnabled, setMergeEnabled] = useState(false);
-  const handleClickOpenMergeKeyframesDialog = () => {
-    setOpenMergeKeyframesDialog(true);
-  };
-  const handleCloseMergeKeyframesDialog = useCallback((e) => {
-    setOpenMergeKeyframesDialog(false);
-    if (e.target.id === "merge") {
-      let json = JSON.parse(dataToMerge);
-      if (json['keyframes'] && Array.isArray(json['keyframes'])) {
-        mergeKeyframes(json['keyframes']);
-      } else if (Array.isArray(json)) {
-        mergeKeyframes(json);
-      } else {
-        console.error('Invalid format of keyframes to merge, should have been validated in dialog.');
-      }
-    }
-  }, [mergeKeyframes, dataToMerge]);
-  const mergeKeyframesDialog = useMemo(() =>
-    <Dialog open={openMergeKeyframesDialog} onClose={handleCloseMergeKeyframesDialog}>
-      <DialogTitle>🌪️ Merge keyframes</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          Merge keyframes from another source into the current document. For example:
-          <ul>
-            <li>Try the <a href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">browser</a> to find keyframe data from your other documents.</li>
-            <li>⚠️ Experimental: try the <a href={'/analyser?fps=' + (options?.output_fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">analyser</a> to generate keyframes from audio.</li>
-          </ul>
-        </DialogContentText>
-        <TextField
-          style={{ width: '100%', paddingTop: '10px' }}
-          id="merge-data"
-          multiline
-          onFocus={event => event.target.select()}
-          rows={10}
-          InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-          placeholder="<Paste your Keyframes JSON here>"
-          value={dataToMerge}
-          onChange={(e) => {
-            setMergeEnabled(false);
-            setDataToMerge(e.target.value);
+  const bulkEditDialog = useMemo(() => gridRef.current && options && managedFields && <BulkEditDialog
+    keyframes={keyframes}
+    fields={managedFields}
+    bpm={options.bpm}
+    fps={options.output_fps}
+    editKeyframes={(frames, field, type, value) => {
+      frames.forEach(frame => {
+        let rowData = gridRef.current.api.getRowNode(frameToRowId(frame))?.data;
+        if (rowData) {
+          const fieldKey = field + ((managedFields.includes(field) && type === 'interpolation') ? '_i' : '');
+          rowData[fieldKey] = value;
+        }
+      });
+      refreshKeyframesFromGrid();
+      gridRef.current.api.refreshCells();
+    }}
 
-            let newKeyframes;
-            let json;
+  />, [keyframes, options, managedFields, gridRef, frameToRowId]);
 
-            try {
-              json = JSON.parse(e.target.value);
-            } catch (e) {
-              setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON. Got error: {e.message}</Alert>);
-              return;
-            }
+  const mergeKeyframesDialog = useMemo(() => options && <MergeKeyframesDialog
+    keyframes={keyframes}
+    bpm={options.bpm}
+    fps={options.output_fps}
+    activeDocId={activeDocId}
+    mergeKeyframes={mergeKeyframes}
+  />, [activeDocId, options, mergeKeyframes, keyframes]);
 
-            if (json['keyframes'] && Array.isArray(json['keyframes'])) {
-              newKeyframes = json['keyframes'];
-            } else if (Array.isArray(json)) {
-              newKeyframes = json;
-            } else {
-              setKeyFrameMergeStatus(<Alert severity="error">Content to merge must be valid JSON array, or JSON object with top-level array named 'keyframes'.</Alert>);
-              return;
-            }
-
-            if (!newKeyframes.every((kf) => typeof kf.frame === "number")) {
-              setKeyFrameMergeStatus(<Alert severity="error">All keyframes must have a numeric 'frame' field.</Alert>);
-              return;
-            }
-
-            setKeyFrameMergeStatus(<Alert severity="success">Found {newKeyframes.length} keyframes to merge.</Alert>);
-            setMergeEnabled(true);
-          }}
-        />
-        {keyFrameMergeStatus}
-      </DialogContent>
-      <DialogActions>
-        <Button size="small" id="cancel_add" onClick={handleCloseMergeKeyframesDialog}>Cancel</Button>
-        <Button disabled={!mergeEnabled} size="small" variant="contained" id="merge" onClick={handleCloseMergeKeyframesDialog}>Merge</Button>
-      </DialogActions>
-    </Dialog>
-    , [openMergeKeyframesDialog, handleCloseMergeKeyframesDialog, activeDocId, dataToMerge, keyFrameMergeStatus, mergeEnabled, options]);
-
-  const [framesToDelete, setFramesToDelete] = useState();
-  const [openDeleteRowDialog, setOpenDeleteRowDialog] = useState(false);
-
-  const handleClickOpenDeleteRowDialog = useCallback(() => {
-    const frames = rangeSelection.anchor ?
+  const deleteRowDialog = useMemo(() => options && gridRef.current && managedFields && <DeleteKeyframesDialog
+    fields={managedFields}
+    keyframes={keyframes}
+    bpm={options.bpm}
+    fps={options.output_fps}
+    initialFramesToDelete={rangeSelection.anchor ?
       range(Math.min(rangeSelection.anchor.y, rangeSelection.tip.y), Math.max(rangeSelection.anchor.y, rangeSelection.tip.y) + 1)
-        .map((y) => gridRef.current.api.getDisplayedRowAtIndex(y).data.frame)
-        .sort()
-        .join(',')
-      : gridRef.current.api.getFocusedCell()?.data?.frame;
-    setFramesToDelete(frames);
-    setOpenDeleteRowDialog(true);
-  }, [gridRef, rangeSelection]);
-
-  const handleCloseDeleteRowDialog = useCallback((e) => {
-    setOpenDeleteRowDialog(false);
-    if (e.target.id === "delete") {
-      for (let frame of framesToDelete.split(',')) {
-        deleteRow(parseInt(frame));
-      }
-    }
-  }, [deleteRow, framesToDelete]);
-
-  const deleteRowDialog = useMemo(() => <Dialog open={openDeleteRowDialog} onClose={handleCloseDeleteRowDialog}>
-    <DialogTitle>❌ Delete keyframes</DialogTitle>
-    <DialogContent>
-      <DialogContentText>
-        Delete keyframes at the following positions (enter a comma separated list).
-      </DialogContentText>
-      <TextField
-        autoFocus
-        margin="dense"
-        label="Frame"
-        variant="standard"
-        value={framesToDelete}
-        onChange={(e) => setFramesToDelete(e.target.value)}
-      />
-      <DialogContentText>
-        <small>Note: first and last frames cannot be deleted.</small>
-      </DialogContentText>
-    </DialogContent>
-    <DialogActions>
-      <Button id="cancel_delete" onClick={handleCloseDeleteRowDialog}>Cancel</Button>
-      <Button variant="contained" id="delete" onClick={handleCloseDeleteRowDialog}>Delete</Button>
-    </DialogActions>
-  </Dialog>, [openDeleteRowDialog, framesToDelete, handleCloseDeleteRowDialog]);
+        .map((y) => Number(gridRef.current.api.getDisplayedRowAtIndex(y)?.data?.frame))
+        .filter((n) => !isNaN(n))
+        .sort((n1, n2) => n1 - n2)
+      : []}
+    deleteKeyframes={(frames) => {
+      frames.forEach((frame) => deleteRow(frame));
+    }}
+  />, [managedFields, keyframes, rangeSelection, gridRef, deleteRow, options]);
 
   //////////////////////////////////////////////////
   // Main data rendering management
@@ -1203,7 +1088,8 @@ const ParseqUI = (props) => {
           setAudioCursorPos(frame);
         }
       }}
-    />, [options, xaxisType, graphScales, keyframes, promptMarkers, showCursors, gridCursorPos, audioCursorPos, beatMarkerInterval]);
+      onAddKeyframes={addRows}
+    />, [options, xaxisType, graphScales, keyframes, promptMarkers, showCursors, gridCursorPos, audioCursorPos, beatMarkerInterval, addRows]);
 
 
   // Sparklines ------------------------
@@ -1285,7 +1171,7 @@ const ParseqUI = (props) => {
       {
         (renderedDataJsonString.length > getOutputTruncationLimit()) ?
           <Alert severity="warning">
-            Rendered output is truncated at {getOutputTruncationLimit() / 1024} MB. Use the "copy output" or "upload output" button below to access the full data.
+            Rendered output is truncated at {prettyBytes(getOutputTruncationLimit())}. Use the "copy output" or "upload output" button below to access the full data.
           </Alert>
           : <></>
       }
@@ -1466,7 +1352,6 @@ const ParseqUI = (props) => {
       <Grid xs={12} style={{ display: 'inline', alignItems: 'center' }}>
         <ExpandableSection
           // TODO: we always have to render the grid currently, else we lose keyframes because they reference grid data.
-          // Figure out how to 
           renderChildrenWhenCollapsed={true}
           title="Keyframes grid for field value flow">
           {optionsUI}
@@ -1474,10 +1359,8 @@ const ParseqUI = (props) => {
           {displayedFieldSelector}
           {grid}
           <span id='gridControls'>
-            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenAddRowDialog}>➕ Add keyframe</Button>
-            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenMergeKeyframesDialog}>🌪️ Merge keyframes</Button>
-            <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={handleClickOpenDeleteRowDialog}>❌ Delete keyframe</Button>
             {addRowDialog}
+            {bulkEditDialog}
             {mergeKeyframesDialog}
             {deleteRowDialog}
           </span>

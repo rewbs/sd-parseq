@@ -1397,11 +1397,11 @@ return (
     </Grid>
     <Grid xs={4}>
       <Box display='flex' justifyContent="right" gap={1} alignItems='center' paddingTop={1}>
-        <Tooltip2 title="Generate Parseq keyframes from audio (⚠️ experimental).">
-          <Button color="success" variant="outlined" size="small" href={'/analyser?fps=' + (options?.output_fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">🎧 Audio Analyzer</Button>
+        <Tooltip2 title="Generate Parseq keyframes from audio (⚠️ legacy - functionality is now integrated into the main UI).">
+          <Button color="success" variant="outlined" size="small" href={'/analyser?fps=' + (options?.output_fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">🎧 <small>Audio Analyzer (Legacy)</small></Button>
         </Tooltip2>
         <Tooltip2 title="Explore your Parseq documents.">
-          <Button color="success" variant="outlined" size="small" href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">🔎 Doc Browser</Button>
+          <Button color="success" variant="outlined" size="small" href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">🔎<small>Doc Browser</small></Button>
         </Tooltip2>
       </Box>
     </Grid>

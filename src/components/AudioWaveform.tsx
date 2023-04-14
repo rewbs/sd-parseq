@@ -485,6 +485,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
         //@ts-ignore - vs code complaining about import.meta, but it works.
         const tempoDetectionWorker = new Worker(new URL('../analysisWorker-tempo.ts', import.meta.url));
+        
         tempoDetectionWorker.onmessage = (e: any) => {
             if (tempoRef.current && tempoConfidenceRef.current && e.data.bpm) {
                 tempoRef.current.innerText = `${e.data.fudgedBpm.toFixed(2)}BPM`;

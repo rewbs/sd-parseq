@@ -613,15 +613,7 @@ const ParseqUI = (props) => {
       console.log("Could not refresh grid from keyframes: grid not ready.")
       return;
     }
-    console.log(gridRef.current);
     gridRef.current.api.setRowData(keyframes);
-
-    // gridRef.current.api.forEachNodeAfterFilterAndSort((node) => console.log(node));
-    // gridRef.current.api.setRowData([{frame:0}, {frame:1}]);
-    // gridRef.current.api.forEachNodeAfterFilterAndSort((node) => console.log(node));
-    // gridRef.current.api.refreshCells({force: true});
-    // gridRef.current.api.redrawRows();
-
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

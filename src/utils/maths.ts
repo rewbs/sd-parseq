@@ -38,10 +38,29 @@ export function frameToXAxisType(frame : number, xaxisType: "frames" | "seconds"
     }
 }
 
+export function xAxisTypeToFrame(position : number, xaxisType: "frames" | "seconds" | "beats", fps: number, bpm: number) {
+    switch (xaxisType) {
+        case "frames":
+            return position;
+        case "seconds":
+            return secToFrame(position, fps);
+        case "beats":
+            return beatToFrame(position, fps, bpm);
+    }
+}
+
 export function frameToBeat(frame: number, fps: number, bpm: number): number {
     return frame / ((fps * 60) / bpm);
 }
 
 export function frameToSec(frame: number, fps: number): number {
     return frame / fps;
+}
+
+export function secToFrame(sec: number, fps: number): number {
+    return sec * fps;
+}
+
+export function beatToFrame(beat: number, fps: number, bpm: number): number {
+    return beat * ((fps * 60) / bpm);
 }

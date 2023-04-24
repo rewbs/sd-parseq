@@ -1,13 +1,10 @@
 import { isValidNumber } from "./utils/maths";
-
 import { calculateWeight } from './components/Prompts';
 import { defaultValues } from './data/defaultValues';
-
-
 //@ts-ignore
-import { defaultInterpolation, parse } from './parseq-lang/parseq-lang-parser';
-import { InvocationContext, ParseqAstNode } from "./parseq-lang/parseq-lang-ast";
 import { LTTB } from 'downsample';
+import { InvocationContext, ParseqAstNode } from "./parseq-lang/parseq-lang-ast";
+import { defaultInterpolation, parse } from './parseq-lang/parseq-lang-parser';
 
 export class ParseqRendererException {
     message: string;
@@ -36,6 +33,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     };
 
     const keyframes = input.keyframes;
+    const timeSeries = input.timeSeries;
     const options = input.options;
     const prompts = input.prompts as AdvancedParseqPrompts;
 
@@ -147,7 +145,8 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
                     allKeyframes: keyframes,
                     FPS: options.output_fps,
                     BPM: options.bpm,
-                    variableMap: new Map([["prev_computed_value", prev_computed_value]])
+                    variableMap: new Map([["prev_computed_value", prev_computed_value]]),
+                    timeSeries: timeSeries
                 }
                 computed_value = interpolator.invoke(ctx);
                 stats.invokeEvents++;
@@ -183,7 +182,8 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
                 FPS: options.output_fps,
                 BPM: options.bpm,
                 allKeyframes: keyframes,
-                variableMap: variableMap
+                variableMap: variableMap,
+                timeSeries: timeSeries
             };
 
             try {

@@ -13,7 +13,8 @@ const basicContext: InvocationContext = {
   allKeyframes: [],
   variableMap: new Map(),
   activeKeyframe: 0,
-  frame: 0
+  frame: 0,
+  timeSeries: []
 };
 
 const runParseq = (formula: string) => {

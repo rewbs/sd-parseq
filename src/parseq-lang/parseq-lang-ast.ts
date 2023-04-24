@@ -5,6 +5,7 @@ import Spline from 'cubic-spline';
 import BezierEasing from "bezier-easing";
 import { toFixedNumber, toFixedCeil, toFixedFloor, frameToBeat, frameToSec } from '../utils/maths';
 import seedrandom from 'seedrandom';
+import { InterpolationType, TimeSeries } from './parseq-timeseries';
 
 export type InvocationContext = {
   fieldName: string;
@@ -20,6 +21,10 @@ export type InvocationContext = {
   BPM: number;
   variableMap: Map<string, number | string>;
   frame: number;
+  timeSeries : [{
+    alias:string;
+    ts:TimeSeries;
+  }] | []
 }
 
 type InputLocation = {
@@ -52,7 +57,11 @@ export abstract class ParseqAstNode {
   }
   public getState(key: string) {
     return this.nodeState.get(key);
+  }
+  public getValue() {
+    return this.value;
   }  
+
   public getOrComputeState(key: string, compute: () => object): object {
     if (this.nodeState.has(key)) {
       //@ts-ignore - we know this is an object
@@ -178,9 +187,15 @@ export class VariableReferenceAst extends ParseqAstNode {
       default:
         if (this.variableName && ctx.variableMap.has(this.variableName)) {
           return ctx.variableMap.get(this.variableName) ?? 0;
-        } else {
-          throw new Error(`Unrecognised variable ${this.variableName} at ${this.start?.line}:${this.start?.col}`);
+        } else if (this.variableName) {
+          const t = ctx.timeSeries.find((t => t.alias === this.variableName));
+          if (t?.ts) {
+            const timeSeries = new TimeSeries(t.ts.data, t.ts.timestampType);
+            return timeSeries.getValueAt(ctx.frame, ctx.FPS, InterpolationType.Step)??0;
+          }
         }
+      throw new Error(`Unrecognised variable ${this.variableName} at ${this.start?.line}:${this.start?.col}`);
+      
     }
   }
 }
@@ -203,8 +218,12 @@ export class BinaryOpAst extends ParseqAstNode {
         //@ts-ignore - fall back to JS type juggling.
         return left * right;
       case '/':
+        if (right===0) {
+          throw new Error(`Divide by zero at ${this.start?.line}:${this.start?.col}.`);
+        }
         //@ts-ignore - fall back to JS type juggling.
         return left / right;
+        
       case '%':
         //@ts-ignore - fall back to JS type juggling.
         return left % right;
@@ -269,7 +288,8 @@ export class FunctionCallAst extends ParseqAstNode {
     protected children: ParseqAstNode[],
     protected value: string | number) {
     super(start, end, children, value);
-    this.funcDef = functionLibrary[value];
+     
+    this.funcDef = functionLibrary[value] || functionLibrary['missingFunction'];
   }
 
   isNamedArgs(): boolean {
@@ -398,6 +418,28 @@ const oscillatorArgs = [
 ]
 
 const functionLibrary: { [key: string]: ParseqFunction } = {
+
+  "missingFunction": {
+    description: "invoked when function is not found",
+    argDefs: [
+      { description: "term a", names: ["a"], type: "number", required: false, default: 0 },
+      { description: "term b", names: ["b"], type: "number", required: false, default: 0 },
+      { description: "term c", names: ["c"], type: "number", required: false, default: 0 },
+      { description: "term d", names: ["d"], type: "number", required: false, default: 0 },
+      { description: "term e", names: ["e"], type: "number", required: false, default: 0 },
+      { description: "term f", names: ["f"], type: "number", required: false, default: 0 },
+      { description: "term g", names: ["g"], type: "number", required: false, default: 0 },
+    ],
+    call: (ctx, args, node) => {
+      const t = ctx.timeSeries.find((t => t.alias === node.getValue()));
+      if (t?.ts) {
+        const timeSeries = new TimeSeries(t.ts.data, t.ts.timestampType);
+        return timeSeries.getValueAt(Number(args[0]), ctx.FPS, args[1] ? InterpolationType.Linear : InterpolationType.Step)??0;
+      } else {
+        throw new Error(`Unknown function: '${node.getValue()}'`)
+      }
+    }
+  },
 
   /////////////////////
   // Maths

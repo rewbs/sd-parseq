@@ -36,7 +36,6 @@ jest.mock('chartjs-plugin-annotation', () => ({
 
 jest.mock("wavesurfer.js/dist/plugin/wavesurfer.timeline.min", () => null);
 jest.mock("wavesurfer.js/src/plugin/markers", () => null);
-
 jest.mock("wavesurfer-react", () => ({
   WaveForm: () => null,
   WaveSurfer: () => null
@@ -53,6 +52,15 @@ jest.mock('@xzdarcy/react-timeline-editor', () => ({
   TimelineEffect: () => null,
   TimelineRow: () => null,
 }));
+
+// Workaround for meta.import.url not working with Jest.
+jest.mock('./components/AudioWaveform', () => ({
+  AudioWaveform: () => <></>
+}));
+jest.mock('./components/TimeSeriesUI', () => ({
+  TimeSeriesUI: () => <></>
+}));
+
 
 
 async function loadAndRender(fixture: {}) {

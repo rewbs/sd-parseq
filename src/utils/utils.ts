@@ -1,5 +1,6 @@
 import packageJson from '../../package.json';
 import { defaultFields } from '../data/fields';
+import type { ParseqKeyframe } from '../ParseqUI.d.ts';
 
 export const fieldNametoRGBa = (str: string, alpha: number): string => {
   const rgb = defaultFields.find((field) => field.name === str)?.color || [0, 0, 0];
@@ -15,7 +16,7 @@ export function getVersionNumber() {
 }
 
 export function getOutputTruncationLimit() {
-  return 1024*1024;
+  return 1000*1000;
 }
 
 export function percentageToColor(percentage:number, maxHue = 120, minHue = 0, alpha=1) {
@@ -41,4 +42,27 @@ export function queryStringGetOrCreate(key : string, creator : () => string) {
     window.history.replaceState({}, '', `${window.location.pathname}?${qps.toString()}`);
     return val;
   }
+}
+
+export const findMatchingKeyframes = (keyframes: ParseqKeyframe[], filter: string, method: 'is' | 'regex', field: string, fieldType?: "value" | "interpolation") => {
+  let regex : RegExp;
+  try {
+    regex = new RegExp(filter);
+  } catch (e) {
+    if (method === 'regex') {
+      return [];
+    }
+  }
+  return keyframes.filter((keyframe) => {
+      const subject = String(fieldType === "interpolation" ? keyframe[field+'_i'] : keyframe[field]);
+      if (method === 'is') {
+          return subject === filter;
+      } else {
+          return regex.test(subject);
+      }
+  }).filter((x) => x !== null);
+}
+
+export function unique(value : number, index : number, array : number[]) {
+  return array.indexOf(value) === index;
 }

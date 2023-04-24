@@ -61,7 +61,7 @@ export function Preview(props: PreviewProps) {
                                             backgroundColor: percentageToColor(valueAsPercent / 100, 100, 0, 0.5),
                                             width: (valueAsPercent + '%')
                                         }} >
-                                            {field}&nbsp;:&nbsp;{renderedFrames[frame][field].toFixed(4)}&nbsp;&nbsp;(Δ {renderedFrames[frame][field+'_delta'].toFixed(4)})
+                                            {field}&nbsp;:&nbsp;{renderedFrames[frame][field].toFixed(4)}&nbsp;&nbsp;(Δ&nbsp;{renderedFrames[frame][field+'_delta'].toFixed(4)})
                                         </div>
                                     </li>
                                 })

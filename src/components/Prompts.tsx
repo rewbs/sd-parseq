@@ -567,7 +567,7 @@ export function Prompts(props: PromptsProps) {
                 <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
                 <Button size="small" disabled={prompts.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
             </Grid>
-            <Grid xs={4} sx={{ paddingRight: '15px' }} >
+            <Grid xs={4} sx={{ paddingRight: '15px', paddingTop: '15px'  }} >
                 <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >
                     <Stack>
                         <TextField

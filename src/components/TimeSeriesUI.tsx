@@ -129,8 +129,15 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   const handleAddTimeSeries = useCallback(() => {
     setOpen(false);
     if (processedTimeSeries) {
+      let num = allTimeSeries.length;
+      let alias = 'ts' + num;
+      //eslint-disable-next-line no-loop-func
+      while (allTimeSeries.some(ts => ts.alias === alias)) {
+        num++;
+        alias = 'ts' + num;
+      }
       setAllTimeSeries([...allTimeSeries, {
-        alias: 'ts' + allTimeSeries.length,
+        alias,
         ts: processedTimeSeries
       }])
     }
@@ -402,7 +409,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
           value={allTimeSeries[idx].alias}
           label={"name"}
           onChange={(e) => {
-            allTimeSeries[idx].alias = e.target.value;
+            allTimeSeries[idx].alias = e.target.value.trim();
             setAllTimeSeries([...allTimeSeries]);
             onChange(allTimeSeries);
           }}

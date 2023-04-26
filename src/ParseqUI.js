@@ -358,7 +358,7 @@ const columnDefs = useMemo(() => {
         }
       },
       valueFormatter: (params) => {
-        return frameToXAxisType(params.value, keyframeLock, options.output_fps, options.bpm);
+        return frameToXAxisType(params.value, keyframeLock, options?.output_fps, options?.bpm);
       },
       pinned: 'left',
       suppressMovable: true,
@@ -691,6 +691,7 @@ const bulkEditDialog = useMemo(() => gridRef.current && options && managedFields
   fields={managedFields}
   bpm={options.bpm}
   fps={options.output_fps}
+  timeSeries={timeSeries}
   editKeyframes={(frames, field, type, value) => {
     frames.forEach(frame => {
       let rowData = gridRef.current.api.getRowNode(frameToRowId(frame))?.data;
@@ -703,7 +704,7 @@ const bulkEditDialog = useMemo(() => gridRef.current && options && managedFields
     gridRef.current.api.refreshCells();
   }}
 
-/>, [keyframes, options, managedFields, gridRef, frameToRowId]);
+/>, [keyframes, options, managedFields, timeSeries, gridRef, frameToRowId]);
 
 const mergeKeyframesDialog = useMemo(() => options && <MergeKeyframesDialog
   keyframes={keyframes}

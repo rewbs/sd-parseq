@@ -136,17 +136,20 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
         num++;
         alias = 'ts' + num;
       }
-      setAllTimeSeries([...allTimeSeries, {
+      const newTimeSeries = [...allTimeSeries, {
         alias,
         ts: processedTimeSeries
-      }])
+      }];
+      setAllTimeSeries(newTimeSeries);
+      onChange(newTimeSeries);      
     }
-    onChange(allTimeSeries);
+
   }, [allTimeSeries, processedTimeSeries, onChange]);
 
   const handleDeleteTimeSeries = useCallback((idx: number) => {
-    setAllTimeSeries(allTimeSeries.filter((_, i) => i !== idx));
-    onChange(allTimeSeries);
+    const newTimeSeries = allTimeSeries.filter((_, i) => i !== idx);
+    setAllTimeSeries(newTimeSeries);
+    onChange(newTimeSeries);
   }, [allTimeSeries, onChange]);
 
   const handleOpen = () => {

@@ -385,6 +385,19 @@ const ParseqUI = (props) => {
         },
         pinned: 'left',
         suppressMovable: true,
+        cellStyle: params => {
+          if (isInRangeSelection(params)) {
+            return {
+              backgroundColor: 'lightgrey',
+              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+            }
+          } else {
+            return {
+              backgroundColor: 'white', 
+              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+            }
+          }
+        }        
       },
       ...(managedFields ? managedFields.flatMap(field => [
         {

@@ -291,8 +291,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       }
 
       if (filterMin.length || filterMax.length) {
-        const min = isNaN(parseInt(filterMin)) ? Number.MIN_VALUE : parseInt(filterMin);
-        const max = isNaN(parseInt(filterMax)) ? Number.MAX_VALUE : parseInt(filterMax);
+        const min = isNaN(parseFloat(filterMin)) ? Number.MIN_VALUE : parseFloat(filterMin);
+        const max = isNaN(parseFloat(filterMax)) ? Number.MAX_VALUE : parseFloat(filterMax);
         if (min >= max) {
           setStatus(<Alert severity="error">Filter min must be less than filter max</Alert>);
           return;
@@ -301,8 +301,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       }
 
       if (limitMin || limitMax) {
-        const min = isNaN(parseInt(limitMin)) ? Number.MIN_VALUE : parseInt(limitMin);
-        const max = isNaN(parseInt(limitMax)) ? Number.MAX_VALUE : parseInt(limitMax);
+        const min = isNaN(parseFloat(limitMin)) ? Number.MIN_VALUE : parseFloat(limitMin);
+        const max = isNaN(parseFloat(limitMax)) ? Number.MAX_VALUE : parseFloat(limitMax);
         if (min >= max) {
           setStatus(<Alert severity="error">Limit min must be less than limit max</Alert>);
           return;

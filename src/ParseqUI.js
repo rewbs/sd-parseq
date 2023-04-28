@@ -38,7 +38,6 @@ import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionN
 
 import debounce from 'lodash.debounce';
 import prettyBytes from 'pretty-bytes';
-import { Fraction } from 'fractional';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
@@ -88,6 +87,7 @@ const ParseqUI = (props) => {
   const [lastFrame, setLastFrame] = useState(0);
   const [xaxisType, setXaxisType] = useState("frames");
   const [keyframeLock, setKeyframeLock] = useState("frames");
+  const [gridHeight, setGridHeight] = useState(0);
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -102,7 +102,12 @@ const ParseqUI = (props) => {
   if (keyframes) {
     const gridContainer = document.querySelector(".ag-theme-alpine");
     if (gridContainer) {
-      gridContainer.style.height = 24 * keyframes.length + "px";
+      if (gridHeight === 0) {
+        // auto-size grid to fit content
+        gridContainer.style.height = 24 * keyframes.length + "px";
+      } else {
+        gridContainer.style.height = gridHeight + "px";
+      }
     }
     const newLastFrame = Math.max(...keyframes.map(kf => kf.frame));
     if (newLastFrame !== lastFrame) {
@@ -231,11 +236,15 @@ const ParseqUI = (props) => {
     if (displayedFields && gridRef.current?.columnApi) {
       let columnsToShow = displayedFields.flatMap(c => [c, c + '_i']);
       let allColumnIds = gridRef.current.columnApi.getColumns().map((col) => col.colId)
-      gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
-      gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
-      gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
-      gridRef.current.api.onSortChanged();
-      gridRef.current.api.sizeColumnsToFit();
+      
+      setTimeout(() => {
+        gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
+        gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
+        gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
+        gridRef.current.api.onSortChanged();
+        gridRef.current.api.sizeColumnsToFit();
+    }, 0);
+
       if (displayedFields.length !== prevDisplayedFields?.length
         || displayedFields.some(f => !prevDisplayedFields.includes(f))) {
         setPrevDisplayedFields(displayedFields);
@@ -497,8 +506,11 @@ const ParseqUI = (props) => {
       add: [{ "frame": frame }],
       addIndex: frame,
     });
-    gridRef.current.api.onSortChanged();
-    gridRef.current.api.sizeColumnsToFit();
+
+    setTimeout(() => { 
+      gridRef.current.api.onSortChanged();
+      gridRef.current.api.sizeColumnsToFit();
+    }, 0);
     refreshKeyframesFromGrid();
 
   }, [frameToRowId]);
@@ -555,21 +567,27 @@ const ParseqUI = (props) => {
     gridRef.current.api.applyTransaction({
       remove: [rowData]
     });
-    gridRef.current.api.onSortChanged();
-    gridRef.current.api.sizeColumnsToFit();
+    setTimeout(() => { 
+      gridRef.current.api.onSortChanged();
+      gridRef.current.api.sizeColumnsToFit();
+    }, 0);
     refreshKeyframesFromGrid();
 
   }, [keyframes, frameToRowId]);
 
   const onCellValueChanged = useCallback((event) => {
-    gridRef.current.api.onSortChanged();
+    setTimeout(() => { 
+      gridRef.current.api.onSortChanged();
+    }, 0);
     refreshKeyframesFromGrid();
   }, [gridRef]);
 
   const onGridReady = useCallback((params) => {
     refreshKeyframesFromGrid();
-    gridRef.current.api.onSortChanged();
-    gridRef.current.api.sizeColumnsToFit();
+    setTimeout(() => { 
+      gridRef.current.api.onSortChanged();
+      gridRef.current.api.sizeColumnsToFit();
+    }, 0);
   }, [gridRef]);
 
   const navigateToNextCell = useCallback((params) => {
@@ -919,8 +937,38 @@ const ParseqUI = (props) => {
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
+      <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
+        <Typography fontSize={"0.75em"}>Grid size : </Typography>
+        <ToggleButtonGroup size="small"
+          color="primary"
+          value={gridHeight===0 ? "auto" : "compact"}
+          exclusive
+          onChange={(e, newLock) => {
+            if (!newLock || newLock === "auto") {
+              setGridHeight(0);
+            } else {
+              setGridHeight(240);
+            }
+          }}
+        >
+          <ToggleButton value="auto" key="auto">
+            <Tooltip2 title="Automatically grow/shrink the grid viewport in function of the number of keyframes.">
+              <Typography fontSize={"1em"}>
+                🪄 Auto
+              </Typography>
+            </Tooltip2>
+          </ToggleButton>
+          <ToggleButton value="compact" key="compact">
+            <Tooltip2 title='Fix the grid viewport to about 10 rows.'>
+              <Typography fontSize={"1em"}>
+                🤏 Compact
+              </Typography>
+            </Tooltip2>
+          </ToggleButton>
+          </ToggleButtonGroup>          
+      </Stack>
     </Stack>
-  </span>, [options, handleChangeOption, keyframeLock])
+  </span>, [options, gridHeight, handleChangeOption, keyframeLock])
 
 
   // Grid ------------------------
@@ -1106,7 +1154,7 @@ const ParseqUI = (props) => {
             value={beatMarkerInterval}
             onChange={(e) => setBeatMarkerInterval(e.target.value)}
           >
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((v, idx) => <MenuItem key={idx} value={v + ""}>{v > 0 ? new Fraction(v).toString() : '(none)'}</MenuItem>)}
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((v, idx) => <MenuItem key={idx} value={v + ""}>{v > 0 ? v : '(none)'}</MenuItem>)}
           </TextField>
         </Stack>
       </Grid>

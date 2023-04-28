@@ -26,13 +26,19 @@ TimeAgo.addDefaultLocale(en);
 jest.mock('react-chartjs-2', () => ({
   Line: () => null
 }));
-jest.mock('chartjs-plugin-crosshair', () => ({
-  CrosshairPlugin: () => null
-}));
-jest.mock('chartjs-plugin-dragdata', () => null);
+// jest.mock('chartjs-plugin-crosshair', () => ({
+//   CrosshairPlugin: () => null
+// }));
+// jest.mock('chartjs-plugin-dragdata', () => null);
 jest.mock('chartjs-plugin-annotation', () => ({
   annotationPlugin: () => null
 }));
+
+jest.mock('firebase/analytics', () => ({
+  isSupported: () => new Promise(() => false),
+  getAnalytics: () => null,
+}));
+
 
 jest.mock("wavesurfer.js/dist/plugin/wavesurfer.timeline.min", () => null);
 jest.mock("wavesurfer.js/src/plugin/markers", () => null);

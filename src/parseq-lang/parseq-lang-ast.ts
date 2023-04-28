@@ -608,7 +608,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
         .length
     }
   },
-  "info_match_last": {
+  "info_match_last": { //should be info_match_prev :(
     description: "Returns the frame number of the last keyframe that matched the regex, or -1 if none.",
     argDefs: [
       { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
@@ -617,6 +617,18 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       const pattern = String(args[0]);
       const lastMatch = ctx.allKeyframes
         .findLast((kf: { frame: number, info?: string }) => kf.frame <= ctx.frame && kf.info?.match(pattern))
+      return lastMatch ? lastMatch.frame : -1;
+    }
+  },
+  "info_match_next": {
+    description: "Returns the frame number of the next keyframe that matched the regex, or -1 if none.",
+    argDefs: [
+      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
+    ],
+    call: (ctx, args) => {
+      const pattern = String(args[0]);
+      const lastMatch = ctx.allKeyframes
+        .findLast((kf: { frame: number, info?: string }) => kf.frame > ctx.frame && kf.info?.match(pattern))
       return lastMatch ? lastMatch.frame : -1;
     }
   },
@@ -652,7 +664,7 @@ function getNextKeyframeValue(ctx: InvocationContext): number {
   const idx = ctx.definedFrames.findIndex(v => v > ctx.frame);
   const val = idx !== -1 ? ctx.definedValues[idx] : ctx.definedValues.at(-1) || NaN;
   if (val === undefined) {
-    throw new Error("No next keyfram. Unexpected failure, please report a bug.");
+    throw new Error("No next keyframe. Unexpected failure, please report a bug.");
   }
   return val;
 }

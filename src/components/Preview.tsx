@@ -79,7 +79,7 @@ export function Preview(props: PreviewProps) {
                 fullWidth={true}
                 InputLabelProps={{ shrink: true }}
                 InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
-                value={renderedFrames[frame].deforum_prompt}
+                value={renderedFrames[frame]?.deforum_prompt}
                 label={`Prompt [frame ${frame}]`}
                 variant="outlined"
             />

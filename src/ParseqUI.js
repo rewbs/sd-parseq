@@ -901,7 +901,7 @@ const ParseqUI = (props) => {
           variant="outlined" />
       </Tooltip2>
       <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
-        <Typography fontSize={"0.75em"}>Lock keyframe position to:</Typography>
+        <Typography fontSize={"0.75em"}>Lock&nbsp;keyframe&nbsp;position&nbsp;to:</Typography>
         <ToggleButtonGroup size="small"
           color="primary"
           value={keyframeLock}
@@ -917,28 +917,28 @@ const ParseqUI = (props) => {
           <ToggleButton value="frames" key="frames">
             <Tooltip2 title="When you change FPS or BPM, keyframes will maintain their frame position, so will not stay at the same position relative to time or beats.">
               <Typography fontSize={"1em"}>
-                ⛌ Frames
+                ⛌&nbsp;Frames
               </Typography>
             </Tooltip2>
           </ToggleButton>
           <ToggleButton value="seconds" key="seconds">
             <Tooltip2 title='When you change FPS or BPM, keyframes will maintain their position in time (so will change frame position).For example, a keyframe positioned at 1s will always stay as close as possible to 1s regardless of the FPS.'>
               <Typography fontSize={"1em"}>
-                🕑 Seconds
+                🕑&nbsp;Seconds
               </Typography>
             </Tooltip2>
           </ToggleButton>
           <ToggleButton value="beats" key="beats">
             <Tooltip2 title="When you change FPS or BPM, keyframes will maintain their beat position (so will change frame position). For example, a keyframe positioned at beat 2 will always stay as close as possible to beat 2 regardless of the FPS or BPM.">
               <Typography fontSize={"1em"}>
-                🥁 Beats
+                🥁&nbsp;Beats
               </Typography>
             </Tooltip2>
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
       <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
-        <Typography fontSize={"0.75em"}>Grid size : </Typography>
+        <Typography fontSize={"0.75em"}>Grid&nbsp;size:</Typography>
         <ToggleButtonGroup size="small"
           color="primary"
           value={gridHeight===0 ? "auto" : "compact"}
@@ -954,14 +954,14 @@ const ParseqUI = (props) => {
           <ToggleButton value="auto" key="auto">
             <Tooltip2 title="Automatically grow/shrink the grid viewport in function of the number of keyframes.">
               <Typography fontSize={"1em"}>
-                🪄 Auto
+                🪄&nbsp;Auto
               </Typography>
             </Tooltip2>
           </ToggleButton>
           <ToggleButton value="compact" key="compact">
             <Tooltip2 title='Fix the grid viewport to about 10 rows.'>
               <Typography fontSize={"1em"}>
-                🤏 Compact
+                🤏&nbsp;Compact
               </Typography>
             </Tooltip2>
           </ToggleButton>

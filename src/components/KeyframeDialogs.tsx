@@ -392,6 +392,7 @@ interface BulkEditDialogProps {
     fields: string[];
     fps: number;
     bpm: number;
+    timeSeries: any;
     editKeyframes: (frames: number[], fieldToUpdate: string, fieldTypeToUpdate: 'value' | 'interpolation', newValue: string) => void;
 }
 
@@ -400,6 +401,7 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
     fields,
     fps,
     bpm,
+    timeSeries,
     editKeyframes,
 }) => {
 
@@ -446,18 +448,18 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
                             definedFrames: keyframes.map(kf => kf.frame),
                             definedValues: keyframes.map(kf => kf[fieldToUpdate] as number),
                             fieldName: fieldToUpdate,
-                            timeSeries: [],
+                            timeSeries: timeSeries,
                             variableMap: new Map([['prev_computed_value', 0]]),
                         }
                         parse(newValue).invoke(dummyContext);
                     } catch (e: any) {
-                        return <Alert severity="error">Could not parse interpolation: {_.truncate(e.toString(), { length: 200 })}</Alert>;
+                        return <Alert severity="warning">That may not be a valid Parseq formula: {_.truncate(e.toString(), { length: 200 })}</Alert>;
                     }
             }
         }
         return <></>;
 
-    }, [newValue, fieldToUpdate, fieldTypeToUpdate, bpm, fps, keyframes, fields]);
+    }, [newValue, fieldToUpdate, fieldTypeToUpdate, timeSeries, bpm, fps, keyframes, fields]);
 
     return <>
         <Dialog maxWidth='md' fullWidth={true} open={openDialog} onClose={handleCloseDialog}>

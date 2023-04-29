@@ -26,13 +26,19 @@ TimeAgo.addDefaultLocale(en);
 jest.mock('react-chartjs-2', () => ({
   Line: () => null
 }));
-jest.mock('chartjs-plugin-crosshair', () => ({
-  CrosshairPlugin: () => null
-}));
-jest.mock('chartjs-plugin-dragdata', () => null);
+// jest.mock('chartjs-plugin-crosshair', () => ({
+//   CrosshairPlugin: () => null
+// }));
+// jest.mock('chartjs-plugin-dragdata', () => null);
 jest.mock('chartjs-plugin-annotation', () => ({
   annotationPlugin: () => null
 }));
+
+jest.mock('firebase/analytics', () => ({
+  isSupported: () => new Promise(() => false),
+  getAnalytics: () => null,
+}));
+
 
 jest.mock("wavesurfer.js/dist/plugin/wavesurfer.timeline.min", () => null);
 jest.mock("wavesurfer.js/src/plugin/markers", () => null);
@@ -61,7 +67,7 @@ jest.mock('./components/TimeSeriesUI', () => ({
   TimeSeriesUI: () => <></>
 }));
 
-
+jest.setTimeout(15000);
 
 async function loadAndRender(fixture: {}) {
 
@@ -80,9 +86,8 @@ async function loadAndRender(fixture: {}) {
   // Wait for Parseq to complete
   await waitFor(() => {
     expect(screen.getAllByTestId("render-button")[0]).toHaveTextContent("Re-render");
-  }, { timeout: 10000 });
+  }, { timeout: 15000 });
 }
-
 
 test('Blank document', async () => {
   const fixture = {

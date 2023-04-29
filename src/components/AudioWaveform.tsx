@@ -99,14 +99,15 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
         const pxPerSec = wavesurferRef.current.params.minPxPerSec;
         const startFrame = Math.round(wavesurferRef.current.drawer.wrapper.scrollLeft / pxPerSec * props.fps);
+        const endFrame = Math.round((wavesurferRef.current.drawer.wrapper.scrollLeft + wavesurferRef.current.drawer.container.clientWidth) / pxPerSec * props.fps);
 
-        if (startFrame === lastViewport.startFrame) {
+         // Check both start and end frame because of elastic scroll 
+         // at full right scroll mistakenly triggering a zoom-in.
+        if (startFrame === lastViewport.startFrame
+            || endFrame === lastViewport.endFrame) {
             //console.log("no scrolling required");
             return;
         }
-
-        //const endFrame = Math.round(startFrame + (lastViewport.endFrame - lastViewport.startFrame));
-        const endFrame = Math.round((wavesurferRef.current.drawer.wrapper.scrollLeft + wavesurferRef.current.drawer.container.clientWidth) / pxPerSec * props.fps);
         const newViewport = { startFrame, endFrame };
         //console.log("New viewport:", newViewport);        
         if ((newViewport.startFrame !== lastViewport.startFrame
@@ -133,7 +134,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
         setManualEvents(newMarkers);
     }, [manualEvents]);
 
-    const handleMarkerDrop = useCallback(() => (marker: Marker) => {
+    const handleMarkerDrop = useCallback((marker: Marker) => {
         //console.log("In handleMarkerDrop", marker);
         const draggedEventType = deduceMarkerType(marker);
         const newEvents = (wavesurferRef.current?.markers.markers||[])
@@ -149,7 +150,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     }, [ ]);
 
     // Shift-clicking a marker deletes it.
-    const handleMarkerClick = useCallback(() => (marker: Marker, event : PointerEvent) => {
+    const handleMarkerClick = useCallback((marker: Marker, event : PointerEvent) => {
         if (event.shiftKey) { 
             const draggedEventType = deduceMarkerType(marker);
             const newEvents = (wavesurferRef.current?.markers.markers||[])

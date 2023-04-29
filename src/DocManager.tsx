@@ -264,7 +264,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
     };
 
     const loadDialog = <Dialog open={openLoadDialog} onClose={handleCloseLoadDialog}>
-        <DialogTitle>Load a Parseq document</DialogTitle>
+        <DialogTitle>⬇️ Load a Parseq document</DialogTitle>
         <DialogContent>
             <Grid container>
                 <Grid xs={12}>
@@ -308,7 +308,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                     <small>Remember the prompt but not the doc name? Try the <a href='/browser' target='_blank'>browser</a>.</small>
                 </Grid>
                 <Grid xs={2} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'end' }}>
-                    <Button size="small" variant="contained" id="load" onClick={handleCloseLoadDialog}>Load</Button>
+                    <Button size="small" variant="contained" id="load" onClick={handleCloseLoadDialog}>⬇️ Load</Button>
                 </Grid>
                 <Grid xs={12} style={{ marginTop: 20 }}>
                     <hr />
@@ -330,7 +330,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                     />
                 </Grid>
                 <Grid xs={2} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'end' }}>
-                    <Button size="small" variant="contained" id="import" onClick={handleCloseLoadDialog}>Import</Button>
+                    <Button size="small" variant="contained" id="import" onClick={handleCloseLoadDialog}>⬇️ Import</Button>
                 </Grid>
                 <Grid xs={12}>
                     {importError && <Alert severity="error" style={{ marginTop: 20 }}>{importError}</Alert>}
@@ -385,7 +385,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
         }
     };
     const shareDialog = <Dialog open={openShareDialog} onClose={handleCloseShareDialog} maxWidth='lg'>
-        <DialogTitle>Share your Parseq document</DialogTitle>
+        <DialogTitle>🔗 Share your Parseq document</DialogTitle>
         <DialogContent>
             <Grid container>
                 <Grid xs={12}>
@@ -393,7 +393,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                         Get a URL to share your doc:
                     </DialogContentText>
                 </Grid>
-                <Grid xs={2} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Grid xs={2}>
                     <Button disabled={!user} size="small" id="copy_share" variant="contained" onClick={handleUpload} >Upload ➡️</Button>
                 </Grid>
                 <Grid xs={8}>
@@ -441,8 +441,9 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                     <CopyToClipboard text={exportableDoc}>
                         <Button size="small" id="copy_share" variant="contained"  >📋 Copy doc</Button>
                     </CopyToClipboard>
-                </Grid>
+                </Grid>                                   
             </Grid>
+
         </DialogContent>
         <DialogActions>
             <Button size="small" id="done_share" onClick={handleCloseShareDialog}>Done</Button>

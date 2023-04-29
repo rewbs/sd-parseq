@@ -13,6 +13,7 @@ import {
   Stack,
   Tab,
   Tabs,
+  Tooltip,
   Typography
 } from '@mui/material';
 import TextField from '@mui/material/TextField';
@@ -129,17 +130,27 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   const handleAddTimeSeries = useCallback(() => {
     setOpen(false);
     if (processedTimeSeries) {
-      setAllTimeSeries([...allTimeSeries, {
-        alias: 'ts' + allTimeSeries.length,
+      let num = allTimeSeries.length;
+      let alias = 'ts' + num;
+      //eslint-disable-next-line no-loop-func
+      while (allTimeSeries.some(ts => ts.alias === alias)) {
+        num++;
+        alias = 'ts' + num;
+      }
+      const newTimeSeries = [...allTimeSeries, {
+        alias,
         ts: processedTimeSeries
-      }])
+      }];
+      setAllTimeSeries(newTimeSeries);
+      onChange(newTimeSeries);      
     }
-    onChange(allTimeSeries);
+
   }, [allTimeSeries, processedTimeSeries, onChange]);
 
   const handleDeleteTimeSeries = useCallback((idx: number) => {
-    setAllTimeSeries(allTimeSeries.filter((_, i) => i !== idx));
-    onChange(allTimeSeries);
+    const newTimeSeries = allTimeSeries.filter((_, i) => i !== idx);
+    setAllTimeSeries(newTimeSeries);
+    onChange(newTimeSeries);
   }, [allTimeSeries, onChange]);
 
   const handleOpen = () => {
@@ -281,8 +292,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       }
 
       if (filterMin.length || filterMax.length) {
-        const min = isNaN(parseInt(filterMin)) ? Number.MIN_VALUE : parseInt(filterMin);
-        const max = isNaN(parseInt(filterMax)) ? Number.MAX_VALUE : parseInt(filterMax);
+        const min = isNaN(parseFloat(filterMin)) ? Number.MIN_VALUE : parseFloat(filterMin);
+        const max = isNaN(parseFloat(filterMax)) ? Number.MAX_VALUE : parseFloat(filterMax);
         if (min >= max) {
           setStatus(<Alert severity="error">Filter min must be less than filter max</Alert>);
           return;
@@ -291,8 +302,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       }
 
       if (limitMin || limitMax) {
-        const min = isNaN(parseInt(limitMin)) ? Number.MIN_VALUE : parseInt(limitMin);
-        const max = isNaN(parseInt(limitMax)) ? Number.MAX_VALUE : parseInt(limitMax);
+        const min = isNaN(parseFloat(limitMin)) ? Number.MIN_VALUE : parseFloat(limitMin);
+        const max = isNaN(parseFloat(limitMax)) ? Number.MAX_VALUE : parseFloat(limitMax);
         if (min >= max) {
           setStatus(<Alert severity="error">Limit min must be less than limit max</Alert>);
           return;
@@ -402,7 +413,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
           value={allTimeSeries[idx].alias}
           label={"name"}
           onChange={(e) => {
-            allTimeSeries[idx].alias = e.target.value;
+            allTimeSeries[idx].alias = e.target.value.trim();
             setAllTimeSeries([...allTimeSeries]);
             onChange(allTimeSeries);
           }}
@@ -455,9 +466,9 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
               <input type="file" accept=".mp3,.wav,.flac,.flc,.wma,.aac,.ogg,.aiff,.alac" onChange={handleLoadFromAudio} />
             </Box>
             {audioBuffer && <>
-              <Box>
-                <Button size='small' variant='contained' onClick={handleApplyBandPass}> Apply bandpass filter</Button>
-                <TextField
+            <Stack direction={"row"} alignItems={"center"} spacing={1}>
+              <Typography fontSize={"0.75em"}>Filter: </Typography>
+              <TextField
                   size="small"
                   style={{ width: "6em" }}
                   label="Type"
@@ -470,9 +481,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                   <MenuItem value={"lowpass"}>lowpass</MenuItem>
                   <MenuItem value={"highpass"}>highpass</MenuItem>
                   <MenuItem value={"bandpass"}>bandpass</MenuItem>
-                </TextField>
-              </Box>
-              <Box>
+                </TextField>                
                 <SmallTextField
                   label="Freq (Hz)"
                   type="number"
@@ -485,21 +494,28 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                   value={biquadFilterQ}
                   onChange={(e) => setBiquadFilterQ(Number(e.target.value))}
                 />
-                <Button size='small' variant='outlined' onClick={handleResetBandPass}> Reset</Button>
-              </Box>
+                <Tooltip arrow placement="top" title={"Apply a filter to your audio."} >
+                  <Button size='small' variant='contained' onClick={handleApplyBandPass}> Apply</Button>
+                </Tooltip>
+                <Tooltip arrow placement="top" title={"Undo the filter to restore your original audio."} >
+                  <Button size='small' variant='outlined' onClick={handleResetBandPass}> Reset</Button>
+                </Tooltip>
+              </Stack>
             </>}
           </Stack>
           {waveSuferWaveform}
           {audioBuffer &&
-            <Stack direction="row" alignContent={"center"} justifyContent="space-between">
+            <Stack paddingTop={"5px"} direction="row" alignContent={"center"} justifyContent="left" spacing={6}>
               <Box>
-                <Button size='small' variant='contained' onClick={extractAmplitude}> Extract Amplitude</Button>
+                <Tooltip arrow placement="top" title={"Convert your audio's amplitude to a time series input, ready for processing."} >
+                  <Button size='small' variant='contained' onClick={extractAmplitude}> Extract Amplitude</Button>
+                </Tooltip>
               </Box>
-              <Box>
-                <Button size='small' variant='contained' onClick={extractPitch}> Extract Pitch &nbsp; <Typography fontSize={"0.7em"} fontFamily={"monospace"} ref={pitchProgressRef}>(0%)</Typography></Button>
+              <Stack direction={"row"} alignItems={"center"} spacing={1}>
+                <Tooltip arrow placement="top" title={"Select the method used for pitch detection. Different methods can yield very different results and some are much faster than others. See the aubio documentation for information on each method."} >
                 <TextField
                   size="small"
-                  style={{ paddingBottom: '10px', width: "16em" }}
+                  style={{width: "8em" }}
                   id="pitchMethod"
                   label="Pitch method"
                   InputLabelProps={{ shrink: true, }}
@@ -516,7 +532,12 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                   <MenuItem value={"yin"}>yin</MenuItem>
                   <MenuItem value={"yinfft"}>yinfft</MenuItem>
                 </TextField>
-              </Box>
+                </Tooltip>
+                <Tooltip arrow placement="top" title={"Convert your audio's pitch to a time series input, ready for processing."} >
+                  <Button size='small' variant='contained' onClick={extractPitch}> Extract Pitch &nbsp; <Typography fontSize={"0.7em"} fontFamily={"monospace"} ref={pitchProgressRef}>(0%)</Typography></Button>
+                </Tooltip>
+                <Typography fontSize={"0.5em"}>Parseq uses <a href="https://github.com/qiuxiang/aubiojs">Aubio.js</a> extract pitch. This works best with isolated melodies (no beat).</Typography>
+              </Stack>
             </Stack>
           }
         </TabPanel>
@@ -551,7 +572,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
           </FormControl> */}
         <h3>Processing</h3>
         <small><p>Modify the loaded data before adding it as a timeseries.</p></small>
-        <Stack direction="row" alignContent={"center"} justifyContent="space-around" >
+        <Stack direction="row" alignItems={"center"} justifyContent="space-around" >
           <Box>
             <FormControlLabel
               style={{ fontSize: '0.75em', paddingLeft: '10px' }}
@@ -563,7 +584,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
               } label={<Box component="div" fontSize="0.75em">Absolute value</Box>} />
           </Box>
           <Box>
-            <Typography fontSize={"0.9em"}>Smoothing:</Typography>
+            <Typography fontSize={"0.8em"}>Smoothing:</Typography>
             <SmallTextField
               label="Window size"
               type="number"
@@ -572,7 +593,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
             />
           </Box>
           <Box>
-            <Typography fontSize={"0.9em"}>Exclude points beyond range:</Typography>
+            <Typography fontSize={"0.8em"}>Exclude points beyond range:</Typography>
             <SmallTextField
               label="Filter Min"
               type="number"
@@ -587,7 +608,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
             />
           </Box>
           <Box>
-            <Typography fontSize={"0.9em"}>Clamp points to range:</Typography>
+            <Typography fontSize={"0.8em"}>Clamp points to range:</Typography>
             <SmallTextField
               label="Limit Min"
               type="number"
@@ -602,7 +623,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
             />
           </Box>
           <Box>
-            <Typography fontSize={"0.9em"}>Normalise to range:</Typography>
+            <Typography fontSize={"0.8em"}>Normalise to range:</Typography>
             <SmallTextField
               label="Normalize Min"
               type="number"

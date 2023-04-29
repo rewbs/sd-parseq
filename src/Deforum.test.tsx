@@ -86,7 +86,7 @@ async function loadAndRender(fixture: {}) {
   // Wait for Parseq to complete
   await waitFor(() => {
     expect(screen.getAllByTestId("render-button")[0]).toHaveTextContent("Re-render");
-  }, { timeout: 10000 });
+  }, { timeout: 15000 });
 }
 
 // TBI - test timing out in CI only.

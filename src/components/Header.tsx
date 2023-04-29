@@ -2,7 +2,7 @@ import * as React from 'react';
 import Grid from '@mui/material/Unstable_Grid2';
 import { Chip, Typography, Box } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCoffee, faBook, faBug } from '@fortawesome/free-solid-svg-icons'
+import { faCoffee, faBook, faBug, faFilm } from '@fortawesome/free-solid-svg-icons'
 import { faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons'
 import { UserAuthContextProvider } from "../UserAuthContext";
 import Login from "../Login";
@@ -57,6 +57,7 @@ export default function Header({ title }: MyProps) {
                 </Box>
             </Grid>
             <Grid xs={6} display='flex' justifyContent="right" gap={1} alignItems='center'>
+                <Chip variant="outlined" component="a" href="https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8" clickable icon={<FontAwesomeIcon icon={faFilm} />} label="Tutorial" />
                 <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />
                 <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon icon={faBug} />} label="Bugs" />
                 <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon icon={faGithub} />} label="Code" />

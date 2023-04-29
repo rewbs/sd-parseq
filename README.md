@@ -4,6 +4,7 @@
 
   * [What is this?](#what-is-this)
   * [What's new?](#whats-new)
+    + [Version 0.1.53](#version-0153)
     + [Version 0.1.50](#version-0150) 
     + [Version 0.1.45](#version-0145) 
     + [Version 0.1.40](#version-0140)
@@ -62,6 +63,17 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 ## What's new?
 
+### Version 0.1.53
+
+* All functionality from the Audio Analyser has been moved into other parts of the UI. The audio analyser is now deprecated and will be removed in upcoming versions.
+* Load any custom time series for use in your Parseq formula. This means you can import any sequence of numbers to use within Parseq, and assign that sequence directly to a field or manipulate it within a formula. Load time series from CSV or from audio. Post-process the time series with smoothing, range exclusion, clamping and normalisation. 
+* Extract amplitude or estimated pitch from audio data into a time series. Integrated low/high/band-pass filter to pre-process the audio before the extraction.
+* Audio event detection and event-to-keyframe generation is integrated into the Reference Audio section. You can also manually add events (double-click), remove events (shift-click) and drag events. Batches of generated keyframes can have custom labels, so you can distinguish e.g. bassdrum events from snaredrum events, and act upon those frames specifically in bulk edits (see below).
+* Lock keyframes to their position in beats or seconds, so that if you change the FPS or BPM, your keyframes stay anchored in the same desired "position" (not the same frame).
+* New "bulk edit" dialog, so you can quickly modify all frames that match a particular pattern.
+* Add frames dialog improved: you can easily add frames every N frames/beats/seconds.
+* Delete frames dialog improved: you can delete all frames matching a pattern.
+
 ### Version 0.1.50
 
 * Major performance improvements. It should now be possible to work with 1000s of frames without the UI flaking out. For some techniques to improve the UX when working with large documents, see below.
@@ -73,11 +85,7 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 Here's a short video demonstrating some of the above (no sound):
 
-
-
 https://user-images.githubusercontent.com/74455/228861184-755fd83c-3808-478b-974a-dd0736021537.mp4
-
-
 
 
 ### Version 0.1.45

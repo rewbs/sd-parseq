@@ -96,7 +96,7 @@ export const templates: {
                 "seed",
                 "stength",
                 "zoom"
-            ],            
+            ],
             displayedFields: ['seed', 'strength'],
             "keyframes": [
                 {
@@ -173,6 +173,130 @@ export const templates: {
                     "zoom": 0.5
                 }
             ]
+        }
+    },
+
+    "strengthWave": {
+        name: "Strength wave",
+        description: "Oscillate the strength (similar to loopback wave), while evolving the prompt.",
+        template: {
+            "prompts": [
+                {
+                  "name": "Prompt 1",
+                  "positive": "Full shot, young beginner padawan, light sabre, attack pose, dramatic lighting, professional photography, 80mm, high detail, intense",
+                  "negative": "old jedi warrior, watermark, logo, text, signature, copyright, writing, letters,\nlow quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,\ncartoon, computer game, video game, painting, drawing, sketch,\ndisfigured, deformed, ugly",
+                  "allFrames": true,
+                  "from": 0,
+                  "to": 119,
+                  "overlap": {
+                    "inFrames": 0,
+                    "outFrames": 119,
+                    "type": "linear",
+                    "custom": "prompt_weight_1"
+                  }
+                },
+                {
+                  "positive": "Full shot, old jedi warrior, light sabre, attack pose, dramatic lighting, professional photography, 80mm, high detail, intense",
+                  "negative": "young beginner padawan,  watermark, logo, text, signature, copyright, writing, letters,\nlow quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,\ncartoon, computer game, video game, painting, drawing, sketch,\ndisfigured, deformed, ugly",
+                  "from": 0,
+                  "to": 119,
+                  "allFrames": true,
+                  "name": "Prompt 2",
+                  "overlap": {
+                    "inFrames": 119,
+                    "outFrames": 0,
+                    "type": "linear",
+                    "custom": "1-prompt_weight_1"
+                  }
+                }
+              ],
+              "options": {
+                "output_fps": "30",
+              },
+              "managedFields": [
+                "prompt_weight_1",
+                "seed",
+                "strength",
+                "zoom"
+              ],
+              "keyframes": [
+                {
+                  "frame": 0,
+                  "seed": -1,
+                  "seed_i": "",
+                  "strength": 0.8,
+                  "strength_i": "S-(sin(p=2s)^10)*(S-0.2)",
+                  "prompt_weight_1": 0
+                },
+                {
+                  "frame": 119,
+                  "prompt_weight_1": 1
+                }
+              ],
+              "timeSeries": [],
+              "keyframeLock": "frames"
+        }
+    },
+
+    "seedWave": {
+        name: "Seed wave",
+        description: "Increment the seed at oscillating rates while evolving the prompt.",
+        template: {
+
+            "prompts": [
+                {
+                  "name": "Prompt 1",
+                  "positive": "Full shot, young beginner padawan, light sabre, attack pose, dramatic lighting, professional photography, 80mm, high detail, intense",
+                  "negative": "old jedi warrior, watermark, logo, text, signature, copyright, writing, letters,\nlow quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,\ncartoon, computer game, video game, painting, drawing, sketch,\ndisfigured, deformed, ugly",
+                  "allFrames": true,
+                  "from": 0,
+                  "to": 119,
+                  "overlap": {
+                    "inFrames": 0,
+                    "outFrames": 119,
+                    "type": "linear",
+                    "custom": "prompt_weight_1"
+                  }
+                },
+                {
+                  "positive": "Full shot, old jedi warrior, light sabre, attack pose, dramatic lighting, professional photography, 80mm, high detail, intense",
+                  "negative": "young beginner padawan,  watermark, logo, text, signature, copyright, writing, letters,\nlow quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,\ncartoon, computer game, video game, painting, drawing, sketch,\ndisfigured, deformed, ugly",
+                  "from": 0,
+                  "to": 119,
+                  "allFrames": true,
+                  "name": "Prompt 2",
+                  "overlap": {
+                    "inFrames": 119,
+                    "outFrames": 0,
+                    "type": "linear",
+                    "custom": "1-prompt_weight_1"
+                  }
+                }
+              ],
+              "options": {
+                "output_fps": "30",
+              },
+              "managedFields": [
+                "prompt_weight_1",
+                "seed",
+                "strength",
+              ],
+              "keyframes": [
+                {
+                  "frame": 0,
+                  "seed": 0,
+                  "seed_i": "prev_computed_value+(sin(p=2s)^10)/4",
+                  "strength": 0.25,
+                  "strength_i": "S",
+                  "prompt_weight_1": 0,
+                },
+                {
+                  "frame": 119,
+                  "prompt_weight_1": 1,
+                }
+              ],
+              "timeSeries": [],
+              "keyframeLock": "frames"
         }
     }
 

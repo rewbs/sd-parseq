@@ -80,7 +80,8 @@
     "compile-grammar": "npx nearleyc src/parseq-lang/parseq-lang.ne -o src/parseq-lang/parseq-lang.js",
     "start": "npm run compile-grammar && react-scripts start",
     "build": "npm run compile-grammar && react-scripts build",
-    "test": "npm run compile-grammar && react-scripts test --transformIgnorePatterns \"node_modules/(?!react-sparklines-typescript-v2)/\"",
+    "test": "npm run compile-grammar && react-scripts test --testPathIgnorePatterns=src/Deforum --transformIgnorePatterns \"node_modules/(?!react-sparklines-typescript-v2)/\"",
+    "test-local": "npm run compile-grammar && react-scripts test --transformIgnorePatterns \"node_modules/(?!react-sparklines-typescript-v2)/\"",
     "eject": "react-scripts eject",
     "lint": "eslint .",
     "lint:fix": "eslint --fix --ext .js,.jsx ."

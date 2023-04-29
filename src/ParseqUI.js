@@ -243,7 +243,7 @@ const ParseqUI = (props) => {
         gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
         gridRef.current.api.onSortChanged();
         gridRef.current.api.sizeColumnsToFit();
-    }, 0);
+    });
 
       if (displayedFields.length !== prevDisplayedFields?.length
         || displayedFields.some(f => !prevDisplayedFields.includes(f))) {
@@ -510,7 +510,7 @@ const ParseqUI = (props) => {
     setTimeout(() => { 
       gridRef.current.api.onSortChanged();
       gridRef.current.api.sizeColumnsToFit();
-    }, 0);
+    });
     refreshKeyframesFromGrid();
 
   }, [frameToRowId]);
@@ -570,7 +570,7 @@ const ParseqUI = (props) => {
     setTimeout(() => { 
       gridRef.current.api.onSortChanged();
       gridRef.current.api.sizeColumnsToFit();
-    }, 0);
+    });
     refreshKeyframesFromGrid();
 
   }, [keyframes, frameToRowId]);
@@ -578,7 +578,7 @@ const ParseqUI = (props) => {
   const onCellValueChanged = useCallback((event) => {
     setTimeout(() => { 
       gridRef.current.api.onSortChanged();
-    }, 0);
+    });
     refreshKeyframesFromGrid();
   }, [gridRef]);
 
@@ -586,8 +586,13 @@ const ParseqUI = (props) => {
     refreshKeyframesFromGrid();
     setTimeout(() => { 
       gridRef.current.api.onSortChanged();
-      gridRef.current.api.sizeColumnsToFit();
-    }, 0);
+    });    
+  }, [gridRef]);
+
+  const onFirstDataRendered = useCallback(() => {
+    setTimeout(() => { 
+      gridRef?.current?.api && gridRef.current.api.sizeColumnsToFit();
+    });
   }, [gridRef]);
 
   const navigateToNextCell = useCallback((params) => {
@@ -661,7 +666,7 @@ const ParseqUI = (props) => {
     }
     setTimeout(() => {        
       gridRef.current.api.setRowData(keyframes);
-    }, 0);
+    });
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -982,11 +987,14 @@ const ParseqUI = (props) => {
         onCellValueChanged={onCellValueChanged}
         onCellKeyPress={onCellKeyPress}
         onGridReady={onGridReady}
+        onFirstDataRendered={onFirstDataRendered}
         animateRows={true}
         columnHoverHighlight={true}
         enableCellChangeFlash={true}
         tooltipShowDelay={0}
         navigateToNextCell={navigateToNextCell}
+        suppressColumnVirtualisation={process.env?.NODE_ENV === "test"}
+        suppressRowVirtualisation={process.env?.NODE_ENV === "test"}
         onCellKeyDown={(e) => {
           if (e.event.keyCode === 46 || e.event.keyCode === 8) {
             if (rangeSelection.anchor && rangeSelection.tip) {
@@ -1028,7 +1036,7 @@ const ParseqUI = (props) => {
         }}
       />
     </div>
-  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, navigateToNextCell, rangeSelection, showCursors]);
+  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, navigateToNextCell, rangeSelection, showCursors]);
 
 
   const displayedFieldSelector = useMemo(() => displayedFields &&

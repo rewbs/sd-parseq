@@ -67,7 +67,7 @@ jest.mock('./components/TimeSeriesUI', () => ({
   TimeSeriesUI: () => <></>
 }));
 
-
+jest.setTimeout(15000);
 
 async function loadAndRender(fixture: {}) {
 

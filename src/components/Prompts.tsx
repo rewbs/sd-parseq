@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import StyledSwitch from './StyledSwitch';
 
 interface PromptsProps {
-    initialPrompts: ParseqPrompts,
+    prompts: ParseqPrompts,
     lastFrame: number,
     afterBlur: (event: any) => void,
     afterFocus: (event: any) => void,
@@ -52,11 +52,24 @@ export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) :
 
 }
 
-export function Prompts(props: PromptsProps) {
+export function Prompts({prompts, lastFrame, afterBlur, afterChange}: PromptsProps) {
 
-    const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(convertPrompts(props.initialPrompts, props.lastFrame));
+    //const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(convertPrompts(props.initialPrompts, props.lastFrame));
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
+
+    // useEffect(() => {
+    //     if (props.initialPrompts !== prompts) {
+    //         setPrompts(props.initialPrompts);
+    //     }
+    // }, [props.initialPrompts, prompts]);
+
+    // Call the parent's callback on every prompt change
+    // useEffect(() => {
+    //     props.afterChange(prompts);
+    // }, [prompts, props]);    
+
+  
 
     const promptInput = useCallback((index: number, positive: boolean) => {
         return <TextField
@@ -377,8 +390,8 @@ export function Prompts(props: PromptsProps) {
     // TODO: Not sure why this is necessary, but without it, spacePromptsLastFrame doesn't update when new props are passed in.
     // I thought it would always re-evaluate.
     useEffect(() => {
-        setSpacePromptsLastFrame(props.lastFrame);
-    }, [props]);
+        setSpacePromptsLastFrame(lastFrame);
+    }, [lastFrame]);  
 
     const handleCloseSpacePromptsDialog = useCallback((e: any): void => {
         setOpenSpacePromptsDialog(false);        
@@ -435,12 +448,6 @@ export function Prompts(props: PromptsProps) {
             <Button size="small" variant="contained" id="space" onClick={handleCloseSpacePromptsDialog}>↔️ Space</Button>
         </DialogActions>
     </Dialog>
-
-
-    // Call the parent's callback on every prompt change
-    useEffect(() => {
-        props.afterChange(prompts);
-    }, [prompts, props]);
 
     const [timelineWidth, setTimelineWidth] = useState(600);
     const timelineRef = useRef<any>(null);

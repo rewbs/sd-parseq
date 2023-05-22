@@ -6,9 +6,10 @@ import { Stack } from '@mui/system';
 import { Timeline, TimelineEffect, TimelineRow } from '@xzdarcy/react-timeline-editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import StyledSwitch from './StyledSwitch';
+import { AdvancedParseqPrompts, ParseqPrompts, OverlapType, AdvancedParseqPrompt } from "../ParseqUI";
 
 interface PromptsProps {
-    prompts: ParseqPrompts,
+    initialPrompts: AdvancedParseqPrompts,
     lastFrame: number,
     afterBlur: (event: any) => void,
     afterFocus: (event: any) => void,
@@ -52,23 +53,26 @@ export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) :
 
 }
 
-export function Prompts({prompts, lastFrame, afterBlur, afterChange}: PromptsProps) {
+export function Prompts(props: PromptsProps) {
 
-    //const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(convertPrompts(props.initialPrompts, props.lastFrame));
+    const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
 
-    // useEffect(() => {
-    //     if (props.initialPrompts !== prompts) {
-    //         setPrompts(props.initialPrompts);
-    //     }
-    // }, [props.initialPrompts, prompts]);
+    useEffect(() => {
+        if (props.initialPrompts
+            //@ts-ignore
+            && !props.initialPrompts[0].sentinel) {
+            setPrompts(props.initialPrompts);
+        }
+    }, [props.initialPrompts, prompts]);
 
     // Call the parent's callback on every prompt change
-    // useEffect(() => {
-    //     props.afterChange(prompts);
-    // }, [prompts, props]);    
-
+    useEffect(() => {
+        //@ts-ignore
+        prompts[0].sentinel = true;
+        props.afterChange(prompts);
+    }, [prompts, props]);    
   
 
     const promptInput = useCallback((index: number, positive: boolean) => {
@@ -390,8 +394,8 @@ export function Prompts({prompts, lastFrame, afterBlur, afterChange}: PromptsPro
     // TODO: Not sure why this is necessary, but without it, spacePromptsLastFrame doesn't update when new props are passed in.
     // I thought it would always re-evaluate.
     useEffect(() => {
-        setSpacePromptsLastFrame(lastFrame);
-    }, [lastFrame]);  
+        setSpacePromptsLastFrame(props.lastFrame);
+    }, [props.lastFrame]);  
 
     const handleCloseSpacePromptsDialog = useCallback((e: any): void => {
         setOpenSpacePromptsDialog(false);        

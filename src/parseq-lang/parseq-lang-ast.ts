@@ -628,7 +628,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     call: (ctx, args) => {
       const pattern = String(args[0]);
       const lastMatch = ctx.allKeyframes
-        .findLast((kf: { frame: number, info?: string }) => kf.frame > ctx.frame && kf.info?.match(pattern))
+        .find((kf: { frame: number, info?: string }) => kf.frame > ctx.frame && kf.info?.match(pattern))
       return lastMatch ? lastMatch.frame : -1;
     }
   },

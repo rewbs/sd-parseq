@@ -1,11 +1,11 @@
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField, Typography } from '@mui/material';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useLiveQuery } from "dexie-react-hooks";
 import equal from 'fast-deep-equal';
 import TimeAgo from 'javascript-time-ago';
 import debounce from 'lodash.debounce';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import ReactTimeAgo from 'react-time-ago';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +16,8 @@ import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "fir
 import { db } from './db';
 //@ts-ignore
 import { useUserAuth } from "./UserAuthContext";
+import { DocId, VersionId, ParseqDocVersion, ParseqPersistableState, ParseqDoc } from './ParseqUI';
+import {navigateToClone, navigateToTemplateId, navigateToDocId } from './utils/utils';
 
 export const makeDocId = (): DocId => "doc-" + uuidv4() as DocId
 const makeVersionId = (): VersionId => "version-" + uuidv4() as VersionId
@@ -45,29 +47,37 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
         //console.log("Not saving, would be identical to previous version.");
     } else {
         content.meta.docName = document?.name ?? "Untitled";
+        //@ts-ignore
+        delete content.prompts[0].sentinel;
         const version: ParseqDocVersion = {
+            ...content,            
             docId: docId,
-            versionId: makeVersionId(),
             timestamp: Date.now(),
-            ...content
+            versionId: makeVersionId()
         }
         //console.log("Saving...");
-        db.parseqDocs.update(docId, { lastModified: version.timestamp });
-        return db.parseqVersions.add(version, version.versionId);
+        const retval = await db.transaction('rw', db.parseqDocs, db.parseqVersions, async () => {
+            db.parseqDocs.update(docId, { timestamp: version.timestamp, latestVersionId: version.versionId });
+            return db.parseqVersions.add(version, version.versionId);
+        });
+
+        return retval;
     }
 
 }
 
-const saveDoc = debounce((doc: ParseqDoc) => { db.parseqDocs.put(doc, doc.docId); }, 200);
+const saveDocDebounced = debounce((doc: ParseqDoc) => { db.parseqDocs.put(doc, doc.docId); }, 200);
+export const addDoc = (doc: ParseqDoc) => db.parseqDocs.add(doc);
 
 
 type MyProps = {
     docId: DocId;
+    lastSaved: number;
     onLoadContent: (latestVersion?: ParseqDocVersion) => void;
 };
 
 // TODO: separate React UI component from the service class.
-export function DocManagerUI({ docId, onLoadContent }: MyProps) {
+export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
 
     const defaultUploadStatus = <Alert severity='warning'>Once uploaded, your parseq doc will be <strong>publicly visible</strong>.</Alert>;
 
@@ -81,7 +91,10 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
     const [dataToImport, setDataToImport] = useState("");
     const [importError, setImportError] = useState("");
     const [openShareDialog, setOpenShareDialog] = useState(false);
-    const [lastModified, setLastModified] = useState(0);
+    const [docVersions, setDocVersions] = useState([] as ParseqDocVersion[]);
+    const [lastModified, setLastModified] = useState(lastSaved);
+    const [newSource, setNewSource] = useState<'fromCurrent'|'fromTemplate'>('fromTemplate');
+
     const [activeDoc, setActiveDoc] = useState({ docId: docId, name: "loading" } as ParseqDoc);
     const [exportableDoc, setExportableDoc] = useState("");
     const [parseqShareUrl, setParseqShareUrl] = useState("");
@@ -92,63 +105,55 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
 
     // console.log("DocManager Auth", user);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const activeDocSetter = useLiveQuery(
-        async () => {
-            const doc = await db.parseqDocs.get(docId)
-            if (doc) {
-                //console.log(`Doc ${docId} loaded: `, doc);
-                setActiveDoc(doc);
-                return doc;
-            } else {
-                let newDoc = { name: generateDocName(), docId: docId };
-                //console.log(`Creating new ${docId}: `, newDoc);                
-                await db.parseqDocs.put(newDoc, docId);
-                setActiveDoc(newDoc);
-                return newDoc;
-            }
-        }, [docId]);
-    const docVersions = useLiveQuery(
-        async () => {
-            if (activeDoc) {
-                const versions = await db.parseqVersions.where('docId').equals(activeDoc.docId).reverse().sortBy('timestamp');
-                versions && versions.length > 0 && setLastModified(versions[0].timestamp);
-                return versions;
-            } else {
-                return [];
-            }
-        },
-        [activeDoc]
-    );
-    const allDocsWithInfo = useLiveQuery(
-        async () => {
-            const alldocs = await db.parseqDocs.toArray();
-            return Promise.all(alldocs.map(async (doc) => {
-                const versions = await db.parseqVersions.where('docId').equals(doc.docId).reverse().sortBy('timestamp');
-                if (!versions || versions.length === 0) {
-                    return undefined;
+    useEffect(() => {
+            db.parseqDocs.get(docId).then( async (doc) => {
+                if (doc) {
+                    //console.log(`Doc ${docId} loaded: `, doc);
+                    setActiveDoc(doc);
+                    return doc;
+                } else {
+                    let newDoc = { name: generateDocName(), docId: docId, timestamp: Date.now() };
+                    //console.log(`Creating new ${docId}: `, newDoc);                
+                    await db.parseqDocs.put(newDoc, docId);
+                    setActiveDoc(newDoc);
                 }
-                return {
-                    ...doc,
-                    lastModified: versions[0].timestamp,
-                    versionCount: versions.length
-                }
-            }));
+            });
+    }, [docId]);
+
+    useEffect(() => {
+        setLastModified(Math.max(activeDoc?.timestamp, lastSaved));
+    }, [activeDoc, lastSaved]);
+
+    const allDocs : ParseqDoc[]|undefined = useLiveQuery(
+        async () => {
+            return db.parseqDocs.orderBy("timestamp").reverse().toArray();
         }, []
     );
 
-    const handleClickOpenRevertDialog = (): void => {
+    useEffect(() => {
+        setLastModified(activeDoc?.timestamp ?? 0);
+    }, [activeDoc]);
+
+
+    const handleClickOpenRevertDialog = async () =>  {
+        setDocVersions(await db.parseqVersions.where('docId').equals(activeDoc.docId).reverse().sortBy('timestamp'));
+        setSelectedVersionIdForRevert(undefined);
         setOpenRevertDialog(true);
     };
+
     const handleCloseRevertDialog = (e: any): void => {
-        setOpenRevertDialog(false);
         if (e.target.id === "revert" && selectedVersionIdForRevert) {
             loadVersion(activeDoc.docId, selectedVersionIdForRevert).then((version) => {
                 onLoadContent(version);
+            }).finally(() => {
+                setOpenRevertDialog(false);
             });
+        } else if (e.target.id !== "revert") {
+            setOpenRevertDialog(false);
         }
     };
     const revertDialog = <Dialog open={openRevertDialog} onClose={handleCloseRevertDialog}>
-        <DialogTitle>Revert to a previous version</DialogTitle>
+        <DialogTitle>↩️ Revert to a previous version: </DialogTitle>
         <DialogContent>
             <DialogContentText>
                 Revert to the version of <strong>{activeDoc?.name}</strong> saved at...:
@@ -158,21 +163,28 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                 select
                 label="History"
                 value={selectedVersionIdForRevert}
+                defaultValue={undefined}
                 onChange={(e) => setSelectedVersionIdForRevert(e.target.value as VersionId)}
                 SelectProps={{ native: true, style: { fontSize: "0.75em" } }}
             >
+                <option>
+                    Pick from {docVersions?.length} versions...
+                </option>                
                 {
                     docVersions?.map((version: ParseqDocVersion) => (
                         <option key={version.timestamp} value={version.versionId}>
-                            {new Date(version.timestamp).toISOString() + " (" + new TimeAgo("en-US").format(version.timestamp) + ")"}
+                            {new Date(version.timestamp).toLocaleString("en-GB", { dateStyle: 'full', timeStyle: 'medium' }) + " (" + new TimeAgo("en-US").format(version.timestamp) + ")"}
                         </option>
                     ))
                 }
             </TextField>
+            <Typography fontSize={"0.75em"}>
+                Explore versions of this doc in the <a href={`/browser?refDocId=${activeDoc.docId}&activeDoc.docIdselectedDocId=${activeDoc.docId}`} target='_blank' rel="noreferrer">browser</a>.
+            </Typography>
         </DialogContent>
         <DialogActions>
             <Button size="small" id="cancel_revert" onClick={handleCloseRevertDialog}>Cancel</Button>
-            <Button size="small" variant="contained" id="revert" onClick={handleCloseRevertDialog}>Revert</Button>
+            <Button size="small" variant="contained"  disabled={!selectedVersionIdForRevert}  id="revert" onClick={handleCloseRevertDialog}>↩️ Revert</Button>
         </DialogActions>
     </Dialog>
 
@@ -181,52 +193,69 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
         setOpenNewDialog(true);
     };
     const handleCloseNewDialog = (e: any): void => {
-        setOpenNewDialog(false);
-        if (e.target.id === "new" && selectedTemplateId) {
-            navigateToTemplateId(selectedTemplateId);
+        if (e.target.id === "new") {
+            if (newSource === 'fromTemplate' && selectedTemplateId) {
+                navigateToTemplateId(selectedTemplateId);
+            } else if (newSource === 'fromCurrent') {
+                navigateToClone(activeDoc.docId, activeDoc.latestVersionId);
+            }
         }
+        setOpenNewDialog(false);
     }
     const newDialog = <Dialog open={openNewDialog} onClose={handleCloseNewDialog}>
-        <DialogTitle>Start a new document</DialogTitle>
+        <DialogTitle>🆕 Start a new document</DialogTitle>
         <DialogContent>
-            <TextField style={{ marginTop: 20 }}
-                select
-                fullWidth
-                label="Template"
-                value={selectedTemplateId}
-                onChange={(e) => {
-                    setSelectedTemplateId(e.target.value)
-                    setSelectedTemplateDescription(templates[e.target.value].description)
-                }}
-                SelectProps={{ native: true, style: { fontSize: "0.75em" } }}
-            >
-                {
-                    Object.keys(templates).map((id) => (
-                        <option key={id} value={id}>
-                            {templates[id].name + " - " + templates[id].description.substring(0, 75)}
-                        </option>
-                    ))
-                }
-            </TextField>
-            <Typography fontSize={"0.7em"}>
-                {selectedTemplateDescription}
-            </Typography>
+            <RadioGroup
+                value={newSource}
+                onChange={(e) => setNewSource(e.target.value as 'fromTemplate'|'fromCurrent')}
+                >
+                <FormControlLabel value="fromTemplate" control={<Radio />} label="Create new document from template" />
+                <TextField style={{ marginTop: 20 }}
+                    select
+                    fullWidth
+                    label="Template"
+                    size="small"
+                    value={selectedTemplateId}
+                    onChange={(e) => {
+                        setSelectedTemplateId(e.target.value)
+                        setSelectedTemplateDescription(templates[e.target.value].description)
+                    }}
+                    SelectProps={{ native: true, style: { fontSize: "0.75em" } }}
+                    disabled={newSource !== 'fromTemplate'}
+                >             
+                    {
+                        Object.keys(templates).map((id) => (
+                            <option key={id} value={id}>
+                                {templates[id].name + " - " + templates[id].description.substring(0, 75) +  (templates[id].description.length>75?"...":"")}
+                            </option>
+                        ))
+                    }
+                </TextField>
+                {(newSource === 'fromTemplate') && <Typography fontSize={"0.7em"} paddingTop={"0.5em"}>
+                    <strong>Description:</strong> {selectedTemplateDescription}
+                </Typography>}
+                <Divider style={{padding: '5px'}} />
+                <FormControlLabel value="fromCurrent" control={<Radio />} label="Clone current document" />
+                <Typography fontSize={"0.7em"} paddingTop={"0.5em"}>Cloned document will not include version history.</Typography>
+
+            </RadioGroup>
         </DialogContent>
         <DialogActions>
             <Button size="small" id="cancel_new" onClick={handleCloseNewDialog}>Cancel</Button>
-            <Button size="small" variant="contained" id="new" onClick={handleCloseNewDialog}>🆕 New</Button>
+            <Button size="small" variant="contained" id="new" onClick={handleCloseNewDialog}>🆕 New {newSource==='fromTemplate'?'(from template)':'(clone current)'}</Button>
         </DialogActions>
     </Dialog>
 
 
     const handleClickOpenLoadDialog = (): void => {
+        setSelectedDocIdForLoad(undefined);
         setOpenLoadDialog(true);
     };
 
     // TODO break this into separate functions.
     const handleCloseLoadDialog = (e: any): void => {
-        setOpenLoadDialog(false);
         if (e.target.id === "load" && selectedDocIdForLoad) {
+            setOpenLoadDialog(false);
             navigateToDocId(selectedDocIdForLoad);
         } else if (e.target.id === "import" && dataToImport) {
             try {
@@ -246,10 +275,11 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                     delete dataToImport_parsed.versionId;
                     delete dataToImport_parsed.timestamp;
 
-                    const newDoc: ParseqDoc = { name: dataToImport_parsed?.meta?.docName || generateDocName(), docId: makeDocId() };
+                    const newDoc: ParseqDoc = { name: dataToImport_parsed?.meta?.docName || generateDocName(), docId: makeDocId(), timestamp: Date.now(), latestVersionId: undefined };
                     db.parseqDocs.add(newDoc).then(() => {
                         saveVersion(newDoc.docId, dataToImport_parsed).then(() => {
-                            navigateToDocId(newDoc.docId);
+                            setOpenLoadDialog(false);
+                            navigateToDocId(newDoc.docId, [{k:"successMessage", v:"New document created from imported data."}]);
                         });
                     });
 
@@ -260,7 +290,10 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
             } catch (e: any) {
                 setImportError(e.message);
             }
+        } else {
+            setOpenLoadDialog(false);
         }
+
     };
 
     const loadDialog = <Dialog open={openLoadDialog} onClose={handleCloseLoadDialog}>
@@ -279,13 +312,17 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                         style={{ marginTop: 20, width: '100%' }}
                         label="Local storage"
                         value={selectedDocIdForLoad}
+                        defaultValue={undefined}
                         onChange={(e) => setSelectedDocIdForLoad(e.target.value as DocId)}
                         SelectProps={{ native: true, style: { fontSize: "0.75em" } }}
                     >
+                        <option>
+                            Pick from {allDocs?.length} docs...
+                        </option>
                         {
-                            allDocsWithInfo?.sort((a: any, b: any) => {
+                            allDocs?.sort((a: any, b: any) => {
                                 if (a && b) {
-                                    return b.lastModified - a.lastModified;
+                                    return b.timestamp - a.timestamp;
                                 } else if (a) {
                                     return -1;
                                 } else if (b) {
@@ -297,18 +334,16 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                                 .map((d) => (
                                     d ?
                                         <option key={d.docId} value={d.docId}>
-                                            {d.name
-                                                + " (saves: " + d.versionCount.toString()
-                                                + ", last saved: " + ((d.lastModified) ? new TimeAgo("en-US").format(d.lastModified) + ")" : "never)")}
+                                            {d.name + (d.timestamp ? " ("+new TimeAgo("en-US").format(d.timestamp) + ")" : "")}
                                         </option>
                                         : null
                                 ))
                         }
                     </TextField>
-                    <small>Remember the prompt but not the doc name? Try the <a href='/browser' target='_blank'>browser</a>.</small>
+                    <small>Remember the prompt but not the doc name? Try the <a href={'/browser?refDocId='+activeDoc.docId} target='_blank' rel="noreferrer">browser</a>.</small>
                 </Grid>
                 <Grid xs={2} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'end' }}>
-                    <Button size="small" variant="contained" id="load" onClick={handleCloseLoadDialog}>⬇️ Load</Button>
+                    <Button size="small" disabled={!selectedDocIdForLoad} variant="contained" id="load" onClick={handleCloseLoadDialog}>⬇️ Load</Button>
                 </Grid>
                 <Grid xs={12} style={{ marginTop: 20 }}>
                     <hr />
@@ -456,6 +491,7 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
         {shareDialog}
         {newDialog}
         <Grid container>
+            <Stack direction="row" spacing={1}>
             <Grid xs={4}>
                 <TextField
                     id="doc-name"
@@ -465,36 +501,22 @@ export function DocManagerUI({ docId, onLoadContent }: MyProps) {
                     InputProps={{ style: { fontSize: '0.75em' } }}
                     size="small"
                     onChange={(e: any) => {
-                        const newDoc = { docId: docId, name: e.target.value };
-                        saveDoc(newDoc);
+                        const newDoc = { docId: docId, name: e.target.value, timestamp: Date.now() };
+                        saveDocDebounced(newDoc);
                         setActiveDoc(newDoc);
                     }}
                 />
-                <small><small>Last saved: {lastModified ? <ReactTimeAgo date={lastModified} locale="en-US" /> : "never"} </small></small>
+                <small><small>Last saved: {Math.max(lastModified, activeDoc.timestamp)  ? <ReactTimeAgo tooltip={true} date={Math.max(lastModified, activeDoc.timestamp)} locale="en-GB" /> : "never"} </small></small>
             </Grid>
             <Grid xs={8}>
-                <Button size="small" variant="outlined" disabled={!docVersions || docVersions.length < 1} onClick={handleClickOpenRevertDialog}>↩️ Revert...</Button>
-                <Button size="small" variant="outlined" onClick={handleClickOpenLoadDialog} style={{ marginLeft: 10 }}>⬇️ Load...</Button>
-                <Button size="small" variant="outlined" onClick={handleClickOpenShareDialog} style={{ marginLeft: 10 }}>🔗 Share...</Button>
-                <Button size="small" variant="outlined" onClick={handleClickOpenNewDialog} style={{ marginLeft: 10 }}>🆕 New...</Button>
+                <Stack direction="row" spacing={1}>
+                    <Button size="small" variant="outlined" onClick={handleClickOpenRevertDialog}>↩️ Revert...</Button>
+                    <Button size="small" variant="outlined" onClick={handleClickOpenLoadDialog} >⬇️ Load...</Button>
+                    <Button size="small" variant="outlined" onClick={handleClickOpenShareDialog} >🔗 Share...</Button>
+                    <Button size="small" variant="outlined" onClick={handleClickOpenNewDialog} >🆕 New...</Button>
+                </Stack>
             </Grid>
+            </Stack>
         </Grid>
     </div>
-}
-
-function navigateToDocId(selectedDocIdForLoad: DocId) {
-    const qps = new URLSearchParams(window.location.search);
-    qps.delete("docId");
-    qps.set("docId", selectedDocIdForLoad);
-    const newUrl = window.location.href.split("?")[0] + "?" + qps.toString();
-    window.location.assign(newUrl);
-}
-
-function navigateToTemplateId(selectedTemplateId: string) {
-    const qps = new URLSearchParams(window.location.search);
-    qps.delete("templateId");
-    qps.delete("docId");
-    qps.set("templateId", selectedTemplateId);
-    const newUrl = window.location.href.split("?")[0] + "?" + qps.toString();
-    window.location.assign(newUrl);
 }

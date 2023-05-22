@@ -117,9 +117,9 @@ export const templates: {
             "prompts": [
                 {
                     "name": "Prompt 1",
-                    "positive": "A lone (black cat:${prompt_weight_1}) (white duck:${prompt_weight_2}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography:",
+                    "positive": "A lone (black cat:${prompt_weight_1}) (white duck:${prompt_weight_2}) at midday, centered, realistic, photorealism, crisp, natural colors, fine textures, highly detailed, volumetric lighting, studio photography",
                     "negative": "(black cat:${prompt_weight_2}) (white duck:${prompt_weight_1})\nwatermark, logo, text, signature, copyright, writing, letters,\nlow quality, artefacts, cropped, bad art, poorly drawn, lowres, simple, pixelated, grain, noise, blurry,\ncartoon, computer game, video game, painting, drawing, sketch,\ndisfigured, deformed, ugly",
-                    "allFrames": true,
+                    "allFrames": false,
                     "from": 0,
                     "to": 119,
                     "overlap": {

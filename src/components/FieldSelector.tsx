@@ -1,10 +1,10 @@
 import { Box, Button, Grid, List, ListItem, ListItemButton, ListItemIcon, ListItemText, TextField, Tooltip, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMeasure } from "react-use";
 import { defaultFields } from '../data/fields';
-import StyledSwitch from './StyledSwitch';
 import { isDefinedField } from '../utils/utils';
+import StyledSwitch from './StyledSwitch';
 
 type FieldSelectorProps = {
     selectedFields: string[];
@@ -34,16 +34,15 @@ const StyledList = styled(List)<{ component?: React.ElementType }>({
     }
 });
 
-export function FieldSelector(props: FieldSelectorProps) {
+export function FieldSelector({selectedFields, customFields, keyframes, promptVariables, onChange }: FieldSelectorProps) {
     const [filter, setFilter] = useState('');
-    const [selectedFields, setSelectedFields] = useState(props.selectedFields);
     // eslint-disable-next-line
     const [detailedField, setDetailedField] = useState<InterpolatableFieldDefinition>();
     const [listRef, measure] = useMeasure();
 
     const itemWidth = 300;
     const numCols = measure.width ? Math.floor(measure.width / itemWidth) : 4;
-    const numRows = Math.ceil(defaultFields.concat(props.customFields).length / numCols);
+    const numRows = Math.ceil(defaultFields.concat(customFields).length / numCols);
 
     const list = useMemo(() => <StyledList
         //@ts-ignore
@@ -56,15 +55,15 @@ export function FieldSelector(props: FieldSelectorProps) {
             width: '100%',
         }}
     >
-        {defaultFields.concat(props.customFields)
+        {defaultFields.concat(customFields)
             .filter(field => field.name.toLowerCase().includes(filter.toLowerCase())
                 || field.labels.some(label => label.toLowerCase().includes(filter.toLowerCase())))
             .filter(field => field.name !== 'frame').map((field, idx) =>
                 <ListItem dense sx={{ width: 'auto', maxWidth: itemWidth }} key={field.name}>
                     <ListItemButton
                         onClick={(_) => selectedFields.some(f => f === field.name)
-                            ? setSelectedFields(selectedFields.filter(f => f !== field.name))
-                            : setSelectedFields([...selectedFields, field.name])}
+                            ? onChange(selectedFields.filter(f => f !== field.name))
+                            : onChange([...selectedFields, field.name])}
                         sx={{ backgroundColor: selectedFields.some(f => f === field.name) ? 'rgb(245, 245, 255)' : '' }}
                     >
                         <ListItemIcon>
@@ -90,9 +89,9 @@ export function FieldSelector(props: FieldSelectorProps) {
                                 edge="end"
                                 onChange={(e) => {
                                     if (e.target.checked) {
-                                        setSelectedFields([...selectedFields, field.name]);
+                                        onChange([...selectedFields, field.name]);
                                     } else {
-                                        setSelectedFields(selectedFields.filter(f => f !== field.name));
+                                        onChange(selectedFields.filter(f => f !== field.name));
                                     }
                                 }}
                                 checked={selectedFields.includes(field.name)}
@@ -101,7 +100,7 @@ export function FieldSelector(props: FieldSelectorProps) {
                     </ListItemButton>
                 </ListItem>
             )}
-    </StyledList>, [selectedFields, props.customFields, filter, numRows, listRef]);
+    </StyledList>, [selectedFields, customFields, filter, numRows, listRef, onChange]);
 
 
     const details = useMemo(() => detailedField && <Grid container>
@@ -133,10 +132,6 @@ export function FieldSelector(props: FieldSelectorProps) {
         />
     </Grid>, [detailedField]);
 
-    useEffect(() => {
-        props.onChange(selectedFields);
-    }, [selectedFields, props]);
-
     return <>
         <p><small>Select which fields you'd like to manage with Parseq. Unselected fields are controllable with Deforum.</small></p>
 
@@ -157,13 +152,13 @@ export function FieldSelector(props: FieldSelectorProps) {
                 <Box display='flex' justifyContent="right" gap={1} alignItems='center'>
                     <Tooltip arrow placement="top" title="Uncheck all fields.">
                         <Button size="small" variant='outlined'
-                            onClick={(e) => setSelectedFields([])}>
+                            onClick={(e) => onChange([])}>
                             None
                         </Button>
                     </Tooltip>
                     <Tooltip arrow placement="top" title="Check all fields.">
                         <Button size="small" variant='outlined'
-                            onClick={(e) => setSelectedFields(defaultFields.concat(props.customFields).map(f => f.name))}>
+                            onClick={(e) => onChange(defaultFields.concat(customFields).map(f => f.name))}>
                             All
                         </Button>
                     </Tooltip>                        
@@ -174,14 +169,14 @@ export function FieldSelector(props: FieldSelectorProps) {
                     <Tooltip arrow placement="top" title="Check only fields that have values set in the keyframes or are used in prompts.">
                         <Button size="small" variant='outlined'
                             onClick={(e) => {
-                                const usedFields = new Set<string>(props.promptVariables);
-                                props.keyframes.forEach(kf => { 
+                                const usedFields = new Set<string>(promptVariables);
+                                keyframes.forEach(kf => { 
                                     Object.keys(kf).filter(field => field !== "frame" && !field.endsWith("_i")).forEach(field => {
                                         if (isDefinedField(kf[field]) || isDefinedField(kf[field+"_i"])) {
                                             usedFields.add(field);
                                         }
                                 }, [])});
-                                setSelectedFields(Array.from(usedFields));
+                                onChange(Array.from(usedFields));
                             }}>
                         Used
                         </Button>

@@ -26,6 +26,7 @@ import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import { InterpolationType, TimeSeries, TimestampType } from '../parseq-lang/parseq-timeseries';
 import { DECIMATION_THRESHOLD } from '../utils/consts';
 import { frameToSec } from '../utils/maths';
+import {createAudioBufferCopy}  from '../utils/utils';
 import WavesurferAudioWaveform from './WavesurferWaveform';
 import { TabPanel } from './TabPanel';
 import { SmallTextField } from './SmallTextField';
@@ -62,21 +63,6 @@ const defaultData = {
   ],
 };
 
-// TODO move to utils
-function createAudioBufferCopy(audioBuffer: AudioBuffer): AudioBuffer {
-  const context = new AudioContext();
-  const newBuffer = context.createBuffer(
-    audioBuffer.numberOfChannels,
-    audioBuffer.length,
-    audioBuffer.sampleRate
-  );
-  for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-    const channelData = new Float32Array(audioBuffer.length);
-    audioBuffer.copyFromChannel(channelData, i);
-    newBuffer.copyToChannel(channelData, i);
-  }
-  return newBuffer;
-}
 
 export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
 
@@ -463,7 +449,13 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
         <TabPanel index={1} activeTab={tab}>
           <Stack direction="row" alignContent={"center"} justifyContent="space-between">
             <Box>
-              <input type="file" accept=".mp3,.wav,.flac,.flc,.wma,.aac,.ogg,.aiff,.alac" onChange={handleLoadFromAudio} />
+              <input
+                type="file" accept=".mp3,.wav,.flac,.flc,.wma,.aac,.ogg,.aiff,.alac"
+                onClick={
+                  //@ts-ignore
+                  e => e.target.value = null // Ensures onChange fires even if same file is re-selected.
+                }                
+                onChange={handleLoadFromAudio} />
             </Box>
             {audioBuffer && <>
             <Stack direction={"row"} alignItems={"center"} spacing={1}>

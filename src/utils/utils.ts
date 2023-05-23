@@ -133,3 +133,18 @@ export const base64_arraybuffer = async (data : Uint8Array) => {
   */
   return base64url.substring(base64url.indexOf(',')+1)
 }
+
+export function createAudioBufferCopy(audioBuffer: AudioBuffer): AudioBuffer {
+  const context = new AudioContext();
+  const newBuffer = context.createBuffer(
+    audioBuffer.numberOfChannels,
+    audioBuffer.length,
+    audioBuffer.sampleRate
+  );
+  for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+    const channelData = new Float32Array(audioBuffer.length);
+    audioBuffer.copyFromChannel(channelData, i);
+    newBuffer.copyToChannel(channelData, i);
+  }
+  return newBuffer;
+}

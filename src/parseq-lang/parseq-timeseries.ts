@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import _ from 'lodash';
 import { deflate } from 'pako';
 import { base64_arraybuffer } from '../utils/utils';
-
+import { LTTB } from 'downsample';
 export interface TimeSeriesData {
     x: number;
     y: number;
@@ -32,7 +32,8 @@ export class TimeSeries {
     }
 
     static fromPoints(points: { x: number; y: number; }[], timestampType: TimestampType) {
-        return new TimeSeries(_.cloneDeep(points), timestampType);
+        const decimatedPoints = LTTB(points, this.MAX_DATA_POINTS);
+        return new TimeSeries(Array.from(decimatedPoints) as TimeSeriesData[], timestampType);
     }
 
     public static loadSingleSeries(
@@ -40,14 +41,13 @@ export class TimeSeries {
         intervalMs: number
     ): TimeSeries {
 
-        const decimationFactor = Math.ceil(rawData.length / TimeSeries.MAX_DATA_POINTS);
-
-        const data: TimeSeriesData[] = rawData
-            .filter((_, index) => index % decimationFactor === 0)
+        const tempData: TimeSeriesData[] = rawData
             .map((value, idx) => ({
-                x: idx * decimationFactor * intervalMs,
+                x: idx * intervalMs,
                 y: value,
             }));
+
+        const data = Array.from(LTTB(tempData, this.MAX_DATA_POINTS)) as TimeSeriesData[];
 
         return new TimeSeries(data, TimestampType.Millisecond);
     }
@@ -66,10 +66,7 @@ export class TimeSeries {
                     y: Number(row[1]),
                 }));
 
-                const decimationFactor = Math.ceil(tempData.length / TimeSeries.MAX_DATA_POINTS);
-                const data = tempData.filter((point, index) => !isNaN(point.x) && !isNaN(point.y) && index % decimationFactor === 0);
-
-                //const truncatedData = TimeSeries.truncateData(data, maxOffset);
+                const data = Array.from(LTTB(tempData, this.MAX_DATA_POINTS)) as TimeSeriesData[];
 
                 const timeSeries = new TimeSeries(data, timestampType);
                 resolve(timeSeries);

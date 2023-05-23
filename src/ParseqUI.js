@@ -17,7 +17,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
-import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
+import { DocManagerUI, addDoc, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { AudioWaveform } from './components/AudioWaveform';
@@ -32,11 +32,11 @@ import { TimeSeriesUI } from './components/TimeSeriesUI';
 import { UploadButton } from "./components/UploadButton";
 import { Viewport } from './components/Viewport';
 import { templates } from './data/templates';
+import runDbTasks from './dbTasks';
 import { parseqRender } from './parseq-renderer';
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
-import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
+import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, navigateToDocId, queryStringGetOrCreate } from './utils/utils';
 
-import debounce from 'lodash.debounce';
 import prettyBytes from 'pretty-bytes';
 
 import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
@@ -44,7 +44,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
 import { defaultFields } from './data/fields';
-import { xAxisTypeToFrame, frameToXAxisType } from './utils/maths';
+import { frameToXAxisType, xAxisTypeToFrame } from './utils/maths';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
@@ -85,9 +85,11 @@ const ParseqUI = (props) => {
   const [sparklineData, setSparklineData] = useState([]);
   const [graphScales, setGraphScales] = useState();
   const [lastFrame, setLastFrame] = useState(0);
+  const [candidateLastFrame, setCandidateLastFrame] = useState();
   const [xaxisType, setXaxisType] = useState("frames");
   const [keyframeLock, setKeyframeLock] = useState("frames");
   const [gridHeight, setGridHeight] = useState(0);
+  const [lastSaved, setLastSaved] = useState(0);
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -112,6 +114,7 @@ const ParseqUI = (props) => {
     const newLastFrame = Math.max(...keyframes.map(kf => kf.frame));
     if (newLastFrame !== lastFrame) {
       setLastFrame(newLastFrame);
+      setCandidateLastFrame(newLastFrame);
       setGraphScales({ xmin: 0, xmax: newLastFrame });
     }
   }
@@ -124,10 +127,12 @@ const ParseqUI = (props) => {
   runOnceTimeout.current = 0;
   useEffect(() => {
     function runOnce() {
+      runDbTasks();
       const qps = new URLSearchParams(window.location.search);
       const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
       const qsTemplate = qps.get("templateId");
       const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
+      const [qsCopyLocalDoc, qsCopyLocalVersion] = [qps.get("copyLocalDoc"), qps.get("copyLocalVersion")];
       if (qsLegacyContent) {
         // Attempt to load content from querystring 
         // This is to support *LEGACY* parsrq URLs. Doesn't work in all browsers with large data.
@@ -184,6 +189,33 @@ const ParseqUI = (props) => {
           console.error(error);
           setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
         });
+      } else if (qsCopyLocalDoc || qsCopyLocalVersion)  {
+        setInitStatus({ severity: "warning", message: "Cloning local doc..." });
+        loadVersion(qsCopyLocalDoc, qsCopyLocalVersion).then((loadedVersion) => {
+          if (!loadedVersion) {
+            throw new Error(`Couldn't load latest version ${qsCopyLocalVersion} of ${qsCopyLocalDoc}`);
+          }
+          const newDoc = {
+            name: `${loadedVersion.meta.docName} (cloned ${new Date().toLocaleString("en-GB", { dateStyle: 'short', timeStyle: 'short' })})`,
+            docId: makeDocId(),
+            timestamp: Date.now(),
+            latestVersionId: undefined
+          };
+          // Rather than just loading the content into the current view, we're going to create a new doc, save it, and then navigate to it.
+          // We do this so that we can control the document title.
+          addDoc(newDoc).then(() => {
+            saveVersion(newDoc.docId, loadedVersion).then(() => {
+              navigateToDocId(newDoc.docId, [{k:"successMessage", v:`New document cloned from ${loadedVersion.meta.docName}.`}]);
+            }).catch((error) => {
+              throw new Error(`Failed to save cloned document ${qsCopyLocalDoc}: ${error.toString()}`);
+            });
+          }).catch((error) => {
+            throw new Error(`Failed to create cloned document ${qsCopyLocalDoc}: ${error.toString()}`);
+          });
+        }).catch((error) => {
+          console.error(error);
+          setInitStatus({ severity: "error", message: `Failed to clone local document ${qsCopyLocalDoc}: ${error.toString()}` });
+        });         
       } else {
         loadVersion(activeDocId).then((loadedContent) => {
           freshLoadContentToState(loadedContent);
@@ -192,6 +224,13 @@ const ParseqUI = (props) => {
             setEnqueuedRender(true);
           }
         });
+
+        if (qps.get("successMessage")) {
+          setInitStatus({ severity: "success", message: qps.get("successMessage") });
+          const url = new URL(window.location);
+          url.searchParams.delete('successMessage');
+          window.history.replaceState({}, '', url);          
+        }
       }
     }
     if (gridRef.current.api) {
@@ -214,6 +253,7 @@ const ParseqUI = (props) => {
   useDebouncedEffect(() => {
     if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields && timeSeries && keyframeLock) {
       saveVersion(activeDocId, getPersistableState());
+      setLastSaved(Date.now());
     }
   }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock]);
 
@@ -320,20 +360,31 @@ const ParseqUI = (props) => {
 
 
   // TODO: switch to useMemo that updates when elements change?
-  const getPersistableState = useCallback(() => ({
-    "meta": {
-      "generated_by": "sd_parseq",
-      "version": getVersionNumber(),
-      "generated_at": getUTCTimeStamp(),
-    },
-    prompts: prompts,
-    options: options,
-    managedFields: managedFields,
-    displayedFields: displayedFields,
-    keyframes: keyframes,
-    timeSeries: timeSeries,
-    keyframeLock: keyframeLock
-  }), [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
+  const getPersistableState = useCallback(() => {
+  
+    // HACK: remove the sentinel from the prompts before saving. This way,
+    // on load, revert, etc..., the Prompt component knows that the input prompts
+    // are not a looped refresh from its own update.
+    if (prompts && prompts[0]) {
+      delete prompts[0]?.sentinel;
+    }
+
+    return {
+      "meta": {
+        "generated_by": "sd_parseq",
+        "version": getVersionNumber(),
+        "generated_at": getUTCTimeStamp(),
+      },
+      prompts: prompts,
+      options: options,
+      managedFields: managedFields,
+      displayedFields: displayedFields,
+      keyframes: keyframes,
+      timeSeries: timeSeries,
+      keyframeLock: keyframeLock
+    }
+  }
+  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
 
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -356,7 +407,7 @@ const ParseqUI = (props) => {
   const columnDefs = useMemo(() => {
     return [
       {
-        headerName: _.startCase(keyframeLock).slice(0, -1), // Frame / Second / Beat
+        headerName: _.startCase(keyframeLock).slice(0, -1) + (keyframeLock !== 'frames' ? ` (frame)` : ''), // Frame / Second / Beat
         field: 'frame',
         comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
         sort: 'asc',
@@ -369,6 +420,9 @@ const ParseqUI = (props) => {
         },
         valueFormatter: (params) => {
           return frameToXAxisType(params.value, keyframeLock, options?.output_fps, options?.bpm);
+        },
+        cellRenderer: (params) => {
+          return frameToXAxisType(params.value, keyframeLock, options?.output_fps, options?.bpm) + (keyframeLock !== 'frames' ? ` (${params.value})` : '');
         },
         pinned: 'left',
         suppressMovable: true,
@@ -818,6 +872,7 @@ const ParseqUI = (props) => {
   const docManager = useMemo(() => <UserAuthContextProvider>
     <DocManagerUI
       docId={activeDocId}
+      lastSaved={lastSaved}
       onLoadContent={(content) => {
         console.log("Loading version", content);
         if (content) {
@@ -825,7 +880,7 @@ const ParseqUI = (props) => {
         }
       }}
     />
-  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState]);
+  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState, lastSaved]);
 
   // Prompts ------------------------
 
@@ -834,7 +889,8 @@ const ParseqUI = (props) => {
     lastFrame={lastFrame}
     afterFocus={(e) => setTyping(true)}
     afterBlur={(e) => setTyping(false)}
-    afterChange={debounce((p) => setPrompts(p), 200)}
+    afterChange={_.debounce((p) => setPrompts(p), 200)}
+    //afterChange={(p) => setPrompts(p)}
   /> : <></>, [prompts, lastFrame]);
 
   // Managed field selection ------------------------
@@ -842,7 +898,7 @@ const ParseqUI = (props) => {
   // Figure out which variables are used in the prompts.
   const promptVariables = useMemo(() => defaultFields.map(f => f.name).reduce((acc, field) => {
     const pattern = RegExp(`\\$\\{.*?${field}.*?\\}`);
-    if (prompts?.some(prompt => prompt.positive.match(pattern) || prompt.negative.match(pattern))) {
+    if (prompts?.some(prompt => prompt.positive?.match(pattern) || prompt.negative?.match(pattern))) {
       acc.add(field);
     }
     return acc;
@@ -895,7 +951,7 @@ const ParseqUI = (props) => {
       <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
         <TextField
           id={"options_output_fps"}
-          label={"Output FPS"}
+          label={"FPS"}
           value={options['output_fps']}
           onChange={handleChangeOption}
           onFocus={(e) => setTyping(true)}
@@ -905,6 +961,45 @@ const ParseqUI = (props) => {
           size="small"
           variant="outlined" />
       </Tooltip2>
+      <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
+        <TextField
+          label={"Final frame"}
+          value={candidateLastFrame}
+          onChange={(e)=>setCandidateLastFrame(e.target.value)}
+          onFocus={(e) => setTyping(true)}
+          onKeyDown={(e) => {
+            console.log(`Pressed keyCode ${e.key}`);
+            if (e.key === 'Enter') {
+              setTimeout(() => e.target.blur());
+              e.preventDefault();
+            } else if (e.key === 'Escape') {
+              setTimeout(() => e.target.blur());
+              setCandidateLastFrame(lastFrame)
+              e.preventDefault();
+            }
+          }}          
+          onBlur={(e) => {
+            setTyping(false);
+            let candidate = parseInt(e.target.value);
+            const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
+            if (!candidate || candidate < 0 || isNaN(candidate)) {
+              setCandidateLastFrame(lastFrame);
+            } else {
+              if (candidate <= penultimate) {
+                candidate = penultimate + 1;
+                setCandidateLastFrame(candidate);
+              }
+              const local_keyframes = [...keyframes];
+              local_keyframes[local_keyframes.length - 1].frame = candidate;
+              setKeyframes(local_keyframes);
+              setTimeout(() => refreshGridFromKeyframes(local_keyframes));
+            }
+          }}
+          InputLabelProps={{ shrink: true, }}
+          InputProps={{ style: { fontSize: '0.75em' } }}
+          size="small"
+          variant="outlined" />
+      </Tooltip2>      
       <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
         <Typography fontSize={"0.75em"}>Lock&nbsp;keyframe&nbsp;position&nbsp;to:</Typography>
         <ToggleButtonGroup size="small"
@@ -973,7 +1068,7 @@ const ParseqUI = (props) => {
           </ToggleButtonGroup>          
       </Stack>
     </Stack>
-  </span>, [options, gridHeight, handleChangeOption, keyframeLock])
+  </span>, [options, gridHeight, handleChangeOption, keyframeLock, candidateLastFrame, keyframes, lastFrame])
 
 
   // Grid ------------------------
@@ -1377,7 +1472,7 @@ const ParseqUI = (props) => {
   const renderButton = useMemo(() =>
     <Stack>
       <Button data-testid="render-button" size="small" disabled={enqueuedRender} variant="contained" onClick={() => setEnqueuedRender(true)}>{needsRender ? '📈 Render' : '📉 Re-render'}</Button>
-      {lastRenderTime ? <Typography fontSize='0.7em' >Last rendered: <ReactTimeAgo date={lastRenderTime} locale="en-US" />.</Typography> : <></>}
+      {lastRenderTime ? <Typography fontSize='0.7em' >Last rendered: <ReactTimeAgo tooltip={true} date={lastRenderTime} locale="en-GB" />.</Typography> : <></>}
     </Stack>
     , [needsRender, enqueuedRender, lastRenderTime]);
 

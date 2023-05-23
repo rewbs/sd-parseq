@@ -1,6 +1,6 @@
 import packageJson from '../../package.json';
 import { defaultFields } from '../data/fields';
-import type { ParseqKeyframe } from '../ParseqUI.d.ts';
+import type { ParseqKeyframe, DocId, VersionId } from '../ParseqUI.d.ts';
 
 export const fieldNametoRGBa = (str: string, alpha: number): string => {
   const rgb = defaultFields.find((field) => field.name === str)?.color || [0, 0, 0];
@@ -65,4 +65,86 @@ export const findMatchingKeyframes = (keyframes: ParseqKeyframe[], filter: strin
 
 export function unique(value : number, index : number, array : number[]) {
   return array.indexOf(value) === index;
+}
+
+export function smartTrim(string : string, maxLength : number) {
+  if (!string) return string;
+  if (maxLength < 1) return string;
+  if (string.length <= maxLength) return string;
+  if (maxLength === 1) return string.substring(0,1) + '...';
+
+  var midpoint = Math.ceil(string.length / 2);
+  var toremove = string.length - maxLength;
+  var lstrip = Math.ceil(toremove/2);
+  var rstrip = toremove - lstrip;
+  return string.substring(0, midpoint-lstrip) + '...' 
+  + string.substring(midpoint+rstrip);
+}   
+
+
+export function navigateToDocId(selectedDocIdForLoad: DocId, extraParams?:{k:string,v:string}[]) {
+  const qps = new URLSearchParams(window.location.search);
+  qps.delete("docId");
+  qps.delete("copyLocalDoc");
+  qps.delete("copyLocalVersion");
+  qps.delete("templateId");
+  qps.set("docId", selectedDocIdForLoad);
+  if (extraParams) {
+    for (const {k,v} of extraParams) {
+      qps.set(k,v);
+    }
+  }
+  const newUrl = window.location.href.split("?")[0] + "?" + qps.toString();
+  window.location.assign(newUrl);
+}
+
+export function navigateToClone(docToClone: DocId, versionToClone: VersionId | undefined) {
+  const qps = new URLSearchParams(window.location.search);
+  qps.delete("docId");
+  qps.set("copyLocalDoc", docToClone);
+  if (versionToClone) {
+    qps.set("copyLocalVersion", versionToClone);
+  }
+  const newUrl = "/?" + qps.toString();
+  window.location.assign(newUrl);
+}
+
+export function navigateToTemplateId(selectedTemplateId: string) {
+  const qps = new URLSearchParams(window.location.search);
+  qps.delete("templateId");
+  qps.delete("docId");
+  qps.set("templateId", selectedTemplateId);
+  const newUrl = window.location.href.split("?")[0] + "?" + qps.toString();
+  window.location.assign(newUrl);
+}
+
+export const base64_arraybuffer = async (data : Uint8Array) => {
+  // Use a FileReader to generate a base64 data URI
+  const base64url : string = await new Promise((r) => {
+      const reader = new FileReader();
+      reader.onload = () => r(reader.result as string);
+      reader.readAsDataURL(new Blob([data]));
+  })
+
+  /*
+  The result looks like 
+  "data:application/octet-stream;base64,<your base64 data>", 
+  so we split off the beginning:
+  */
+  return base64url.substring(base64url.indexOf(',')+1)
+}
+
+export function createAudioBufferCopy(audioBuffer: AudioBuffer): AudioBuffer {
+  const context = new AudioContext();
+  const newBuffer = context.createBuffer(
+    audioBuffer.numberOfChannels,
+    audioBuffer.length,
+    audioBuffer.sampleRate
+  );
+  for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+    const channelData = new Float32Array(audioBuffer.length);
+    audioBuffer.copyFromChannel(channelData, i);
+    newBuffer.copyToChannel(channelData, i);
+  }
+  return newBuffer;
 }

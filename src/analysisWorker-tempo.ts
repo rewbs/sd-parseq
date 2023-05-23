@@ -1,5 +1,3 @@
-// TODO - convert to typescript
-
 import aubio, { Tempo } from "aubiojs";
 
 const run = (tempo: Tempo, bufferToAnalyse: Float32Array, hopSize: number) => {

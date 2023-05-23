@@ -11,6 +11,10 @@ export class ParseqDexie extends Dexie {
             parseqVersions: 'versionId, docId, timestamp',
             parseqDocs: 'docId, name'
         });
+        this.version(2).stores({
+            parseqVersions: 'versionId, docId, timestamp',
+            parseqDocs: 'docId, name, timestamp, latestVersionId'
+        });        
     }
 }
 export const db = new ParseqDexie();

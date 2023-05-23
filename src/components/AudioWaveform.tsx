@@ -10,8 +10,10 @@ import MarkersPlugin, { Marker } from "wavesurfer.js/src/plugin/markers";
 //@ts-ignore
 import debounce from 'lodash.debounce';
 import { frameToBeat, frameToSec } from "../utils/maths";
+import { createAudioBufferCopy } from "../utils/utils";
 import { SmallTextField } from "./SmallTextField";
 import { TabPanel } from "./TabPanel";
+import { BiquadFilter } from "./BiquadFilter";
 
 type AudioWaveformProps = {
     fps: number,
@@ -46,6 +48,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const [tab, setTab] = useState(1);
 
     const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
+    const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
     const [isAnalysing, setIsAnalysing] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -300,9 +303,9 @@ export function AudioWaveform(props: AudioWaveformProps) {
             const arrayBuffer = await selectedFile.arrayBuffer();
             const audioContext = new AudioContext();
             const newAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            //setAudioBuffer(newAudioBuffer);
             setTrackLength(newAudioBuffer.duration);
             setAudioBuffer(newAudioBuffer);
+            setUnfilteredAudioBuffer(createAudioBufferCopy(newAudioBuffer));
 
             // Load audio file into wavesurfer visualisation
             wavesurferRef.current?.loadDecodedBuffer(newAudioBuffer);
@@ -581,10 +584,30 @@ export function AudioWaveform(props: AudioWaveformProps) {
         <Grid container>
             <Grid xs={12}>
                 <Box padding='5px'>
-                    <strong>File:</strong><input type="file" accept=".mp3,.wav,.flac,.flc,.wma,.aac,.ogg,.aiff,.alac" ref={fileInput} onChange={loadFile} />
-                    <Typography fontSize="0.75em">
-                        Note: audio data is not saved with Parseq documents. You will need to reload your reference audio file when you reload your Parseq document.
-                    </Typography>
+                <Stack direction="row" alignContent={"center"} justifyContent="space-between">
+                    <Box>
+                        <strong>File:</strong><input
+                                  onClick={
+                                    //@ts-ignore
+                                    e => e.target.value = null // Ensures onChange fires even if same file is re-selected.
+                                  }
+                                  type="file" accept=".mp3,.wav,.flac,.flc,.wma,.aac,.ogg,.aiff,.alac"
+                                  ref={fileInput}
+                                  onChange={loadFile} />
+                    </Box>
+                    { unfilteredAudioBuffer &&
+                        <BiquadFilter
+                            unfilteredAudioBuffer={unfilteredAudioBuffer}
+                            updateAudioBuffer={(updatedAudio) => {
+                                setAudioBuffer(updatedAudio);
+                                wavesurferRef.current?.loadDecodedBuffer(updatedAudio);
+                            }}
+                        />
+                    }
+                </Stack>
+                <Typography fontSize="0.75em">
+                    Note: audio data is not saved with Parseq documents. You will need to reload your reference audio file when you reload your Parseq document.
+                </Typography>
                 </Box>
             </Grid>
 

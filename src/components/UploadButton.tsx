@@ -78,6 +78,6 @@ export function UploadButton({ docId, renderedJson, autoUpload, onNewUploadStatu
 
     return <Stack>
         <Button size="small" variant="contained" disabled={!user} onClick={() => upload()}> {user ? "⬆️ Upload output" : "⬆️ Sign in to upload"}</Button>
-        {lastUploadTime ? <Typography fontSize='0.7em' >Last uploaded: <ReactTimeAgo date={lastUploadTime} locale="en-US" />.</Typography> : <></>}
+        {lastUploadTime ? <Typography fontSize='0.7em' >Last uploaded: <ReactTimeAgo tooltip={true} date={lastUploadTime} locale="en-GB" />.</Typography> : <></>}
     </Stack>;
 }

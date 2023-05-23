@@ -229,6 +229,7 @@ export class Editable extends React.Component<{
             normalised: true,
             spanGaps: true,
             aspectRatio: 4,
+            responsive: true,
             animation: {
                 duration: 175,
                 delay: 0
@@ -262,7 +263,6 @@ export class Editable extends React.Component<{
                     }
                 },
             },
-            responsive: true,
             onClick: (event: any, elements: any, chart: any) => {
                 if (!capturedThis.isDecimating() && elements[0] && event.native.shiftKey) {
                     const datasetIndex = elements[0].datasetIndex;

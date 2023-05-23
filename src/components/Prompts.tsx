@@ -6,9 +6,10 @@ import { Stack } from '@mui/system';
 import { Timeline, TimelineEffect, TimelineRow } from '@xzdarcy/react-timeline-editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import StyledSwitch from './StyledSwitch';
+import { AdvancedParseqPrompts, ParseqPrompts, OverlapType, AdvancedParseqPrompt } from "../ParseqUI";
 
 interface PromptsProps {
-    initialPrompts: ParseqPrompts,
+    initialPrompts: AdvancedParseqPrompts,
     lastFrame: number,
     afterBlur: (event: any) => void,
     afterFocus: (event: any) => void,
@@ -54,9 +55,33 @@ export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) :
 
 export function Prompts(props: PromptsProps) {
 
-    const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(convertPrompts(props.initialPrompts, props.lastFrame));
+    const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
+
+    useEffect(() => {
+        if (props.initialPrompts
+            // HACK: This is a hack to prevent infinite loops: if the sentinel is set,
+            // we know that the prompts were set in this child component so we can ignore the update when
+            // they come back through. If the sentinel is not set, the new prompts may be from a document reversion
+            // or other change from outside this component.
+            // The sentinel must be stripped before any kind of persistence.
+            //@ts-ignore
+            && !props.initialPrompts[0].sentinel) {
+            setPrompts(props.initialPrompts);
+        }
+    }, [props.initialPrompts]);
+
+    // Call the parent's callback on every prompt change
+    useEffect(() => {
+        // HACK: This is a hack to prevent infinite loops: if the sentinel is set,
+        // we know that the prompts were set in this child component so we can ignore the update when
+        // they come back through.
+        //@ts-ignore HACK
+        prompts[0].sentinel = true; 
+        props.afterChange(prompts);
+    }, [prompts, props]);    
+  
 
     const promptInput = useCallback((index: number, positive: boolean) => {
         return <TextField
@@ -378,7 +403,7 @@ export function Prompts(props: PromptsProps) {
     // I thought it would always re-evaluate.
     useEffect(() => {
         setSpacePromptsLastFrame(props.lastFrame);
-    }, [props]);
+    }, [props.lastFrame]);  
 
     const handleCloseSpacePromptsDialog = useCallback((e: any): void => {
         setOpenSpacePromptsDialog(false);        
@@ -435,12 +460,6 @@ export function Prompts(props: PromptsProps) {
             <Button size="small" variant="contained" id="space" onClick={handleCloseSpacePromptsDialog}>↔️ Space</Button>
         </DialogActions>
     </Dialog>
-
-
-    // Call the parent's callback on every prompt change
-    useEffect(() => {
-        props.afterChange(prompts);
-    }, [prompts, props]);
 
     const [timelineWidth, setTimelineWidth] = useState(600);
     const timelineRef = useRef<any>(null);

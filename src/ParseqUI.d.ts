@@ -19,6 +19,8 @@ type VersionId = string & { _versionIdBrand: undefined };
 type ParseqDoc = {
     docId: DocID,
     name: string,
+    timestamp: number,
+    latestVersionId?: VersionId,
 }
 
 type ParseqPersistableState = {

@@ -3,7 +3,7 @@ import { linear, polynomial } from 'everpolate';
 //@ts-ignore
 import Spline from 'cubic-spline';
 import BezierEasing from "bezier-easing";
-import { toFixedNumber, toFixedCeil, toFixedFloor, frameToBeat, frameToSec } from '../utils/maths';
+import { toFixedNumber, toFixedCeil, toFixedFloor, frameToBeat, frameToSec, secToFrame, beatToFrame } from '../utils/maths';
 import seedrandom from 'seedrandom';
 import { InterpolationType, TimeSeries } from './parseq-timeseries';
 
@@ -184,6 +184,22 @@ export class VariableReferenceAst extends ParseqAstNode {
         return getActiveKeyframeValue(ctx);
       case 'next_keyframe_value':
         return getNextKeyframeValue(ctx);
+      case 'PI':
+        return Math.PI
+      case 'E':
+        return Math.E;
+      case 'SQRT2':
+        return Math.SQRT2;
+      case 'SQRT1_2':
+        return Math.SQRT1_2;
+      case 'LN2':
+        return Math.LN2;
+      case 'LN10':
+        return Math.LN10;
+      case 'LOG2E':
+        return Math.LOG2E;
+      case 'LOG10E':
+        return Math.LOG10E;
       default:
         if (this.variableName && ctx.variableMap.has(this.variableName)) {
           return ctx.variableMap.get(this.variableName) ?? 0;
@@ -517,6 +533,164 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     }
   },  
 
+  //////
+  // Raw maths
+  /////
+  "_sin": {
+    description: "Equivalent to Math.sin(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.sin(Number(args[0]))
+  },
+  "_cos": {
+    description: "Equivalent to Math.cos(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.cos(Number(args[0]))
+  },
+  "_tan": {
+    description: "Equivalent to Math.tan(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.tan(Number(args[0]))
+  },
+  "_asin": {
+    description: "Equivalent to Math.asin(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.asin(Number(args[0]))
+  },
+  "_acos": {
+    description: "Equivalent to Math.acos(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.acos(Number(args[0]))
+  },
+  "_atan": {
+    description: "Equivalent to Math.atan(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.atan(Number(args[0]))
+  },
+  "_log": {
+    description: "Equivalent to Math.log(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.log(Number(args[0]))
+  },
+  "_exp": {
+    description: "Equivalent to Math.exp(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.exp(Number(args[0]))
+  },
+  "_sqrt": {
+    description: "Equivalent to Math.sqrt(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.sqrt(Number(args[0]))
+  },
+  "_cbrt": {
+    description: "Equivalent to Math.cbrt(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.cbrt(Number(args[0]))
+  },
+  "_clz32": {
+    description: "Equivalent to Math.clz32(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.clz32(Number(args[0]))
+  },
+  "_expm1": {
+    description: "Equivalent to Math.expm1(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.expm1(Number(args[0]))
+  },
+  "_log1p": {
+    description: "Equivalent to Math.log1p(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.log1p(Number(args[0]))
+  },
+  "_log10": {
+    description: "Equivalent to Math.log10(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.log10(Number(args[0]))
+  },
+  "_log2": {
+    description: "Equivalent to Math.log2(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.log2(Number(args[0]))
+  },
+  "_sign": {
+    description: "Equivalent to Math.sign(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.sign(Number(args[0]))
+  },
+  "_sinh": {
+    description: "Equivalent to Math.sinh(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.sinh(Number(args[0]))
+  },
+  "_cosh": {
+    description: "Equivalent to Math.cosh(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.cosh(Number(args[0]))
+  },
+  "_tanh": {
+    description: "Equivalent to Math.tanh(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.tanh(Number(args[0]))
+  },
+  "_asinh": {
+    description: "Equivalent to Math.asinh(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.asinh(Number(args[0]))
+  },
+  "_acosh": {
+    description: "Equivalent to Math.acosh(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.acosh(Number(args[0]))
+  },
+  "_atanh": {
+    description: "Equivalent to Math.atanh(v)",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => Math.atanh(Number(args[0]))
+  },
+
   /////////////////////
   // Transitions
   /////////////////////
@@ -580,6 +754,39 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
   },
 
   /////////////////////
+  // conversion
+  /////////////////////  
+  "f2b": {
+    description: "Converts a frame number to a beat position or number of beats.",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => frameToBeat(Number(args[0]), ctx.FPS, ctx.BPM)
+  },
+  "f2s": {
+    description: "Converts a frame number to a second position or number of seconds.",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => frameToSec(Number(args[0]), ctx.FPS)
+  },
+  "b2f": {
+    description: "Converts a number of beats to frames",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => beatToFrame(Number(args[0]), ctx.FPS, ctx.BPM)
+  },
+  "s2f": {
+    description: "Converts a frame number to a second position or number of second.",
+    argDefs: [
+      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
+    ],
+    call: (ctx, args) => secToFrame(Number(args[0]), ctx.FPS)
+  },
+
+
+  /////////////////////
   // Info matching
   /////////////////////
   "info_match": {
@@ -592,8 +799,6 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       const activeKeyFrame = ctx.allKeyframes
         .findLast((kf: { frame: number, info?: string }) => kf.frame <= ctx.frame);
       return activeKeyFrame ? activeKeyFrame.info?.match(pattern) ? 1 : 0 : 0;
-
-
     }
   },
   "info_match_count": {
@@ -628,7 +833,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     call: (ctx, args) => {
       const pattern = String(args[0]);
       const lastMatch = ctx.allKeyframes
-        .findLast((kf: { frame: number, info?: string }) => kf.frame > ctx.frame && kf.info?.match(pattern))
+        .find((kf: { frame: number, info?: string }) => kf.frame > ctx.frame && kf.info?.match(pattern))
       return lastMatch ? lastMatch.frame : -1;
     }
   },

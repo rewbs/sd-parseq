@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
-import * as _ from 'lodash';
-
+import _ from 'lodash';
+import { deflate } from 'pako';
+import { base64_arraybuffer } from '../utils/utils';
 
 export interface TimeSeriesData {
     x: number;
@@ -113,6 +114,31 @@ export class TimeSeries {
         }));
 
         return new TimeSeries(normalizedData, this.timestampType);
+    }
+
+    // TODO: store timeseries as compressed binary data
+    public compress() {
+        console.time("binary");
+        const xs = Float32Array.from(this.data.map(({ x }) => x)).buffer;
+        const ys = Float32Array.from(this.data.map(({ y }) => y)).buffer;
+        console.timeEnd("binary");
+
+        console.time("b64-binary");
+        Promise.all([base64_arraybuffer(new Uint8Array(xs)), base64_arraybuffer(new Uint8Array(ys))]).then((compressedData) => {
+            console.timeEnd("b64-binary");
+            console.log("Binary: ", JSON.stringify(this.data).length, JSON.stringify(compressedData).length);
+        })
+
+        console.time("compress");
+        const compressedXs = deflate(xs);
+        const compressedYs = deflate(ys);
+        console.timeEnd("compress");
+
+        console.time("b64-compress");
+        Promise.all([base64_arraybuffer(compressedXs), base64_arraybuffer(compressedYs)]).then((compressedData) => {
+            console.timeEnd("b64-compress");
+            console.log("Compression: ", JSON.stringify(this.data).length, JSON.stringify(compressedData).length);
+        }) 
     }
 
     public limit(minValue: number, maxValue: number): TimeSeries {

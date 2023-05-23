@@ -8,12 +8,12 @@ export class ParseqDexie extends Dexie {
     constructor() {
         super('parseqDB');
         this.version(1).stores({
-            parseqVersions: 'versionId, docId, timestamp, latestVersionId',
+            parseqVersions: 'versionId, docId, timestamp',
             parseqDocs: 'docId, name'
         });
         this.version(2).stores({
             parseqVersions: 'versionId, docId, timestamp',
-            parseqDocs: 'docId, name, timestamp'
+            parseqDocs: 'docId, name, timestamp, latestVersionId'
         });        
     }
 }

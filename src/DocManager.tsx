@@ -48,7 +48,6 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
     } else {
         content.meta.docName = document?.name ?? "Untitled";
         //@ts-ignore
-        delete content.prompts[0].sentinel;
         const version: ParseqDocVersion = {
             ...content,            
             docId: docId,

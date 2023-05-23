@@ -85,6 +85,7 @@ const ParseqUI = (props) => {
   const [sparklineData, setSparklineData] = useState([]);
   const [graphScales, setGraphScales] = useState();
   const [lastFrame, setLastFrame] = useState(0);
+  const [candidateLastFrame, setCandidateLastFrame] = useState();
   const [xaxisType, setXaxisType] = useState("frames");
   const [keyframeLock, setKeyframeLock] = useState("frames");
   const [gridHeight, setGridHeight] = useState(0);
@@ -113,6 +114,7 @@ const ParseqUI = (props) => {
     const newLastFrame = Math.max(...keyframes.map(kf => kf.frame));
     if (newLastFrame !== lastFrame) {
       setLastFrame(newLastFrame);
+      setCandidateLastFrame(newLastFrame);
       setGraphScales({ xmin: 0, xmax: newLastFrame });
     }
   }
@@ -358,20 +360,31 @@ const ParseqUI = (props) => {
 
 
   // TODO: switch to useMemo that updates when elements change?
-  const getPersistableState = useCallback(() => ({
-    "meta": {
-      "generated_by": "sd_parseq",
-      "version": getVersionNumber(),
-      "generated_at": getUTCTimeStamp(),
-    },
-    prompts: prompts,
-    options: options,
-    managedFields: managedFields,
-    displayedFields: displayedFields,
-    keyframes: keyframes,
-    timeSeries: timeSeries,
-    keyframeLock: keyframeLock
-  }), [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
+  const getPersistableState = useCallback(() => {
+  
+    // HACK: remove the sentinel from the prompts before saving. This way,
+    // on load, revert, etc..., the Prompt component knows that the input prompts
+    // are not a looped refresh from its own update.
+    if (prompts && prompts[0]) {
+      delete prompts[0]?.sentinel;
+    }
+
+    return {
+      "meta": {
+        "generated_by": "sd_parseq",
+        "version": getVersionNumber(),
+        "generated_at": getUTCTimeStamp(),
+      },
+      prompts: prompts,
+      options: options,
+      managedFields: managedFields,
+      displayedFields: displayedFields,
+      keyframes: keyframes,
+      timeSeries: timeSeries,
+      keyframeLock: keyframeLock
+    }
+  }
+  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
 
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -948,6 +961,45 @@ const ParseqUI = (props) => {
           size="small"
           variant="outlined" />
       </Tooltip2>
+      <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
+        <TextField
+          label={"Final frame"}
+          value={candidateLastFrame}
+          onChange={(e)=>setCandidateLastFrame(e.target.value)}
+          onFocus={(e) => setTyping(true)}
+          onKeyDown={(e) => {
+            console.log(`Pressed keyCode ${e.key}`);
+            if (e.key === 'Enter') {
+              setTimeout(() => e.target.blur());
+              e.preventDefault();
+            } else if (e.key === 'Escape') {
+              setTimeout(() => e.target.blur());
+              setCandidateLastFrame(lastFrame)
+              e.preventDefault();
+            }
+          }}          
+          onBlur={(e) => {
+            setTyping(false);
+            let candidate = parseInt(e.target.value);
+            const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
+            if (!candidate || candidate < 0 || isNaN(candidate)) {
+              setCandidateLastFrame(lastFrame);
+            } else {
+              if (candidate <= penultimate) {
+                candidate = penultimate + 1;
+                setCandidateLastFrame(candidate);
+              }
+              const local_keyframes = [...keyframes];
+              local_keyframes[local_keyframes.length - 1].frame = candidate;
+              setKeyframes(local_keyframes);
+              setTimeout(() => refreshGridFromKeyframes(local_keyframes));
+            }
+          }}
+          InputLabelProps={{ shrink: true, }}
+          InputProps={{ style: { fontSize: '0.75em' } }}
+          size="small"
+          variant="outlined" />
+      </Tooltip2>      
       <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
         <Typography fontSize={"0.75em"}>Lock&nbsp;keyframe&nbsp;position&nbsp;to:</Typography>
         <ToggleButtonGroup size="small"
@@ -1016,7 +1068,7 @@ const ParseqUI = (props) => {
           </ToggleButtonGroup>          
       </Stack>
     </Stack>
-  </span>, [options, gridHeight, handleChangeOption, keyframeLock])
+  </span>, [options, gridHeight, handleChangeOption, keyframeLock, candidateLastFrame, keyframes, lastFrame])
 
 
   // Grid ------------------------

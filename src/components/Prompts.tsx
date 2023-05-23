@@ -61,16 +61,24 @@ export function Prompts(props: PromptsProps) {
 
     useEffect(() => {
         if (props.initialPrompts
+            // HACK: This is a hack to prevent infinite loops: if the sentinel is set,
+            // we know that the prompts were set in this child component so we can ignore the update when
+            // they come back through. If the sentinel is not set, the new prompts may be from a document reversion
+            // or other change from outside this component.
+            // The sentinel must be stripped before any kind of persistence.
             //@ts-ignore
             && !props.initialPrompts[0].sentinel) {
             setPrompts(props.initialPrompts);
         }
-    }, [props.initialPrompts, prompts]);
+    }, [props.initialPrompts]);
 
     // Call the parent's callback on every prompt change
     useEffect(() => {
-        //@ts-ignore
-        prompts[0].sentinel = true;
+        // HACK: This is a hack to prevent infinite loops: if the sentinel is set,
+        // we know that the prompts were set in this child component so we can ignore the update when
+        // they come back through.
+        //@ts-ignore HACK
+        prompts[0].sentinel = true; 
         props.afterChange(prompts);
     }, [prompts, props]);    
   

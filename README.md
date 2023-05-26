@@ -1,49 +1,30 @@
 ![example workflow](https://github.com/rewbs/sd-parseq/actions/workflows/firebase-hosting-merge.yml/badge.svg)
 
 # Stable Diffusion Parseq
+# Table of contents
 
-  * [What is this?](#what-is-this)
-  * [What's new?](#whats-new)
-    + [Version 0.1.53](#version-0153)
-    + [Version 0.1.50](#version-0150) 
-    + [Version 0.1.45](#version-0145) 
-    + [Version 0.1.40](#version-0140)
-    + [Version 0.1.22](#version-0122)
-    + [Version 0.1.14](#version-0114)
-    + [Version 0.1.0](#version-010)
-  * [Installation](#installation)
-  * [Getting started](#getting-started)  
-  * [Examples](#examples)
-  * [Usage](#usage)
-    + [Step 1: Create your parameter manifest](#step-1-create-your-parameter-manifest)
-    + [Step 2: Generate the video](#step-2-generate-the-video)
-  * [Features](#features)
-    + [Keyframed parameter values with scriptable interpolation](#keyframed-parameter-values-with-scriptable-interpolation)
-    + [Beat and time sync'ing](#beat-and-time-syncing)
-    + [Interpolation modifiers](#interpolation-modifiers)
-      - [Values](#values)
-      - [Functions](#functions)
-      - [Units](#units)
-      - [Other operators and expressions](#other-operators-and-expressions)
-    + [Reference audio file visualisation](#reference-audio-file-visualisation)      
-    + [Audio analyser for automatic keyframe creation from audio data](#audio-analyser-for-automatic-keyframe-creation-from-audio-data)
-      - [Audio analyer general info (read this first)](#audio-analyer-general-info-read-this-first)
-      - [Using the Audio analyser](#using-the-audio-analyser)
-        * [Audio Analysis](#audio-analysis)
-        * [Visualisation & playback](#visualisation--playback)
-        * [Conversion to Parseq keyframes](#conversion-to-parseq-keyframes)
-  * [Deforum integration features](#deforum-integration-features)
-    + [Keyframable parameters](#keyframable-parameters)
-    + [Prompt manipulation](#prompt-manipulation)
-    + [Using multiple prompts](#using-multiple-prompts)    
-    + [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
-    + [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
-  * [Working with large number of frames (performance tips)](#working-with-large-number-of-frames-performance-tips)
-  * [Development & running locally](#development--running-locally)
-    + [Deployment](#deployment)
-  * [Credits](#credits)
-
-
+- [What is this?](#what-is-this)
+- [What's new?](#whats-new)
+- [Setup](#setup)
+- [Getting started](#getting-started)
+- [Usage](#usage)
+- [Examples](#examples)
+- [Features](#features)
+   - [Keyframed parameter values with scriptable interpolation](#keyframed-parameter-values-with-scriptable-interpolation)
+   - [Interpolation modifiers](#interpolation-modifiers)
+   - [Working with time & beats (audio synchronisation)](#working-with-time--beats-audio-synchronisation)
+   - [Reference audio](#reference-audio)
+   - [Legacy Audio Analyser](#legacy-audio-analyser)
+- [Deforum integration features](#deforum-integration-features)
+   - [Keyframable parameters](#keyframable-parameters)
+   - [Prompt manipulation](#prompt-manipulation)
+   - [Using multiple prompts](#using-multiple-prompts)
+   - [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
+   - [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
+- [Working with large number of frames (performance tips)](#working-with-large-number-of-frames-performance-tips)
+- [Development & running locally](#development--running-locally)
+   - [Deployment](#deployment)
+- [Credits](#credits)
 ## What is this?
 
 For context:
@@ -63,97 +44,12 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 ## What's new?
 
-### Version 0.1.53
+See the [Parseq change log](https://github.com/rewbs/sd-parseq/wiki/Parseq-change-log) on the project wiki.
 
-* All functionality from the Audio Analyser has been moved into other parts of the UI. The audio analyser is now deprecated and will be removed in upcoming versions.
-* Load any custom time series for use in your Parseq formula. This means you can import any sequence of numbers to use within Parseq, and assign that sequence directly to a field or manipulate it within a formula. Load time series from CSV or from audio. Post-process the time series with smoothing, range exclusion, clamping and normalisation. 
-* Extract amplitude or estimated pitch from audio data into a time series. Integrated low/high/band-pass filter to pre-process the audio before the extraction.
-* Audio event detection and event-to-keyframe generation is integrated into the Reference Audio section. You can also manually add events (double-click), remove events (shift-click) and drag events. Batches of generated keyframes can have custom labels, so you can distinguish e.g. bassdrum events from snaredrum events, and act upon those frames specifically in bulk edits (see below).
-* Lock keyframes to their position in beats or seconds, so that if you change the FPS or BPM, your keyframes stay anchored in the same desired "position" (not the same frame).
-* New "bulk edit" dialog, so you can quickly modify all frames that match a particular pattern.
-* Add frames dialog improved: you can easily add frames every N frames/beats/seconds.
-* Delete frames dialog improved: you can delete all frames matching a pattern.
+## Setup
 
-### Version 0.1.50
-
-* Major performance improvements. It should now be possible to work with 1000s of frames without the UI flaking out. For some techniques to improve the UX when working with large documents, see below.
-* By popular demand, you can now load an audio file and see it alongside your keyframe data. Zoom, pan and markers are synchronized. This is **not** yet a full integration of the audio Analyser: you'll still need to use the Analyser tool for beat detection, audio event detection & pitch detection.
-* Optionally enable markers to show beat positions on graph and audio waveform, given the document's BPM and FPS.
-* Time units in the visual views can be switched between frames/seconds/beats.
-* New `rand()` function for generating random values, optionally with seed for recreatability. See below for details.
-* Buttons to quickly switch the managed fields to none, all, or currently used fields.
-
-Here's a short video demonstrating some of the above (no sound):
-
-https://user-images.githubusercontent.com/74455/228861184-755fd83c-3808-478b-974a-dd0736021537.mp4
-
-
-### Version 0.1.45
-
-* You can now mix & match Parseq-managed schedules with Deforum-managed schedules, and choose whether the prompt should be managed by Parseq or Deforum.
-
-<img width="500"  src="https://user-images.githubusercontent.com/74455/222583867-898f3763-481c-490a-ac93-6f9918bca416.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
-   
-   * **Note:** Delegating prompts to Deforum requires the latest Deforum extenion. Make sure you update! You should a table like this in your A1111 CLI output to help describe what is managed by Parseq vs Deforum:
-
-<img width="500"  src="https://user-images.githubusercontent.com/74455/222584674-6fcfe3ed-dd50-4b55-9465-d07bf97c216f.png" />
-
-* The prompt visual timeline is now clickable (you can move and resize prompts)
-
-https://user-images.githubusercontent.com/74455/222586254-3a776276-64aa-4779-9d04-0e8c4d4dcaf8.mp4
-
-* Initial implementation range selection in the grid. Works for deletion only – **not** copy/cut/paste. 
-* Delete keyframes dialog accepts lists and is pre-populated based on the range selection.
-
-
-
-https://user-images.githubusercontent.com/74455/222586768-05073ce8-70d5-4b35-b2a9-88ed27822c46.mp4
-
-
-
-### Version 0.1.40
-
-* Improved UI with duplicated elements moved to footer.
-* Revamped prompt management. Add unlimited prompts with defined frame ranges, and flexible [composable diffusion](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion) weighting for overlapping prompts.
-* New "Preview" section, allowing you to quickly see the value of all fields and the fully rendered prompt on each frame.
-* Create new documents from templates (including a "blank" template). Only 2 templates available for now, suggestions / contributions welcome.
-* UI improvements to grid: coloured columns, auto-resizing to match row count.
-* Optionally show markers on graph, including prompt start/end positions and grid cursor location.
-* Added functions `ceil()` and `floor()`, and variables `s` (current position in seconds) and `b` (current position in beats).
-
-
-### Version 0.1.22
-
-* Added an [audio analyser](https://sd-parseq.web.app/analyser). Use it to generate keyframes and values based on beats, events and pitch of an input audio file. Experimental! Details in documentation.
-* Added an "info" field on keyframes so you can keep track of what each keyframe represents.
-* New functions and variables available in your formula: `prev_computed_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
-* Full parseq expressions can now be used directly in the prompts.
-* Blank values are now permitted on the first and last frames (will use closest value or default value if none specified).
-* Oscillator functions can now all take a `limit` (`li`) argument to limit the number of repeated periods.
-* Support for new Deforum A1111 schedules (antiblur, hybrid comp). Sampler schedule is not available for now in Parseq (but you can use it directly in Deforum alongside your Parseq manifest).
-
-
-### Version 0.1.14
-
-* If you sign in at the top right (only Google sign-in supported for now, raise a feature request if this is too limiting), you can use 2 new upload features.
-* Once signed in, you can now easily create a sharable URL for your parseq doc from the `Share...` dialog.
-* Also once signed in, you can upload the rendered output to a URL. With the latest version of the A1111 extension, you can refer to this URL in the Parseq manifest textbox, so you don't have to keep copying the full JSON data back and forth.
-* Sparklines are now clickable, so you can show/hide data more easily.
-* A simple Parseq document "Browser" is accessible from the `Load...` dialog that lets you see all the docs and versions in your local storage a bit more easily.
-
-
-### Version 0.1.0
-
-* Parseq script mode is now deprecated, and Deforum integration mode is the default. I will no longer develop the Parseq script for a1111, focussing instead on making Parseq play well with the Deforum extension for a1111. The Parseq script was destined to only ever be an inferior version of the Deforum extension. If you need to work with the legacy parseq script variables, you can try here: https://sd-parseq.web.app/legacy .
-* New document management, peristed to local storage, with options to revert, share & import. Keyframe data is no longer stored in the URL (this caused issues on some browsers). 
-* New editable graph! You can add and update keyframes directly on the graph.
-
-
-## Installation
-
-- Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-- Install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
-- Relaunch the Automatic1111 UI.
+- Start by ensuring you have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
+- Next, install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
 – You should now see a `Parseq` section right at the bottom for the `Init` tab under the `Deforum` extension (click to expand it):
 
 <img width="500" alt="image" src="https://i.imgur.com/pGC8im8.png">
@@ -161,19 +57,38 @@ https://user-images.githubusercontent.com/74455/222586768-05073ce8-70d5-4b35-b2a
 
 ## Getting started
 
-The best way to get your head around Parseq's capabilities and core concepts is to watch the following tutorials:
+The best way to get your head around Parseq's capabilities and core concepts is to watch the [following tutorials](https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8):
 
 | Part 1 | Part 2 | Part 3 |
 |--- |--- |---
-| [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | Coming soon...	|
+| [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | [<img width=400 src="https://i.ytimg.com/vi/M6Z-kD2HnDQ/hqdefault.jpg?sqp=-oaymwEcCNACELwBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDZX4Xf6a_FNCBZCkfaYLmHyS1q6A">](https://www.youtube.com/watch?v=M6Z-kD2HnDQ)	|
 
+## Usage
 
+In summary, there are 2 steps to perform:
+
+### Step 1: Create your parameter manifest
+
+* Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
+* Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
+* Hit `Render` to generate the JSON config for every frame.
+* Copy the contents of the textbox at the bottom.
+   *  If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All changes will be pushed to the same URL, so you won't need to copy & paste again.
+
+### Step 2: Generate the video
+
+* Head to the SD web UI go to the Deforum tab and then the Init tab.
+* Paste the JSON or URL you copied in step 1 into the Parseq section at the bottom of the page.
+* Fiddle with any other Deforum / Stable Diffusion settings you want to tweak. Rember in particular to check the animation mode, the FPS and the total number of frames to make sure they match Parseq.
+* Click generate.
+
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
 
 
 
 ## Examples
 
-Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate.
+Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate or FILM.
 
 - Img2img loopback using Deforum, with fluctiations on many parameters, and sync'ed to audio :
 
@@ -208,35 +123,7 @@ https://user-images.githubusercontent.com/74455/228870311-0f59ea4b-880b-449f-855
 
 - Combining 3D y-axis rotation with x-axis pan to rotate around a subject:
 
-
-
 https://user-images.githubusercontent.com/74455/228871042-a7a26e6f-aa42-4b24-837a-b5dc93812602.mp4
-
-
-
-
-## Usage
-
-For a video tutorial on getting started with Parseq, see:  https://www.youtube.com/watch?v=MXRjTOE2v64
-
-In summary, there are 2 steps to perform:
-
-### Step 1: Create your parameter manifest
-
-* Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
-* Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
-* Hit `Render` to generate the JSON config for every frame.
-* Copy the contents of the textbox at the bottom.
-   *  If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All changes will be pushed to the same URL, so you won't need to copy & paste again.
-
-### Step 2: Generate the video
-
-* Head to the SD web UI go to the Deforum tab and then the Init tab.
-* Paste the JSON or URL you copied in step 1 into the Parseq section at the bottom of the page.
-* Fiddle with any other Deforum / Stable Diffusion settings you want to tweak. Rember in particular to check the animation mode, the FPS and the total number of frames to make sure they match Parseq.
-* Click generate.
-
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
 
 
 ## Features
@@ -255,16 +142,6 @@ The interpolation formula can be an arbitrarily complex mathematical expression,
 
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205217130-74e8e5b0-f432-4dc7-a190-d6f0eacb3844.png">
 
-
-### Beat and time sync'ing
-
-Parseq allows you to specify Frames per second (FPS) and beats per minute (BPM) which are used to map frame numbers to time and beat offsets. For example, if you set FPS to 10 and BPM to 120, a tooltip when you hover over frame 40 (in the grid or the graph) will show that this frame will occur 4 seconds or 8 beats into the video.
-
-Furthermore, your interpolation formulae can reference beats and seconds by using the `b` and `s` suffixes on numbers. For example, here we define a sine oscillator of a period of 1 beat (in green), and a pulse oscillator with a period of 5s and a pulse width of 0.5s (in grey):
-
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205224573-9f89518b-a4a8-4a71-86f9-388d0f65c2db.png">
-
-Lastly, Parseq can generate keyframes and values directly from an audio file. See the [Audio analyser](#audio-analyser-for-automatic-keyframe-creation-from-audio-data) documentation for details.
 
 ### Interpolation modifiers
 
@@ -311,6 +188,7 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | `info_match()` | Takes a **regular expression** as an argument. Returns 1 if the info label of the current active kefframe matches the regex, 0 otherwise.  | <img src="https://www.evernote.com/l/APbS0YKyh2ZHw7ZKEIwCvRTyjIMGL5h2ZNkB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_count()` | Takes a **regular expression** as an argument. Returns the number of keyframes that have info labels that matched the regex so far. | <img src="https://www.evernote.com/l/APaln7KfMdNNwI1I6vKNwORBzE0Br_BfTxYB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_last()` | Takes a **regular expression** as an argument. Returns the frame number of the last keyframe that matched the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `info_match_next()` | Takes a **regular expression** as an argument. Returns the frame number of the next keyframe that matches the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 
 Oscillator arguments: 
 * Period `p` *required*:  The period of the oscillation. By default the unit is frames, but you can specify seconds or beats by appending the appropriate suffix (e.g. `sin(p=4b)` or `sin(p=5s)`).
@@ -328,6 +206,50 @@ Examples:
 |<img src="https://www.evernote.com/l/APacHmL0zHtGK6xWrzQKFFLkTSwlAzBzQDwB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />| By setting the phase shift to the negative offset of the active keyframe with `ps=-active_keyframe`, we can ensure the period starts at the keyframe point. |
 
 
+#### Simple maths functions
+
+A range of methods from the Javascript [Math object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math) are exposed as follows, with a `_` prefix.
+
+Note that unlike the `sin()` oscillator above, these functions are **not oscillators**: they are simple functions.
+
+| function  | description | example |
+|-----------|-------------|---------|
+| `_acos()` | Equivalent to Javascript's [Math.acos()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/acos)| |
+| `_acosh()` | Equivalent to Javascript's [Math.acosh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/acosh)| |
+| `_asin()` | Equivalent to Javascript's [Math.asin()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/asin)| |
+| `_asinh()` | Equivalent to Javascript's [Math.asinh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/asinh)| |
+| `_atan()` | Equivalent to Javascript's [Math.atan()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/atan)| |
+| `_atanh()` | Equivalent to Javascript's [Math.atanh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/atanh)| |
+| `_cbrt()` | Equivalent to Javascript's [Math.cbrt()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cbrt)| |
+| `_clz32()` | Equivalent to Javascript's [Math.clz32()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32)| |
+| `_cos()` | Equivalent to Javascript's [Math.cos()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cos)| |
+| `_cosh()` | Equivalent to Javascript's [Math.cosh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cosh)| |
+| `_exp()` | Equivalent to Javascript's [Math.exp()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/exp)| |
+| `_expm1()` | Equivalent to Javascript's [Math.expm1()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/expm1)| |
+| `_log()` | Equivalent to Javascript's [Math.log()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log)| |
+| `_log10()` | Equivalent to Javascript's [Math.log10()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log10)| |
+| `_log1p()` | Equivalent to Javascript's [Math.log1p()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log1p)| |
+| `_log2()` | Equivalent to Javascript's [Math.log2()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log2)| |
+| `_sign()` | Equivalent to Javascript's [Math.sign()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sign)| |
+| `_sinh()` | Equivalent to Javascript's [Math.sinh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sinh)| |
+| `_sqrt()` | Equivalent to Javascript's [Math.sqrt()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sqrt)| |
+| `_tan()` | Equivalent to Javascript's [Math.tan()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/tan)| |
+| `_tanh()` | Equivalent to Javascript's [Math.tanh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/tanh)| |
+| `_sin()` | Equivalent to Javascript's [Math.sin()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sin)| |
+
+#### Maths constants
+
+| Constant | description | example |
+|--- |--- |--- |
+| `PI` | Constant pi. | |
+| `E` | Constant e. | |
+| `SQRT2` | Square root of 2. | |
+| `SQRT1_2` |  Square root of 2. | |
+| `LN2` | Natural logarithm of 2. | |
+| `LN10` | Natural logarithm of 10. | |
+| `LOG2E` | Base 2 logarithm of e. | |
+| `LOG10E` |  Base 10 logarithm of e. | |
+
 #### Units
 
 Units can be used to modify numbers representing frame ranges to match second of beat offsets calculated using the FPS and BPM values. This is particularly useful when specifying the period of an oscillator.
@@ -337,6 +259,19 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `f`   	| (default) frames 	|   	|
 | `s` 	| seconds |   	|
 | `b`  	| beats  	|   	|
+
+#### Unit conversion functions
+
+Use these functions to convert between frames, beats and seconds:
+
+| unit  	|  function 	| example  	|
+|---	   |---	|---	|
+| `f2b(x)`   	| Frames to beats	|   	|
+| `b2f(x)` 	| Beats to frames |   	|
+| `f2s(x)`  	| Frames to seconds  	|   	|
+| `s2f(x)`  	| Seconds to frames  	|   	|
+
+
 
 #### Other operators and expressions
 
@@ -362,109 +297,101 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
 
 
-### Reference audio file visualisation
+
+### Working with time & beats (audio synchronisation)
+
+Parseq has a range of features to help you create animations with precisely-timed parameter fluctuations, for example for music synchronisation.
+
+#### Beats per minute and frames per second
+
+Parseq allows you to specify Frames per second (FPS) and beats per minute (BPM) which are used to map frame numbers to time and beat offsets. For example, if you set FPS to 10 and BPM to 120, a tooltip when you hover over frame 40 (in the grid or the graph) will show that this frame will occur 4 seconds or 8 beats into the video.
+
+Furthermore, your interpolation formulae can reference beats and seconds by using the `b` and `s` suffixes on numbers. For example, here we define a sine oscillator of a period of 1 beat (in green), and a pulse oscillator with a period of 5s and a pulse width of 0.5s (in grey):
+
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205224573-9f89518b-a4a8-4a71-86f9-388d0f65c2db.png">
+
+#### Locking keyframes to beats or seconds
+
+<img src="https://www.evernote.com/shard/s246/sh/0182b1e1-92d9-4516-b376-ef422eec19f2/bUIDQQeKqUfFnUacaQR38X_qrbhWKKfOzmBnvM_lGuQzp9fEHtYpOxBzcQ/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
+By default, keyframe positions are defined in terms of their frame number, which will remain fixed even if the FPS or BPM changes. For example, if you start at 10fps and create a keyframe on the 4th beat of a 120BPM track, the keyframe will be at frame 20. But if you decide the change to 20fps and update your track to be 140BPM, your animation will be out-of-sync because the 4th beat should now be on frame 34!
+
+To solve this, you can lock your keyframes to their beat (or second) position. After doing this, they will remain in-sync even when you change FPS or BPM.
+
  
+#### Interval keyframe creation 
+
+You can quickly create keyframes aligned with regular events by using the "at intervals" tab of the Add keyframe dialog. For example, here we are creating a keyframe at every beat position for the first 8 beats. The keyframe positions will be determined by using the document's BPM and FPS. Note that only 6 keyframes will be created, because keyframes already exist for beats 0 and 4:
+
+<img src="https://www.evernote.com/shard/s246/sh/a99f482f-5001-4a40-b385-2e6c86ef88d1/gX5DMeXy4s9nTO4U9O15HDQ0MD9r3-gTFqVvE4TzM2KSJmL19-kjjvVCWQ/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+
+#### Keyframe labelling
+
+A common practice is to label keyframes to indicate the audio event they represent (e.g. "bassdrum", "snare", etc...). You can then reference all such keyframes in interpolation formulae with functions like `info_match_last()`, `info_match_next()` and `info_match_count()`, as well as in the bulk edit dialog. 
+
+### Reference audio
+
 To help you align your keyframes and formula with audio, you can load an audio file to view its waveform alongside the your parameter graph. Zooming and panning the graph will apply to the audio (click and drag to pan, hold alt/option and mouse wheel to zoom). Scrolling the audio will pan the graph. A viewport control is available between the graph and audio. Prompt, beat and cursor markers are displayed on both visualisations.
-
-This is not yet a full integration of the audio Analyser: you'll still need to use the Analyser tool for beat detection, audio event detection & pitch detection.
-
 
 https://user-images.githubusercontent.com/74455/228865210-be0a3202-3c9e-4037-8d9f-cd5bb3c8fd65.mp4
 
+#### Automatically generating keyframes from audio events
 
-### Audio analyser for automatic keyframe creation from audio data
+Manually creating and labelling keyframes for audio events can be tedious. Parseq improves this with an audio event detection feature that uses [AubioJS](https://github.com/qiuxiang/aubiojs):
 
-Parseq now includes a [built-in audio analyser](https://sd-parseq.web.app/analyser), which you can use to generate keyframes and values based on beats, events and pitch of an input audio file. This is not to be confused with the Reference audio visualisation in the main UI.
+<img src="https://www.evernote.com/shard/s246/sh/8ee1d729-c3f5-40db-9f2e-153124833843/SLBBwnBxWTtF4tv2230ZPNptdNn0QSYjRAZe-4NJmWviLwnlW7KRZGtwtg/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
 
-#### Audio analyer general info (read this first)
-* ⚠️ This feature is experimental. That's why it's quite separate from the main Parseq UI for now. The keyframes it generates can be merged into an existing Parseq document using the "Merge keyframes" button in the main UI.
-* Tempo, onset event and pitch detection use [Aubio](https://aubio.org/), via [AubioJS](https://github.com/qiuxiang/aubiojs). See the [Aubio CLI documentation](https://aubio.org/manual/latest/cli.html) for the meaning of analysis parameters.
-* Not all parameters are exposed by AubioJS. Some look like they should be, but aren't (those are grayed out in the UI).
-* All processing runs in the browser, using web workers. This seems to be faster in Chrome and Safari compared to Firefox. You can speed things up by increasing the hop sizes to larger multiples of 2 (trading off accuracy).
-* Parseq generally expects audio with a constant Tempo (shuffles and other changign tempos are not yet supported). Also, tempo detection is not perfect, so you can override it before generating keyframes. If the first beat is not at the very beginning of the track, you will need to enter a manual offset for now.
-* Pitch detection is sketchy with beats in the mix. You may want to run this multiple times on different audio layers and do multiple merges.
-* The frame-per-second (FPS) specified in the analyser must match the parseq doc you're merging with, or you'll be out-of-sync.
+After loading a reference audio file, head to the event detection tab under the waveform and hit detect events. Markers will appear on the waveform indicating detected event positions.
 
+You can tweak the event detection by controlling the following:
+   * Filtering: above the waveform and to the right is a biquad filter that allows you to apply a low/band/high-pass filter to your audio. This will enable you, for example, to isolate bassdrums from snares.
+   * Method: a range of event detection algorithms to choose from. Experiment with these, as they can produce vastly different results. See the [aubioonset CLI docs](https://aubio.org/manual/latest/cli.html#aubioonset) for more details.
+   * Threshold: defines how picky to be when identifying onset events. Lower threshold values result in more events, high values result in fewer events.
+   * Silence: from aubio docs: "volume in dB under which the onset will not be detected. A value of -20.0 would eliminate most onsets but the loudest ones. A value of -90.0 would select all onsets."
 
-#### Using the Audio analyser
+Once you're satisfied with the detected events, you can create keyframes by switching to the keyframe generation tab. You can pick a custom label that will be assigned to all newly generated keyframes. If a keyframe already exists at an event position, the label will be combined with the existing label.
 
-The audio analyser UI is split into 3 parts: 
-* **Audio analysis** where you load an audio file, and run algorithms on it for tempo, onset event and pitch detection.
-* **Visualisation & playback** where you can see your audio wave, spectrogram, detected pitch and beat & event positions, as well as play the audio file. 
-* **Conversion to Parseq keyframes** where you define how the result of the audio analysis will be mapped to Parseq keyframes.
+See event detection and keyframe generation in action [in this tutorial](https://youtu.be/M6Z-kD2HnDQ?t=276).
 
-Digging into each section:
+#### Sync'ing to pitch and amplitude using time series
 
+Time series are a powerful feature of Parseq that allows you to import any series of numbers and reference them from Parseq formulas. A primary use case for this is to sync parameter changes to audio pitch or amplitude.
 
-##### Audio Analysis
+Click 'Add time series' and select an audio file to work with. You can then choose whether to extract pitch or amplitude. When extracting pitch, you can choose from a range of methods (see the [aubiopitch CLI docs](https://aubio.org/manual/latest/cli.html#aubiopitch) for details). 
 
-<img width="720" src="https://www.evernote.com/l/APYsXAZGTmxJ2bLc7uLdOgzyyjDV4vyInc4B/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+A biquad filter that allows you to apply a low/band/high-pass filter to your audio is available if you wish to pre-process it before performing the pitch/amplitude extraction.
 
-Parseq performs 3 types of analysis on your audio file:
-* Tempo detection: attempts to identify the overall number of beats per minute in the audio file.
-* Onset (event) detection: attempts to identify the moments where meaningful changes occur in the audio file. These could be drum beats, new instruments being introduced, etc...
-* Pitch detection: attempts to identify the dominant frequency at each moment of your audio file.
+After extracting the data, you can post-process it to take the absolute value, exclude datapoints outside a given range, clamp datapoints outside a given range, and normalise to a target range. 
 
-Here are the settings you can tweak for this analysis:
+Using absolute value is particularly valuable for amplitude, where the unprocessed amplitude will oscillate between positive and negative.
 
-* File: opens a file browser for you to select an audio file. Most audio formats are supported.
-* Sample rate: the samples per second to use for processing.
-* Tempo detection settings:
-   * Tempo buffer: number of samples used for each analysis. Recommend to leave as is.
-   * Tempo hop: number of samples between two consecutive analysis parsses. Lower values increase precision at the exepense of increased CPU time, but going too low will result in invalid results.
-* Onset event detection settings (see the [aubioonset CLI docs](https://aubio.org/manual/latest/cli.html#aubioonset)  for more complete definitions).
-   * Onset buffer: number of samples used for each analysis. Recommend to leave as is.
-   * Onset hop: number of samples between two consecutive analysis parsses. Lower values increase precision at the exepense of increased CPU time, but going too low will result in invalid results.
-   * Onset threshold: defines how picky to be when identifying onset events. Lower threshold values result in more events, high values result in fewer events.
-   * Onset silence: from aubio docs: "volume in dB under which the onset will not be detected. A value of -20.0 would eliminate most onsets but the loudest ones. A value of -90.0 would select all onsets."
-   * Onset method: a selction of onset detection algorithms to choose from. Experiment with these, as they can produce vastly different results.
-* Pitch detection settings (see the [aubiopitch CLI docs](https://aubio.org/manual/latest/cli.html#aubiopitch) for more complete definitions):
-   * Pitch buffer: number of samples used for each analysis. Recommend to leave as is.
-   * Pitch hop: number of samples between two consecutive analysis parsses. Lower values increase precision at the exepense of increased CPU time, but going too low will result in invalid results.
-   * Pitch method: a selction of pitch detection algorithms to choose from. Experiment with these, as they can produce vastly different results.
+<img src="https://www.evernote.com/shard/s246/sh/8eca1310-b43f-42ad-8168-08422a03cec4/r53xto88ZfFPS3Rypni87mTiZSxaZzVihodPGyvsDT4LKZAvEdwF2yUNjQ/deep/0/image.png"  />
 
-##### Visualisation & playback
+<img src="https://www.evernote.com/shard/s246/sh/32879f38-2798-4c29-bfa1-408966698972/CVVh1WIZVdrMJH7-C4UY8er4TWlwpkNlq3A6EZNg7uDfqSgtTwsBDtteTg/deep/0/image.png"  />
 
-<img width="720"  src="https://www.evernote.com/l/APYyk-gfAYJHw4MQXIbKhg8T8jrMfG6FUbgB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
-
-The top section shows the waveform and, after running the analysis, will include markers for beats in blue at the bottom, and for onset events in red at the top. Onset markers can be dragged, but beat markers cannot. The waveform can be zoomed with the slider at the bottom. Beneath that is a simple spectrogram view.
-
-Next is a graph showing detected pitch values over time in light purple. Typically, the pitch detection is quite "jagged", i.e. the values might include undesirable spikes. After you generate keyframes, you will see 2 additonal curves appear, which should be smoother: the normalised values in dark purple which has had filtering and normalisation applied to it as per your settings (see next section), and the keyframed values in red which are the actual values that will be used in Parseq keyframes.
+The final timeseries will be decimated to a maximum of 2000 points. The green dots represent where frames land on those points.
 
 
-##### Conversion to Parseq keyframes
+Once the time series are created, you can chose an alias for them, and then reference them in your formula.
 
-<img width="720"  src="https://www.evernote.com/l/APZqnCDTIkxNxbmC7u_q76JIZyf7LVkk-icB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+<img src="https://www.evernote.com/shard/s246/sh/9ab5eefe-d6c1-4dc6-a981-06ede104c060/FDDtn5KQzOt1lGKiVHJfLdE7UxPjsyyccRyHPHXvjgtT99PKSSa6C4Cn9g/deep/0/image.png" />
 
-Beats and Onset events can be converted to keyframes with custom values and interpolation functions for any Parseq-controllable field.  Pitch data can be used to set a value at each generated keyframe.
+There are two ways to reference timeseries:
 
-There are a range of settings that help define how the audio analysis data will be converted to Parseq keyframes:
+| Method | Description | Example
+|--- |--- |--- |
+| `timeseries_name` | Returns the timeseries value at the current frame. Equivalent to `timeseries_name(f)`  | Time series replicated as is: <img src="https://www.evernote.com/shard/s246/sh/557e3964-d04c-4a3f-9e43-d875e51b29ee/ltBcQACTY9QD73JwjB2Txos9-v4Mu833zCuNvuqZEDabcT0clogIzH0mJQ/deep/0/image.png" /> |
+| `timeseries_name(n)` | Returns the timeseries value at frame n  | Time series' first 10 frames repeated: <img src="https://www.evernote.com/shard/s246/sh/5719a37e-1037-49dd-9117-053483427c58/4yetefWaeAhBaCPldyouDmQ-GNOkgufLA0F3xdPSpQcDCcghk06XL0MBMg/deep/0/image.png" /> |
 
-* Tempo settings: 
-   * Filtering:
-      * *Include every Nth beat* and *Starting from* allow you to pick a subset of beats to convert to keyframes. You can set either one of these to a ridiculously high value to skip generating keyframes for beats altogether.
-      * Custom label: include custom text in the "info" field for these keyframes.
-   * Correction:
-      * BPM override: ignore the detected BPM and use this value instead. Defaults to a rounded version of the detected BPM
-      * First beat offset: the time of the first beat in seconds. Useful if the song does not start immediately.
-   * Set value: the value data to include in the generated keyframes
-* Onset settings: 
-   * Filtering:
-      * *Include every Nth event* and *Starting from* allow you to pick a subset of onset events to convert to keyframes. You can set either one of these to a ridiculously high value to skip generating keyframes for onset events altogether.
-      * Custom label: include custom text in the "info" field for these keyframes.
-   * Set value: the value data to include in the generated keyframes
-* Pitch settings:
-   * Filtering: 
-      * Outlier tolerance: parseq uses a Median Differencing algorithm to try to remove unwanted outliers from the pitch detection data. Higher values means allow more outliers, lower values (above 0) means cut out more outliers, or -1 to disable outlier elimination completely.
-      * Discard above / discard below: a more brute-force way of removing pitch detection glitches: ignore any pitch data points outside of these thresholds.
-   * Normalisation: you'll usually want to map the pitch data to a different range for the values to make sense in deforum. For example, if you're using pitch to set a prompt weight, you'll want to normalise the pitch data to a min of 0 and a max of 1. For a rotation, you might want a min of -45 and a max of 45.
-   * Set value: unlike beats and onset events, pitch data points do not create keyframes because it is a continuous data stream rather than discrete events. Therefore, the normalised pitch value is assigned to the keyframes generated from the beat and onset events. Here you can set the field and interpolation that should be used (the value is the pitch value itself).
 
-Once you are happy with your generated keyframes, hit `Copy Keyframes` and merge them into your Parseq Doc with the `Merge Keyframes` button beneath the grid in the main Parseq UI. 
+See pitch detection in action [in this tutorial](https://youtu.be/M6Z-kD2HnDQ?t=880).
 
-<img  width="360" src="https://www.evernote.com/l/APaHqp1Qfu1GXIvc4aC-42lFAIs3k83_0nEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+#### Time series for arbtrary data sequences
 
-Note that you can run multiple merges if you with to set multiple different values on each keyframe.
+
+### Legacy Audio Analyser
+
+This feature is deprecated. See its [archived documentation on the Parseq wiki](https://github.com/rewbs/sd-parseq/wiki/Legacy-Audio-Analyser-documentation).
 
 
 
@@ -647,8 +574,9 @@ firebase hosting:clone sd-parseq:staging sd-parseq:live
 This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of inspiration:
 
 * Everyone behind Deforum: https://github.com/deforum-art/
-* Everyone trying out Parseq and giving me feedback on Discrod (e.g. ronnykhalil, Michael L, Moistlicks, Kingpin, hithere, kabachuha...)
-* Everyone behind [Aubio](https://aubio.org/), [AubioJS](https://github.com/qiuxiang/aubiojs), [Wavesurfer](https://wavesurfer-js.org/),  [react-timeline-editor](https://github.com/xzdarcy/react-timeline-editor), [ag-grid](https://www.ag-grid.com/) (community edition), chart.js and recharts.
+* Everyone trying out Parseq and giving me feedback on Discrod (e.g. ronnykhalil, Michael L, Moistlicks, Kingpin, hithere, kabachuha, AndyXR, Akumetsu971, koshi...)
+* Everyone who has [bought me a coffee](https://www.buymeacoffee.com/rewbs)! :)
+* Everyone behind [Aubio](https://aubio.org/), [AubioJS](https://github.com/qiuxiang/aubiojs), [Wavesurfer](https://wavesurfer-js.org/),  [react-timeline-editor](https://github.com/xzdarcy/react-timeline-editor), [ag-grid](https://www.ag-grid.com/) (community edition), p5, chart.js and recharts.
 * Filarus for their vid2vid script: https://github.com/Filarius/stable-diffusion-webui/blob/master/scripts/vid2vid.py .  
 * Animator-Anon for their animation script: https://github.com/Animator-Anon/Animator/blob/main/animation.py . I picked up some good ideas from this.
 * Yownas for their seed travelling script: https://github.com/yownas/seed_travel.

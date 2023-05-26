@@ -15,7 +15,7 @@ import { ImportOptions, exportDB, importInto, peakImportFile } from "dexie-expor
 import { useLiveQuery } from "dexie-react-hooks";
 import { saveAs } from 'file-saver';
 import _ from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from "react-router-dom";
 import ReactTimeAgo from 'react-time-ago';
 import { useEffectOnce } from 'react-use';
@@ -25,8 +25,10 @@ import LinearProgressWithLabel from './components/LinearProgressWithLabel';
 import { SmallTextField } from './components/SmallTextField';
 import { TabPanel } from './components/TabPanel';
 import { db } from './db';
+import { isStoragePersisted, showEstimatedQuota, persist } from './persistance';
 import { navigateToClone, smartTrim } from './utils/utils';
-
+import prettyBytes from 'pretty-bytes';
+import React from 'react';
 
 function VersionCount({ docId }: { docId: DocId }) {
     const [versionCount, setVersionCount] = useState(<Typography>loading...</Typography>);
@@ -66,9 +68,15 @@ export default function Browser() {
     const [validateDelete, setValidateDelete] = useState('');
     const [validateImport, setValidateImport] = useState('');
     const [validateSingleDelete, setValidateSingleDelete] = useState('');
-
-    
     const [cleanStatus, setCleanStatus] = useState("");
+
+   const [isPersisted, setIsPersisted] = useState<boolean|undefined>();
+   const [storageQuota, setStorageQuota] = useState<StorageEstimate|undefined>();
+
+    useEffect(() => {
+        isStoragePersisted().then((persisted) => setIsPersisted(persisted));
+        showEstimatedQuota().then((quota) => setStorageQuota(quota));
+    }, []);
 
 
     useEffectOnce(() => {
@@ -245,7 +253,7 @@ export default function Browser() {
 
 
 
-    return <>
+    return <React.StrictMode>
         <Header title="Parseq - local storage browser" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2}>
             <CssBaseline />
@@ -415,6 +423,23 @@ export default function Browser() {
             </TabPanel>
             <TabPanel activeTab={activeTab} index={3}>
                 <Grid container spacing={3}>
+                    <Grid xs={12}>
+                        <Stack direction="row" spacing={2} alignItems="center"  >
+                            <Typography>Persistence enabled: { isPersisted+'' }</Typography>
+                            <Typography>Estimated quota usage: { storageQuota ? `${prettyBytes(storageQuota.usage||0)} of ${prettyBytes(storageQuota.quota||0)} (${(100*(storageQuota.usage||0)/(storageQuota.quota||1)).toFixed(2)}%)` : '?' }</Typography>
+                            { (isPersisted === false) &&
+                                <Button
+                                    variant='contained'
+                                    size='small'
+                                    onClick={async () => {
+                                        await persist();
+                                        setIsPersisted(!await isStoragePersisted());
+                                        setStorageQuota(await showEstimatedQuota());
+                                    }}
+                                >Enable persistence</Button>
+                            }
+                        </Stack>
+                    </Grid>
                     <Grid xs={12}>
                         <Stack direction="row" spacing={2} alignItems="center">
                             <Button
@@ -604,7 +629,7 @@ export default function Browser() {
             </TabPanel>
 
         </Grid>
-    </>;
+    </React.StrictMode>;
 
 }
 

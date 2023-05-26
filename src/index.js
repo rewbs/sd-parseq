@@ -17,6 +17,7 @@ import en from 'javascript-time-ago/locale/en.json';
 import Analyser from './Analyser';
 import Browser from './Browser';
 import Deforum from './Deforum';
+import Labs from './Labs';
 import reportWebVitals from './reportWebVitals';
 
 Sentry.init({
@@ -29,20 +30,21 @@ Sentry.init({
 TimeAgo.addDefaultLocale(en)
 
 const router = <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<Deforum />} />
-      <Route path="/deforum" element={<Deforum />} />
-      <Route path="/browser" element={<Browser />} />     
-      <Route path="/legacy" element={<App />} />
-      <Route path="/analyser" element={<Analyser />} />
-    </Routes>
+  <Routes>
+    <Route path="/" element={<Deforum />} />
+    <Route path="/deforum" element={<Deforum />} />
+    <Route path="/browser" element={<Browser />} />
+    <Route path="/legacy" element={<App />} />
+    <Route path="/analyser" element={<Analyser />} />
+    <Route path="/labs" element={<Labs />} />
+  </Routes>
 </BrowserRouter>
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-  <React.StrictMode>
+  <>
     {router}
-  </React.StrictMode>
+  </>
 );
 
 reportWebVitals(console.log);

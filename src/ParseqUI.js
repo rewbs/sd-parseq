@@ -36,6 +36,8 @@ import runDbTasks from './dbTasks';
 import { parseqRender } from './parseq-renderer';
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, navigateToDocId, queryStringGetOrCreate } from './utils/utils';
+import { MovementPreview } from "./components/MovementPreview";
+import StyledSwitch from "./components/StyledSwitch";
 
 import prettyBytes from 'pretty-bytes';
 
@@ -90,6 +92,8 @@ const ParseqUI = (props) => {
   const [keyframeLock, setKeyframeLock] = useState("frames");
   const [gridHeight, setGridHeight] = useState(0);
   const [lastSaved, setLastSaved] = useState(0);
+
+  const [movementPreviewEnabled, setMovementPreviewEnabled] = useState(false);
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -968,7 +972,6 @@ const ParseqUI = (props) => {
           onChange={(e)=>setCandidateLastFrame(e.target.value)}
           onFocus={(e) => setTyping(true)}
           onKeyDown={(e) => {
-            console.log(`Pressed keyCode ${e.key}`);
             if (e.key === 'Enter') {
               setTimeout(() => e.target.blur());
               e.preventDefault();
@@ -977,7 +980,7 @@ const ParseqUI = (props) => {
               setCandidateLastFrame(lastFrame)
               e.preventDefault();
             }
-          }}          
+          }}
           onBlur={(e) => {
             setTyping(false);
             let candidate = parseInt(e.target.value);
@@ -1553,6 +1556,7 @@ const ParseqUI = (props) => {
         borderColor: 'divider',
       },
     }}>
+      <React.StrictMode>
       <CssBaseline />
       <Grid xs={8}>
         {docManager}
@@ -1635,6 +1639,27 @@ const ParseqUI = (props) => {
           {renderedData && <Preview data={renderedData} />}
         </ExpandableSection>
       </Grid>
+      </React.StrictMode>
+      <Grid xs={12}>
+        <ExpandableSection title="Movement preview (🧪 experimental)">
+          {renderedData && <>
+            <FormControlLabel
+                sx = {{ padding:'0' }}
+                control={<StyledSwitch                    
+                    onChange={(e) => { setMovementPreviewEnabled(e.target.checked);}}
+                    checked={movementPreviewEnabled} />}
+                label={<small> Experimental preview of camera movement.</small>} />
+
+            {movementPreviewEnabled && 
+              <MovementPreview renderedData={renderedData.rendered_frames} />
+            }
+
+            </>
+          
+          }
+        </ExpandableSection>
+      </Grid>
+      <React.StrictMode>
       <Grid xs={12}>
         <ExpandableSection title="Output">
           <Box>
@@ -1647,6 +1672,7 @@ const ParseqUI = (props) => {
         <Box height="200px"></Box>
       </Grid>
       {stickyFooter}
+      </React.StrictMode>
     </Grid>
 
 

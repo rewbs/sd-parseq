@@ -1,5 +1,5 @@
-import Dexie from 'dexie';
-import { Table } from 'dexie';
+import Dexie, { Table } from 'dexie';
+import { isStoragePersisted, persist } from './persistance';
 
 export class ParseqDexie extends Dexie {
     parseqVersions!: Table<ParseqDocVersion>;
@@ -17,4 +17,13 @@ export class ParseqDexie extends Dexie {
         });        
     }
 }
+
 export const db = new ParseqDexie();
+
+db.parseqDocs.count().then(async (count : any) => {
+    if (count > 3 && !(await isStoragePersisted())) {
+        persist().then( async (e : any) => {
+        console.log("Is DB persisted?", await isStoragePersisted());
+        });
+    }
+});

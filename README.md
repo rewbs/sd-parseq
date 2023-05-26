@@ -161,11 +161,11 @@ https://user-images.githubusercontent.com/74455/222586768-05073ce8-70d5-4b35-b2a
 
 ## Getting started
 
-The best way to get your head around Parseq's capabilities and core concepts is to watch the following tutorials:
+The best way to get your head around Parseq's capabilities and core concepts is to watch the [following tutorials](https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8):
 
 | Part 1 | Part 2 | Part 3 |
 |--- |--- |---
-| [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | Coming soon...	|
+| [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | [<img width=400 src="https://i.ytimg.com/vi/M6Z-kD2HnDQ/hqdefault.jpg?sqp=-oaymwEcCNACELwBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDZX4Xf6a_FNCBZCkfaYLmHyS1q6A">](https://www.youtube.com/watch?v=M6Z-kD2HnDQ)	|
 
 
 
@@ -311,6 +311,7 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | `info_match()` | Takes a **regular expression** as an argument. Returns 1 if the info label of the current active kefframe matches the regex, 0 otherwise.  | <img src="https://www.evernote.com/l/APbS0YKyh2ZHw7ZKEIwCvRTyjIMGL5h2ZNkB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_count()` | Takes a **regular expression** as an argument. Returns the number of keyframes that have info labels that matched the regex so far. | <img src="https://www.evernote.com/l/APaln7KfMdNNwI1I6vKNwORBzE0Br_BfTxYB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `info_match_last()` | Takes a **regular expression** as an argument. Returns the frame number of the last keyframe that matched the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `info_match_next()` | Takes a **regular expression** as an argument. Returns the frame number of the next keyframe that matches the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 
 Oscillator arguments: 
 * Period `p` *required*:  The period of the oscillation. By default the unit is frames, but you can specify seconds or beats by appending the appropriate suffix (e.g. `sin(p=4b)` or `sin(p=5s)`).
@@ -327,6 +328,48 @@ Examples:
 | <img src="https://www.evernote.com/l/APZxcomc6UpL0q2HLBC78cwhZjwRHyokJcYB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> | Limiting to 1 period at each keyframe with `li=1`. Notice how the phase is maintained relative to the full sinewave, so the period does not start with the keyframe.|
 |<img src="https://www.evernote.com/l/APacHmL0zHtGK6xWrzQKFFLkTSwlAzBzQDwB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />| By setting the phase shift to the negative offset of the active keyframe with `ps=-active_keyframe`, we can ensure the period starts at the keyframe point. |
 
+
+#### Simple maths functions
+
+A range of methods from the Javascript [Math object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math) are exposed as follows, with a `_` prefix.
+
+Note that unlike the `sin()` oscillator above, these functions are **not oscillators**: they are simple functions.
+
+| function  | description | example |
+|-----------|-------------|---------|
+| `_acos()` | Equivalent to Javascript's [Math.acos()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/acos)| |
+| `_acosh()` | Equivalent to Javascript's [Math.acosh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/acosh)| |
+| `_asin()` | Equivalent to Javascript's [Math.asin()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/asin)| |
+| `_asinh()` | Equivalent to Javascript's [Math.asinh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/asinh)| |
+| `_atan()` | Equivalent to Javascript's [Math.atan()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/atan)| |
+| `_atanh()` | Equivalent to Javascript's [Math.atanh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/atanh)| |
+| `_cbrt()` | Equivalent to Javascript's [Math.cbrt()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cbrt)| |
+| `_clz32()` | Equivalent to Javascript's [Math.clz32()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32)| |
+| `_cos()` | Equivalent to Javascript's [Math.cos()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cos)| |
+| `_cosh()` | Equivalent to Javascript's [Math.cosh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cosh)| |
+| `_exp()` | Equivalent to Javascript's [Math.exp()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/exp)| |
+| `_expm1()` | Equivalent to Javascript's [Math.expm1()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/expm1)| |
+| `_log()` | Equivalent to Javascript's [Math.log()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log)| |
+| `_log10()` | Equivalent to Javascript's [Math.log10()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log10)| |
+| `_log1p()` | Equivalent to Javascript's [Math.log1p()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log1p)| |
+| `_log2()` | Equivalent to Javascript's [Math.log2()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log2)| |
+| `_sign()` | Equivalent to Javascript's [Math.sign()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sign)| |
+| `_sinh()` | Equivalent to Javascript's [Math.sinh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sinh)| |
+| `_sqrt()` | Equivalent to Javascript's [Math.sqrt()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sqrt)| |
+| `_tan()` | Equivalent to Javascript's [Math.tan()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/tan)| |
+| `_tanh()` | Equivalent to Javascript's [Math.tanh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/tanh)| |
+| `_sin()` | Equivalent to Javascript's [Math.sin()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sin)| |
+
+#### Maths constants
+
+| `PI` | Constant pi. | |
+| `E` | Constant e. | |
+| `SQRT2` | Square root of 2. | |
+| `SQRT1_2` |  Square root of 2. | |
+| `LN2` | Natural logarithm of 2. | |
+| `LN10` | Natural logarithm of 10. | |
+| `LOG2E` | Base 2 logarithm of e. | |
+| `LOG10E` |  Base 10 logarithm of e. | |
 
 #### Units
 
@@ -360,6 +403,7 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `<expr1> < <expr2>`  	   | 1 if <expr1> greater than or equals <expr2>, 0 otherwise. |   	|
 | `<expr1> and <expr2>`  	| 1 if <expr1> and <expr2> are non-zero, 0 otherwise.  	   |   	|
 | `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
+
 
 
 ### Reference audio file visualisation

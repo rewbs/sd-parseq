@@ -3,14 +3,7 @@
 # Stable Diffusion Parseq
 
   * [What is this?](#what-is-this)
-  * [What's new?](#whats-new)
-    + [Version 0.1.53](#version-0153)
-    + [Version 0.1.50](#version-0150) 
-    + [Version 0.1.45](#version-0145) 
-    + [Version 0.1.40](#version-0140)
-    + [Version 0.1.22](#version-0122)
-    + [Version 0.1.14](#version-0114)
-    + [Version 0.1.0](#version-010)
+  * [What's new?](#what-s-new)
   * [Installation](#installation)
   * [Getting started](#getting-started)  
   * [Examples](#examples)
@@ -63,97 +56,12 @@ For now Parseq is almost entirely front-end and stores all state in browser loca
 
 ## What's new?
 
-### Version 0.1.53
+Moved to the [Parseq change log](https://github.com/rewbs/sd-parseq/wiki/Parseq-change-log) on the project wiki.
 
-* All functionality from the Audio Analyser has been moved into other parts of the UI. The audio analyser is now deprecated and will be removed in upcoming versions.
-* Load any custom time series for use in your Parseq formula. This means you can import any sequence of numbers to use within Parseq, and assign that sequence directly to a field or manipulate it within a formula. Load time series from CSV or from audio. Post-process the time series with smoothing, range exclusion, clamping and normalisation. 
-* Extract amplitude or estimated pitch from audio data into a time series. Integrated low/high/band-pass filter to pre-process the audio before the extraction.
-* Audio event detection and event-to-keyframe generation is integrated into the Reference Audio section. You can also manually add events (double-click), remove events (shift-click) and drag events. Batches of generated keyframes can have custom labels, so you can distinguish e.g. bassdrum events from snaredrum events, and act upon those frames specifically in bulk edits (see below).
-* Lock keyframes to their position in beats or seconds, so that if you change the FPS or BPM, your keyframes stay anchored in the same desired "position" (not the same frame).
-* New "bulk edit" dialog, so you can quickly modify all frames that match a particular pattern.
-* Add frames dialog improved: you can easily add frames every N frames/beats/seconds.
-* Delete frames dialog improved: you can delete all frames matching a pattern.
+## Setup
 
-### Version 0.1.50
-
-* Major performance improvements. It should now be possible to work with 1000s of frames without the UI flaking out. For some techniques to improve the UX when working with large documents, see below.
-* By popular demand, you can now load an audio file and see it alongside your keyframe data. Zoom, pan and markers are synchronized. This is **not** yet a full integration of the audio Analyser: you'll still need to use the Analyser tool for beat detection, audio event detection & pitch detection.
-* Optionally enable markers to show beat positions on graph and audio waveform, given the document's BPM and FPS.
-* Time units in the visual views can be switched between frames/seconds/beats.
-* New `rand()` function for generating random values, optionally with seed for recreatability. See below for details.
-* Buttons to quickly switch the managed fields to none, all, or currently used fields.
-
-Here's a short video demonstrating some of the above (no sound):
-
-https://user-images.githubusercontent.com/74455/228861184-755fd83c-3808-478b-974a-dd0736021537.mp4
-
-
-### Version 0.1.45
-
-* You can now mix & match Parseq-managed schedules with Deforum-managed schedules, and choose whether the prompt should be managed by Parseq or Deforum.
-
-<img width="500"  src="https://user-images.githubusercontent.com/74455/222583867-898f3763-481c-490a-ac93-6f9918bca416.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
-   
-   * **Note:** Delegating prompts to Deforum requires the latest Deforum extenion. Make sure you update! You should a table like this in your A1111 CLI output to help describe what is managed by Parseq vs Deforum:
-
-<img width="500"  src="https://user-images.githubusercontent.com/74455/222584674-6fcfe3ed-dd50-4b55-9465-d07bf97c216f.png" />
-
-* The prompt visual timeline is now clickable (you can move and resize prompts)
-
-https://user-images.githubusercontent.com/74455/222586254-3a776276-64aa-4779-9d04-0e8c4d4dcaf8.mp4
-
-* Initial implementation range selection in the grid. Works for deletion only – **not** copy/cut/paste. 
-* Delete keyframes dialog accepts lists and is pre-populated based on the range selection.
-
-
-
-https://user-images.githubusercontent.com/74455/222586768-05073ce8-70d5-4b35-b2a9-88ed27822c46.mp4
-
-
-
-### Version 0.1.40
-
-* Improved UI with duplicated elements moved to footer.
-* Revamped prompt management. Add unlimited prompts with defined frame ranges, and flexible [composable diffusion](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion) weighting for overlapping prompts.
-* New "Preview" section, allowing you to quickly see the value of all fields and the fully rendered prompt on each frame.
-* Create new documents from templates (including a "blank" template). Only 2 templates available for now, suggestions / contributions welcome.
-* UI improvements to grid: coloured columns, auto-resizing to match row count.
-* Optionally show markers on graph, including prompt start/end positions and grid cursor location.
-* Added functions `ceil()` and `floor()`, and variables `s` (current position in seconds) and `b` (current position in beats).
-
-
-### Version 0.1.22
-
-* Added an [audio analyser](https://sd-parseq.web.app/analyser). Use it to generate keyframes and values based on beats, events and pitch of an input audio file. Experimental! Details in documentation.
-* Added an "info" field on keyframes so you can keep track of what each keyframe represents.
-* New functions and variables available in your formula: `prev_computed_value`, `slide(from, to, in)`, `info_match(regex)`, `info_match_last(regex)`, `info_match_count(regex)`. Details in documentation.
-* Full parseq expressions can now be used directly in the prompts.
-* Blank values are now permitted on the first and last frames (will use closest value or default value if none specified).
-* Oscillator functions can now all take a `limit` (`li`) argument to limit the number of repeated periods.
-* Support for new Deforum A1111 schedules (antiblur, hybrid comp). Sampler schedule is not available for now in Parseq (but you can use it directly in Deforum alongside your Parseq manifest).
-
-
-### Version 0.1.14
-
-* If you sign in at the top right (only Google sign-in supported for now, raise a feature request if this is too limiting), you can use 2 new upload features.
-* Once signed in, you can now easily create a sharable URL for your parseq doc from the `Share...` dialog.
-* Also once signed in, you can upload the rendered output to a URL. With the latest version of the A1111 extension, you can refer to this URL in the Parseq manifest textbox, so you don't have to keep copying the full JSON data back and forth.
-* Sparklines are now clickable, so you can show/hide data more easily.
-* A simple Parseq document "Browser" is accessible from the `Load...` dialog that lets you see all the docs and versions in your local storage a bit more easily.
-
-
-### Version 0.1.0
-
-* Parseq script mode is now deprecated, and Deforum integration mode is the default. I will no longer develop the Parseq script for a1111, focussing instead on making Parseq play well with the Deforum extension for a1111. The Parseq script was destined to only ever be an inferior version of the Deforum extension. If you need to work with the legacy parseq script variables, you can try here: https://sd-parseq.web.app/legacy .
-* New document management, peristed to local storage, with options to revert, share & import. Keyframe data is no longer stored in the URL (this caused issues on some browsers). 
-* New editable graph! You can add and update keyframes directly on the graph.
-
-
-## Installation
-
-- Have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-- Install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
-- Relaunch the Automatic1111 UI.
+- Start by ensuring you have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
+- Next, install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
 – You should now see a `Parseq` section right at the bottom for the `Init` tab under the `Deforum` extension (click to expand it):
 
 <img width="500" alt="image" src="https://i.imgur.com/pGC8im8.png">
@@ -167,13 +75,32 @@ The best way to get your head around Parseq's capabilities and core concepts is 
 |--- |--- |---
 | [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | [<img width=400 src="https://i.ytimg.com/vi/M6Z-kD2HnDQ/hqdefault.jpg?sqp=-oaymwEcCNACELwBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDZX4Xf6a_FNCBZCkfaYLmHyS1q6A">](https://www.youtube.com/watch?v=M6Z-kD2HnDQ)	|
 
+## Usage
 
+In summary, there are 2 steps to perform:
+
+### Step 1: Create your parameter manifest
+
+* Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
+* Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
+* Hit `Render` to generate the JSON config for every frame.
+* Copy the contents of the textbox at the bottom.
+   *  If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All changes will be pushed to the same URL, so you won't need to copy & paste again.
+
+### Step 2: Generate the video
+
+* Head to the SD web UI go to the Deforum tab and then the Init tab.
+* Paste the JSON or URL you copied in step 1 into the Parseq section at the bottom of the page.
+* Fiddle with any other Deforum / Stable Diffusion settings you want to tweak. Rember in particular to check the animation mode, the FPS and the total number of frames to make sure they match Parseq.
+* Click generate.
+
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
 
 
 
 ## Examples
 
-Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate.
+Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate or FILM.
 
 - Img2img loopback using Deforum, with fluctiations on many parameters, and sync'ed to audio :
 
@@ -208,35 +135,7 @@ https://user-images.githubusercontent.com/74455/228870311-0f59ea4b-880b-449f-855
 
 - Combining 3D y-axis rotation with x-axis pan to rotate around a subject:
 
-
-
 https://user-images.githubusercontent.com/74455/228871042-a7a26e6f-aa42-4b24-837a-b5dc93812602.mp4
-
-
-
-
-## Usage
-
-For a video tutorial on getting started with Parseq, see:  https://www.youtube.com/watch?v=MXRjTOE2v64
-
-In summary, there are 2 steps to perform:
-
-### Step 1: Create your parameter manifest
-
-* Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
-* Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
-* Hit `Render` to generate the JSON config for every frame.
-* Copy the contents of the textbox at the bottom.
-   *  If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All changes will be pushed to the same URL, so you won't need to copy & paste again.
-
-### Step 2: Generate the video
-
-* Head to the SD web UI go to the Deforum tab and then the Init tab.
-* Paste the JSON or URL you copied in step 1 into the Parseq section at the bottom of the page.
-* Fiddle with any other Deforum / Stable Diffusion settings you want to tweak. Rember in particular to check the animation mode, the FPS and the total number of frames to make sure they match Parseq.
-* Click generate.
-
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
 
 
 ## Features
@@ -362,6 +261,8 @@ Note that unlike the `sin()` oscillator above, these functions are **not oscilla
 
 #### Maths constants
 
+| Constant | description | example |
+|--- |--- |--- |
 | `PI` | Constant pi. | |
 | `E` | Constant e. | |
 | `SQRT2` | Square root of 2. | |
@@ -380,6 +281,19 @@ Units can be used to modify numbers representing frame ranges to match second of
 | `f`   	| (default) frames 	|   	|
 | `s` 	| seconds |   	|
 | `b`  	| beats  	|   	|
+
+#### Unit conversion functions
+
+Use these functions to convert between frames, beats and seconds:
+
+| unit  	|  function 	| example  	|
+|---	   |---	|---	|
+| `f2b(x)`   	| Frames to beats	|   	|
+| `b2f(x)` 	| Beats to frames |   	|
+| `f2s(x)`  	| Frames to seconds  	|   	|
+| `s2f(x)`  	| Seconds to frames  	|   	|
+
+
 
 #### Other operators and expressions
 
@@ -410,10 +324,19 @@ Units can be used to modify numbers representing frame ranges to match second of
  
 To help you align your keyframes and formula with audio, you can load an audio file to view its waveform alongside the your parameter graph. Zooming and panning the graph will apply to the audio (click and drag to pan, hold alt/option and mouse wheel to zoom). Scrolling the audio will pan the graph. A viewport control is available between the graph and audio. Prompt, beat and cursor markers are displayed on both visualisations.
 
-This is not yet a full integration of the audio Analyser: you'll still need to use the Analyser tool for beat detection, audio event detection & pitch detection.
-
-
 https://user-images.githubusercontent.com/74455/228865210-be0a3202-3c9e-4037-8d9f-cd5bb3c8fd65.mp4
+
+#### Audio event detection & keyframe generation
+
+TODO (meanwhile see tutorial 3 above).
+
+#### Audio filtering
+
+TODO
+
+### Custom time series
+
+TODO (meanwhile see tutorial 3 above).
 
 
 ### Audio analyser for automatic keyframe creation from audio data

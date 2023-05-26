@@ -1,7 +1,6 @@
 ![example workflow](https://github.com/rewbs/sd-parseq/actions/workflows/firebase-hosting-merge.yml/badge.svg)
 
 # Stable Diffusion Parseq
-# Table of contents
 
 - [What is this?](#what-is-this)
 - [What's new?](#whats-new)
@@ -25,6 +24,7 @@
 - [Development & running locally](#development--running-locally)
    - [Deployment](#deployment)
 - [Credits](#credits)
+- 
 ## What is this?
 
 For context:

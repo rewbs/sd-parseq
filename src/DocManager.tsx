@@ -1,4 +1,4 @@
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useLiveQuery } from "dexie-react-hooks";
@@ -15,24 +15,27 @@ import { generateDocName } from './doc-name-generator';
 import { getDownloadURL, getStorage, ref as storageRef, uploadString } from "firebase/storage";
 import { db } from './db';
 //@ts-ignore
+import _ from 'lodash';
+import { DocId, ParseqDoc, ParseqDocVersion, ParseqPersistableState, VersionId } from './ParseqUI';
 import { useUserAuth } from "./UserAuthContext";
-import { DocId, VersionId, ParseqDocVersion, ParseqPersistableState, ParseqDoc } from './ParseqUI';
-import {navigateToClone, navigateToTemplateId, navigateToDocId } from './utils/utils';
+import { navigateToClone, navigateToDocId, navigateToTemplateId } from './utils/utils';
 
 export const makeDocId = (): DocId => "doc-" + uuidv4() as DocId
 const makeVersionId = (): VersionId => "version-" + uuidv4() as VersionId
 
-export const loadVersion = async (docId: DocId, versionId?: VersionId): Promise<ParseqDocVersion | undefined> => {
+export const loadVersion = async (docId?: DocId, versionId?: VersionId): Promise<ParseqDocVersion | undefined> => {
     if (versionId) {
         // Load a specific version of doc.
         // Verion IDs are globally unique, so we can just lookup by the versionId (no need to check docId).
         return db.parseqVersions.get(versionId);
-    } else {
+    } else if (docId)  {
         // Load latest version of doc
         const versions = await db.parseqVersions.where('docId').equals(docId).reverse().sortBy('timestamp');
         if (versions.length > 0) {
             return versions[0];
         }
+    } else {
+        throw new Error("Must specify either docId or versionId");
     }
 }
 
@@ -86,7 +89,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
     const [selectedTemplateId, setSelectedTemplateId] = useState("blank");
     const [selectedTemplateDescription, setSelectedTemplateDescription] = useState("blank");
     const [openLoadDialog, setOpenLoadDialog] = useState(false);
-    const [selectedDocIdForLoad, setSelectedDocIdForLoad] = useState<DocId>();
+    const [selectedDocForLoad, setSelectedDocForLoad] = useState<{id: DocId, label:string, key:string}|undefined>();
     const [dataToImport, setDataToImport] = useState("");
     const [importError, setImportError] = useState("");
     const [openShareDialog, setOpenShareDialog] = useState(false);
@@ -98,6 +101,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
     const [exportableDoc, setExportableDoc] = useState("");
     const [parseqShareUrl, setParseqShareUrl] = useState("");
     const [uploadStatus, setUploadStatus] = useState(defaultUploadStatus);
+    const [loadingStatus, setLoadingStatus]= useState(false);
 
     //@ts-ignore - this type check is too deep down for me to figure out right now.
     const { user } = useUserAuth();
@@ -247,16 +251,18 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
 
 
     const handleClickOpenLoadDialog = (): void => {
-        setSelectedDocIdForLoad(undefined);
+        setSelectedDocForLoad(undefined);
+        setLoadingStatus(false);
         setOpenLoadDialog(true);
     };
 
     // TODO break this into separate functions.
     const handleCloseLoadDialog = (e: any): void => {
-        if (e.target.id === "load" && selectedDocIdForLoad) {
-            setOpenLoadDialog(false);
-            navigateToDocId(selectedDocIdForLoad);
+        if (e.target.id === "load" && selectedDocForLoad) {
+            setLoadingStatus(true);
+            navigateToDocId(selectedDocForLoad.id);
         } else if (e.target.id === "import" && dataToImport) {
+            setLoadingStatus(true);
             try {
                 const dataToImport_parsed = JSON.parse(dataToImport);
                 // Basic validation - we don't check every every keyframe,
@@ -288,6 +294,8 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
 
             } catch (e: any) {
                 setImportError(e.message);
+            } finally {
+                setLoadingStatus(false);
             }
         } else {
             setOpenLoadDialog(false);
@@ -295,6 +303,25 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
 
     };
 
+    const loadableDocs = allDocs?.sort((a: any, b: any) => {
+        if (a && b) {
+            return b.timestamp - a.timestamp;
+        } else if (a) {
+            return -1;
+        } else if (b) {
+            return 1;
+        } else {
+            return 0;
+        }
+    })
+        .filter((d: any) => d)
+        .map((d) => ({
+            label: d.name + (d.timestamp ? " (" + new TimeAgo("en-US").format(d.timestamp) + ")" : ""),
+            id: d.docId,
+            key: d.docId,
+        }));
+
+    //TODO - usememo
     const loadDialog = <Dialog open={openLoadDialog} onClose={handleCloseLoadDialog}>
         <DialogTitle>⬇️ Load a Parseq document</DialogTitle>
         <DialogContent>
@@ -305,44 +332,35 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     </DialogContentText>
                 </Grid>
                 <Grid xs={10}>
-                    <TextField
+                    <Autocomplete
+                        value={selectedDocForLoad || undefined}
+                        onChange={(event: any, newValue: { id: DocId, label: string, key: string } | null) => {
+                            setSelectedDocForLoad(newValue!);
+                        }}
+                        disablePortal
+                        size="small"
+                        fullWidth
+                        selectOnFocus
+                        clearOnBlur
+                        handleHomeEndKeys
                         id="doc-load"
-                        select
-                        style={{ marginTop: 20, width: '100%' }}
-                        label="Local storage"
-                        value={selectedDocIdForLoad}
+                        options={loadableDocs || []}
                         defaultValue={undefined}
-                        onChange={(e) => setSelectedDocIdForLoad(e.target.value as DocId)}
-                        SelectProps={{ native: true, style: { fontSize: "0.75em" } }}
-                    >
-                        <option>
-                            Pick from {allDocs?.length} docs...
-                        </option>
-                        {
-                            allDocs?.sort((a: any, b: any) => {
-                                if (a && b) {
-                                    return b.timestamp - a.timestamp;
-                                } else if (a) {
-                                    return -1;
-                                } else if (b) {
-                                    return 1;
-                                } else {
-                                    return 0;
-                                }
-                            })
-                                .map((d) => (
-                                    d ?
-                                        <option key={d.docId} value={d.docId}>
-                                            {d.name + (d.timestamp ? " ("+new TimeAgo("en-US").format(d.timestamp) + ")" : "")}
-                                        </option>
-                                        : null
-                                ))
+                        ListboxProps={{ style: { fontSize: "0.75em" } }}
+                        renderInput={(params) =>
+                            <TextField
+                                {...params}
+                                fullWidth
+                                InputProps={{ ...params.InputProps, style: { fontSize: "0.75em" }}}
+                                InputLabelProps={{ ...params.InputLabelProps, style: { fontSize: "0.75em" }}}
+                                placeholder={`Pick from ${allDocs?.length} docs...`} />
                         }
-                    </TextField>
-                    <small>Remember the prompt but not the doc name? Try the <a href={'/browser?refDocId='+activeDoc.docId} target='_blank' rel="noreferrer">browser</a>.</small>
+
+                    />
+                    <Typography paddingTop="5px" fontSize="0.6em">Remember the prompt but not the doc name? Try the <a href={'/browser?refDocId='+activeDoc.docId} target='_blank' rel="noreferrer">browser</a>.</Typography>
                 </Grid>
                 <Grid xs={2} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'end' }}>
-                    <Button size="small" disabled={!selectedDocIdForLoad} variant="contained" id="load" onClick={handleCloseLoadDialog}>⬇️ Load</Button>
+                    <Button size="small" disabled={!selectedDocForLoad} variant="contained" id="load" onClick={handleCloseLoadDialog}>⬇️ Load</Button>
                 </Grid>
                 <Grid xs={12} style={{ marginTop: 20 }}>
                     <hr />
@@ -364,7 +382,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     />
                 </Grid>
                 <Grid xs={2} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'end' }}>
-                    <Button size="small" variant="contained" id="import" onClick={handleCloseLoadDialog}>⬇️ Import</Button>
+                    <Button size="small" disabled={_.isEmpty(dataToImport?.trim())} variant="contained" id="import" onClick={handleCloseLoadDialog}>⬇️ Import</Button>
                 </Grid>
                 <Grid xs={12}>
                     {importError && <Alert severity="error" style={{ marginTop: 20 }}>{importError}</Alert>}
@@ -372,7 +390,11 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
             </Grid>
         </DialogContent>
         <DialogActions>
-            <Button size="small" id="cancel_load" onClick={handleCloseLoadDialog}>Cancel</Button>
+            {loadingStatus && <Stack direction='row' spacing={1}>
+                <CircularProgress />
+                <Typography fontSize={"0.75em"}>Loading...</Typography>
+            </Stack>}
+            <Button size="small" disabled={loadingStatus} id="cancel_load" onClick={handleCloseLoadDialog}>Cancel</Button>
         </DialogActions>
     </Dialog>
 

@@ -117,6 +117,7 @@ export default function Browser() {
                     (version: ParseqDocVersion) => {
                         const condensed = {
                             timestamp: version.timestamp,
+                            versionId: version.versionId,
                             docId: version.docId,
                             docName: version.meta.docName,
                             prompts: version.prompts,
@@ -330,8 +331,9 @@ export default function Browser() {
                                                                                 onClick={() => {
                                                                                     navigateToClone(v.docId, v.versionId);
                                                                                 }}
-                                                                                size='small' variant='outlined'><FontAwesomeIcon icon={faCopy} />&nbsp;Clone</Button>
+                                                                                size='small' variant='outlined'><FontAwesomeIcon icon={faCopy} />&nbsp;Clone</Button>                                                                              
                                                                         </Tooltip>
+                                                                        <Typography fontSize={"0.5em"} fontStyle={'monospace'}>{v.versionId}</Typography>                                                                        
                                                                     </Stack>
                                                                 </TableCell>
                                                             </tr>
@@ -340,6 +342,7 @@ export default function Browser() {
                                                 </TableBody>
                                             </Table>
                                         </TableContainer>
+                                        <Typography fontSize={"0.5em"} fontStyle={'monospace'}>{selectedDocVersions[0]?.docId}</Typography>
                                         <Stack paddingTop={'10px'} direction="row" spacing={1} alignItems="center">
                                             <Typography fontSize={"0.9em"}>Permanently deleted this document and all its versions? Type <em>confirmed</em> here to proceed:</Typography>
                                             <SmallTextField

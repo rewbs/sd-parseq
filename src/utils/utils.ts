@@ -148,3 +148,9 @@ export function createAudioBufferCopy(audioBuffer: AudioBuffer): AudioBuffer {
   }
   return newBuffer;
 }
+
+export function deleteQsParams(qsParamsToDelete: string[]) {
+  const url = new URL(window.location.toString());
+  qsParamsToDelete.forEach(p => url.searchParams.delete(p));
+  window.history.replaceState({}, '', url);
+}

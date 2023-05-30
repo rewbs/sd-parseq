@@ -1,4 +1,3 @@
-import { deepCopy } from '@firebase/util';
 import { Alert, Button, Checkbox, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -17,7 +16,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
-import { DocManagerUI, addDoc, loadVersion, makeDocId, saveVersion } from './DocManager';
+import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
 import { Editable } from './Editable';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { AudioWaveform } from './components/AudioWaveform';
@@ -26,18 +25,18 @@ import { FieldSelector } from "./components/FieldSelector";
 import { GridTooltip } from './components/GridToolTip';
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { AddKeyframesDialog, BulkEditDialog, DeleteKeyframesDialog, MergeKeyframesDialog } from './components/KeyframeDialogs';
+import { MovementPreview } from "./components/MovementPreview";
 import { Preview } from "./components/Preview";
 import { Prompts, convertPrompts } from "./components/Prompts";
+import StyledSwitch from "./components/StyledSwitch";
 import { TimeSeriesUI } from './components/TimeSeriesUI';
 import { UploadButton } from "./components/UploadButton";
 import { Viewport } from './components/Viewport';
-import { templates } from './data/templates';
 import runDbTasks from './dbTasks';
+import { parseqLoad } from "./parseq-loader";
 import { parseqRender } from './parseq-renderer';
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
-import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, navigateToDocId, queryStringGetOrCreate } from './utils/utils';
-import { MovementPreview } from "./components/MovementPreview";
-import StyledSwitch from "./components/StyledSwitch";
+import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
 
 import prettyBytes from 'pretty-bytes';
 
@@ -53,7 +52,7 @@ const ParseqUI = (props) => {
   const gridRef = useRef();
   const defaultTemplate = props.defaultTemplate;
   const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
-
+  
   //////////////////////////////////////////
   // App State
   //////////////////////////////////////////
@@ -92,7 +91,6 @@ const ParseqUI = (props) => {
   const [keyframeLock, setKeyframeLock] = useState("frames");
   const [gridHeight, setGridHeight] = useState(0);
   const [lastSaved, setLastSaved] = useState(0);
-
   const [movementPreviewEnabled, setMovementPreviewEnabled] = useState(false);
 
   const runOnceTimeout = useRef();
@@ -132,111 +130,33 @@ const ParseqUI = (props) => {
   useEffect(() => {
     function runOnce() {
       runDbTasks();
-      const qps = new URLSearchParams(window.location.search);
-      const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
-      const qsTemplate = qps.get("templateId");
-      const [qsImportRemote, qsRemoteImportToken] = [qps.get("importRemote"), qps.get("token")];
-      const [qsCopyLocalDoc, qsCopyLocalVersion] = [qps.get("copyLocalDoc"), qps.get("copyLocalVersion")];
-      if (qsLegacyContent) {
-        // Attempt to load content from querystring 
-        // This is to support *LEGACY* parsrq URLs. Doesn't work in all browsers with large data.
-        freshLoadContentToState(JSON.parse(qsLegacyContent));
-        setInitStatus({ severity: "success", message: "Successfully imported legacy Parseq data from query string." });
-        const url = new URL(window.location);
-        url.searchParams.delete('parsec');
-        url.searchParams.delete('parseq');
-        window.history.replaceState({}, '', url);
+      parseqLoad(activeDocId, defaultTemplate).then(loaded => {
+        // Redirect if necessary
+        if (loaded.redirect && !_.isEmpty(loaded.redirect)) {
+          // TODO check this
+          window.location.href = loaded.redirect;
+          return;
+        }
+
+        // Display any message from the load operation
+        if (loaded.status && !_.isEmpty(loaded.status)) {
+          setInitStatus(loaded.status);
+        }
+
+        // Map loaded content to React state
+        // Assum all required deep copying has been done by the load function.
+        setPersistableState(loaded.loadedDoc);
+
+      }).catch((e) => {
+        setInitStatus({severity: "error", message: "Error loading document: " + e.toString()});
+      }).finally(() => {
         setAutoSaveEnabled(true);
         if (!preventInitialRender) {
           setEnqueuedRender(true);
-        }
-      } else if (qsTemplate) {
-        if (templates[qsTemplate]) {
-          freshLoadContentToState(templates[qsTemplate].template);
-          setInitStatus({ severity: "success", message: `Started new document from template "${qsTemplate}".` });
-          const url = new URL(window.location);
-          url.searchParams.delete('templateId');
-          window.history.replaceState({}, '', url);
-          setAutoSaveEnabled(true);
-          if (!preventInitialRender) {
-            setEnqueuedRender(true);
-          }
-        } else {
-          setInitStatus({ severity: "error", message: `Could not find template "${qsTemplate}", using default starting document.` });
-        }
-      } else if (qsImportRemote && qsRemoteImportToken) {
-        setInitStatus({ severity: "warning", message: "Importing remote document..." });
-        const encodedImport = encodeURIComponent(qsImportRemote);
-        const importUrl = `https://firebasestorage.googleapis.com/v0/b/sd-parseq.appspot.com/o/shared%2F${encodedImport}?alt=media&token=${qsRemoteImportToken}`
-        fetch(importUrl).then((response) => {
-          if (response.ok) {
-            response.json().then((json) => {
-              freshLoadContentToState(json);
-              setInitStatus({ severity: "success", message: "Successfully imported remote document." });
-              const url = new URL(window.location);
-              url.searchParams.delete('importRemote');
-              url.searchParams.delete('token');
-              window.history.replaceState({}, '', url);
-              setAutoSaveEnabled(true);
-              if (!preventInitialRender) {
-                setEnqueuedRender(true);
-              }
-            }).catch((error) => {
-              console.error(error);
-              setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
-            });
-          } else {
-            console.error(response);
-            setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}. Status: ${response.status}` });
-          }
-        }).catch((error) => {
-          console.error(error);
-          setInitStatus({ severity: "error", message: `Failed to import document ${qsImportRemote}: ${error.toString()}` });
-        });
-      } else if (qsCopyLocalDoc || qsCopyLocalVersion)  {
-        setInitStatus({ severity: "warning", message: "Cloning local doc..." });
-        loadVersion(qsCopyLocalDoc, qsCopyLocalVersion).then((loadedVersion) => {
-          if (!loadedVersion) {
-            throw new Error(`Couldn't load latest version ${qsCopyLocalVersion} of ${qsCopyLocalDoc}`);
-          }
-          const newDoc = {
-            name: `${loadedVersion.meta.docName} (cloned ${new Date().toLocaleString("en-GB", { dateStyle: 'short', timeStyle: 'short' })})`,
-            docId: makeDocId(),
-            timestamp: Date.now(),
-            latestVersionId: undefined
-          };
-          // Rather than just loading the content into the current view, we're going to create a new doc, save it, and then navigate to it.
-          // We do this so that we can control the document title.
-          addDoc(newDoc).then(() => {
-            saveVersion(newDoc.docId, loadedVersion).then(() => {
-              navigateToDocId(newDoc.docId, [{k:"successMessage", v:`New document cloned from ${loadedVersion.meta.docName}.`}]);
-            }).catch((error) => {
-              throw new Error(`Failed to save cloned document ${qsCopyLocalDoc}: ${error.toString()}`);
-            });
-          }).catch((error) => {
-            throw new Error(`Failed to create cloned document ${qsCopyLocalDoc}: ${error.toString()}`);
-          });
-        }).catch((error) => {
-          console.error(error);
-          setInitStatus({ severity: "error", message: `Failed to clone local document ${qsCopyLocalDoc}: ${error.toString()}` });
-        });         
-      } else {
-        loadVersion(activeDocId).then((loadedContent) => {
-          freshLoadContentToState(loadedContent);
-          setAutoSaveEnabled(true);
-          if (!preventInitialRender) {
-            setEnqueuedRender(true);
-          }
-        });
-
-        if (qps.get("successMessage")) {
-          setInitStatus({ severity: "success", message: qps.get("successMessage") });
-          const url = new URL(window.location);
-          url.searchParams.delete('successMessage');
-          window.history.replaceState({}, '', url);          
-        }
-      }
+        }        
+       });
     }
+
     if (gridRef.current.api) {
       clearTimeout(runOnceTimeout.current);
       runOnce();
@@ -315,54 +235,10 @@ const ParseqUI = (props) => {
 
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Document loading utils
+  // Document saving/loading utils
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
-  const fillWithDefaults = useCallback((possiblyIncompleteContent) => {
-    if (!possiblyIncompleteContent.prompts) {
-      possiblyIncompleteContent.prompts = deepCopy(templates[defaultTemplate].prompts);
-    }
-    if (!possiblyIncompleteContent.keyframes) {
-      possiblyIncompleteContent.keyframes = deepCopy(templates[defaultTemplate].keyframes);
-    }
-    if (!possiblyIncompleteContent.managedFields || possiblyIncompleteContent.managedFields.length === 0) {
-      console.log("Document does not specify managed fields. Assuming all fields are managed.");
-      possiblyIncompleteContent.managedFields = defaultFields.map(f => f.name);
-    }
-    if (!possiblyIncompleteContent.displayedFields) {
-      possiblyIncompleteContent.displayedFields = possiblyIncompleteContent.managedFields.length <= 5
-        ? deepCopy(possiblyIncompleteContent.managedFields)
-        : possiblyIncompleteContent.managedFields.slice(0, 5);
-    }
-    if (!possiblyIncompleteContent.timeSeries) {
-      possiblyIncompleteContent.timeSeries = [];
-    }
-    if (!possiblyIncompleteContent.keyframeLock) {
-      possiblyIncompleteContent.keyframeLock = "frames";
-    }
-
-    // For options we want to merge the defaults with the existing options.
-    possiblyIncompleteContent.options = { ...DEFAULT_OPTIONS, ...(possiblyIncompleteContent.options || {}) };
-    return possiblyIncompleteContent;
-  }, [defaultTemplate]);
-
-  const freshLoadContentToState = useCallback((loadedContent) => {
-    if (!loadedContent) {
-      console.log("Falling back to default template:", defaultTemplate);
-      loadedContent = templates[defaultTemplate].template;
-    }
-    const filledContent = fillWithDefaults(loadedContent || {});
-    setPrompts(convertPrompts(filledContent.prompts, Math.max(...filledContent.keyframes.map(kf => kf.frame))));
-    setOptions(filledContent.options);
-    setManagedFields([...filledContent.managedFields]);
-    setDisplayedFields([...filledContent.displayedFields]);
-    setKeyframes(filledContent.keyframes);
-    setTimeSeries([...filledContent.timeSeries]);
-    setKeyframeLock(filledContent.keyframeLock);
-    refreshGridFromKeyframes(filledContent.keyframes);
-  }, [fillWithDefaults, defaultTemplate]);
-
-
+  // Converts React state to a persistable object
   // TODO: switch to useMemo that updates when elements change?
   const getPersistableState = useCallback(() => {
   
@@ -389,6 +265,24 @@ const ParseqUI = (props) => {
     }
   }
   , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
+
+
+  // Converts document object to React state.
+  // Assumes any required deep copying has already occurred.  
+  const setPersistableState = useCallback((doc) => {
+    if (doc) {
+      setPrompts(convertPrompts(doc.prompts, Math.max(...doc.keyframes.map(kf => kf.frame))));
+      setOptions(doc.options);
+      setManagedFields(doc.managedFields);
+      setDisplayedFields(doc.displayedFields);
+      setKeyframes(doc.keyframes);
+      setTimeSeries(doc.timeSeries);
+      setKeyframeLock(doc.keyframeLock);
+
+      refreshGridFromKeyframes(doc.keyframes);
+    }
+    
+  }, []);
 
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -880,11 +774,11 @@ const ParseqUI = (props) => {
       onLoadContent={(content) => {
         console.log("Loading version", content);
         if (content) {
-          freshLoadContentToState(content);
+          setPersistableState(content);
         }
       }}
     />
-  </UserAuthContextProvider>, [activeDocId, freshLoadContentToState, lastSaved]);
+  </UserAuthContextProvider>, [activeDocId, setPersistableState, lastSaved]);
 
   // Prompts ------------------------
 
@@ -1543,8 +1437,7 @@ const ParseqUI = (props) => {
   // Main layout
   ///////////////////////////////////////////////////////////////
 
-  return (
-    <Grid container paddingLeft={5} paddingRight={5} spacing={2} sx={{
+  return ( <Grid container paddingLeft={5} paddingRight={5} spacing={2} sx={{
       '--Grid-borderWidth': '1px',
       borderTop: 'var(--Grid-borderWidth) solid',
       borderLeft: 'var(--Grid-borderWidth) solid',
@@ -1653,9 +1546,7 @@ const ParseqUI = (props) => {
             {movementPreviewEnabled && 
               <MovementPreview renderedData={renderedData.rendered_frames} />
             }
-
-            </>
-          
+           </>
           }
         </ExpandableSection>
       </Grid>

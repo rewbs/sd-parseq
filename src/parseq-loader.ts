@@ -50,7 +50,7 @@ type ParseqLoadResult = {
     status: {}
 }
 
-export const parseqLoad = async (docId: DocId, defaultTemplate: string): Promise<ParseqLoadResult> => {
+export const parseqLoad = async (docId: DocId, defaultTemplate: string, keepQs : boolean=false): Promise<ParseqLoadResult> => {
     const qps = new URLSearchParams(window.location.search);
     const qsLegacyContent = qps.get("parseq") || qps.get("parsec");
     const qsTemplate = qps.get("templateId");
@@ -71,7 +71,7 @@ export const parseqLoad = async (docId: DocId, defaultTemplate: string): Promise
         } catch (e: any) {
             status = { severity: "error", message: "Could not parse Parseq data from query string: " + e.toString() + ". Using default starting template." };
         } finally {
-            deleteQsParams(['parsec', 'parseq']);
+            keepQs || deleteQsParams(['parsec', 'parseq']);
         }
     } else if (qsTemplate) {
         // Load from a template 
@@ -85,7 +85,7 @@ export const parseqLoad = async (docId: DocId, defaultTemplate: string): Promise
         } catch (e: any) {
             status = { severity: "error", message: `Error loading from template: ${e.toString()}. Using default starting template.` };
         } finally {
-            deleteQsParams(['templateId']);
+            keepQs || deleteQsParams(['templateId']);
         }
     } else if (qsImportRemote && qsRemoteImportToken) {
         // Import from a remote document
@@ -105,7 +105,7 @@ export const parseqLoad = async (docId: DocId, defaultTemplate: string): Promise
             console.error(error);
             status = { severity: "error", message: `Failed to import document: ${error.toString()}. Using default starting template.` };
         } finally {
-            deleteQsParams(['importRemote', 'token']);
+            keepQs || deleteQsParams(['importRemote', 'token']);
         }
     } else if (qsCopyLocalDoc || qsCopyLocalVersion) {
         // Clone local doc        
@@ -132,7 +132,7 @@ export const parseqLoad = async (docId: DocId, defaultTemplate: string): Promise
             console.error(error);
             status = { severity: "error", message: `Failed to clone local document ${qsCopyLocalDoc}: ${error.toString()}. Using default starting template.` };
         } finally {
-            deleteQsParams(['copyLocalDoc', 'copyLocalVersion']);
+            keepQs || deleteQsParams(['copyLocalDoc', 'copyLocalVersion']);
         };
     } else {
         loadedDoc = await loadVersion(docId);
@@ -143,7 +143,7 @@ export const parseqLoad = async (docId: DocId, defaultTemplate: string): Promise
 
     if (qps.get("successMessage")) {
         status = { severity: "success", message: qps.get("successMessage") };
-        deleteQsParams(['successMessage']);
+        keepQs || deleteQsParams(['successMessage']);
     }
 
     return {

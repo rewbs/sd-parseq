@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from "react-router-dom";
 import ReactTimeAgo from 'react-time-ago';
 import { useEffectOnce } from 'react-use';
-import { DocId, ParseqDoc, ParseqPrompts, VersionId } from './ParseqUI';
+import { DocId, ParseqDoc, ParseqDocVersion, ParseqPrompts, VersionId } from './ParseqUI';
 import Header from './components/Header';
 import LinearProgressWithLabel from './components/LinearProgressWithLabel';
 import { SmallTextField } from './components/SmallTextField';
@@ -90,9 +90,9 @@ export default function Browser() {
                             timestamp: doc.timestamp,
                             docId: doc.docId,
                             docName: doc.name,
-                            prompts: version.prompts,
-                            timeSeriesNames: version.timeSeries?.map((ts: any) => ts.alias),
-                            managedFields: version.managedFields
+                            prompts: version?.prompts,
+                            timeSeriesNames: version?.timeSeries?.map((ts: any) => ts.alias),
+                            managedFields: version?.managedFields
                         };
                         resultMap.set(doc.docId, condensed);
                         setLoadedDocs(resultMap.size);

@@ -18,6 +18,7 @@ import Analyser from './Analyser';
 import Browser from './Browser';
 import Deforum from './Deforum';
 import Labs from './Labs';
+import Raw from './Raw';
 import reportWebVitals from './reportWebVitals';
 
 Sentry.init({
@@ -37,6 +38,7 @@ const router = <BrowserRouter>
     <Route path="/legacy" element={<App />} />
     <Route path="/analyser" element={<Analyser />} />
     <Route path="/labs" element={<Labs />} />
+    <Route path="/raw" element={<Raw />} />
   </Routes>
 </BrowserRouter>
 

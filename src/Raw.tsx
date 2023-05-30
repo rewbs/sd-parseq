@@ -1,12 +1,20 @@
-import { CssBaseline } from "@mui/material";
-import Grid from '@mui/material/Unstable_Grid2';
-import Header from "./components/Header";
+import { useState } from "react";
+import { DocId } from "./ParseqUI";
+import { parseqLoad } from "./parseq-loader";
+import { parseqRender } from "./parseq-renderer";
+import { queryStringGetOrCreate } from "./utils/utils";
 
 const Raw = () => {
 
-    return <>
+    const [renderedJSON, setRenderedJSON] = useState("");
+    const docId = queryStringGetOrCreate('docId', () => 'dummy-doc-id');
 
-    </>
+    parseqLoad(docId as DocId, "", true).then((loaded) => {
+        const results = parseqRender(loaded.loadedDoc);
+        setRenderedJSON( JSON.stringify(results.renderedData, null, 2) );
+    });
+    
+    return renderedJSON;
 }
 
-export default Raw;
+export default Raw; 

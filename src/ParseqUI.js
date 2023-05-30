@@ -1544,7 +1544,10 @@ const ParseqUI = (props) => {
                 label={<small> Experimental preview of camera movement.</small>} />
 
             {movementPreviewEnabled && 
-              <MovementPreview renderedData={renderedData.rendered_frames} />
+              <MovementPreview
+                renderedData={renderedData.rendered_frames}
+                fps={options?.output_fps || 20}
+              />
             }
            </>
           }

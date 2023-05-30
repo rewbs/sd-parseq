@@ -1,9 +1,10 @@
-import { Alert, Stack, Typography } from "@mui/material";
+import { Alert, Stack, Tooltip, Typography } from "@mui/material";
 import { P5CanvasInstance, ReactP5Wrapper, SketchProps } from "@p5-wrapper/react";
 import _ from "lodash";
 import { all, create } from 'mathjs';
 import { useMemo, useState } from "react";
 import { ParseqRenderedFrames } from "../ParseqUI";
+import { SmallTextField } from "./SmallTextField";
 
 const config = {}
 const m = create(all, config)
@@ -13,6 +14,8 @@ type MySketchProps = SketchProps & {
     currentFrame: number,
     manualRotation: number[],
     manualTranslation: number[],
+    fps: number,
+    cadence: number,
 };
 
 const sketch = (p5: P5CanvasInstance) => {
@@ -23,6 +26,9 @@ const sketch = (p5: P5CanvasInstance) => {
     let myFont: any = undefined;
     let manualRotation = [0,0,0];
     let manualTranslation = [0,0,0];
+    let cam : any = undefined;
+    let fps = 20;
+    let cadence = 10;
 
     p5.updateWithProps = (props: MySketchProps) => {
         if (props.renderedData) {
@@ -33,12 +39,14 @@ const sketch = (p5: P5CanvasInstance) => {
         }
         manualRotation = props.manualRotation;
         manualTranslation = props.manualTranslation;
+        fps = props.fps;
+        cadence = props.cadence;
     };
 
     p5.preload = () => {
         //console.log("In preload", p5);
         myFont = p5.loadFont('OpenSans-Light.ttf');
-        p5.frameRate(5);
+        
     }
 
     p5.setup = () => {
@@ -51,6 +59,8 @@ const sketch = (p5: P5CanvasInstance) => {
             p5.rectMode("center");
             p5.frameRate(10);
             p5.background(0);
+            p5.fill('#ED225D');
+            p5.textFont(myFont, 15);    
         }
 
         if (!generationBuffer) {
@@ -67,18 +77,23 @@ const sketch = (p5: P5CanvasInstance) => {
             inputBuffer.rectMode("center");
             inputBuffer.background(0);
         }
+        if (!cam) {
+            cam = p5.createCamera();
+        }
+
+        //p5.saveGif("test.gif", renderedData.length);
 
     }
 
 
     p5.draw = () => {
 
-        if (!inputBuffer || !generationBuffer) {
+        if (!inputBuffer || !generationBuffer || !cam) {
             console.error("P5 draw() called before p5 setup().")
             return;
         }
 
-        const totalFrames = renderedData.length || 100;
+        const totalFrames = renderedData.length ? renderedData.length-1 : 100;
         const frame = (p5.frameCount-1) % totalFrames;
         if (frame === 0) {
             p5.clear(0);
@@ -87,10 +102,11 @@ const sketch = (p5: P5CanvasInstance) => {
             inputBuffer.background(0);
             generationBuffer.clear(0);
             generationBuffer.background(0);
+            p5.frameRate(fps); // TODO this isn't taking hold. Why?
         }
         const frameCountSpan = document.getElementById("frameCount");
         if (frameCountSpan) {
-            frameCountSpan.innerText = `${frame}/${totalFrames}`;
+            frameCountSpan.innerText = `${frame}/${totalFrames} (fps:${p5.frameRate().toFixed(2)})`;
         }
 
         //console.log(`Drawing frame ${frame}/${renderedData.length - 1} (p5 total: ${p5.frameCount}) at ${p5.frameRate().toFixed(2)}fps`);
@@ -99,6 +115,10 @@ const sketch = (p5: P5CanvasInstance) => {
         let rotate: number[];
         let translate: number[];
         let prompt = "";
+        let fov = 40;
+        let near = 200;
+        let far = 1000;
+        let strength = 1;
         if (renderedData && renderedData.length > frame) {
             rotate = [
                 renderedData[frame]['rotation_3d_x_delta'] || 0,
@@ -112,6 +132,11 @@ const sketch = (p5: P5CanvasInstance) => {
                 renderedData[frame]['translation_z_delta'] || 0,
             ];
             prompt = renderedData[frame]['deforum_prompt'];
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            fov = renderedData[frame]['fov'] || 40;
+            near = renderedData[frame]['near'] || 200;
+            far = renderedData[frame]['far'] || 1000;
+            strength = renderedData[frame]['strength'] || 0.7;
         } else {
             prompt = "Manual mode";
             rotate = manualRotation;
@@ -125,44 +150,49 @@ const sketch = (p5: P5CanvasInstance) => {
         // Transform the previous frame
         inputBuffer.reset();
         inputBuffer.resetMatrix();
-        //console.log(`Translate: ${translate}, rotate: ${rotate}`);
-        inputBuffer.translate(translate[0], translate[1], translate[2]);
-        inputBuffer.rotateX(p5.radians(rotate[0]));
-        inputBuffer.rotateY(p5.radians(rotate[1]));
-        inputBuffer.rotateZ(p5.radians(rotate[2]));
+        cam = inputBuffer.createCamera();
+
+        // CAMERA MOTION
+        cam.perspective(p5.radians(60), 1, near, far);
+        cam.move(translate[0], -translate[1], -translate[2]);
+        cam.tilt(-p5.radians(rotate[0]));
+        cam.pan(-p5.radians(rotate[1]));
+        //p5 has no roll function for the camera
+        inputBuffer.rotateZ(-p5.radians(rotate[2]));
 
         // Perform "generation"
-        const strength = 1;
         generationBuffer.reset();
         generationBuffer.resetMatrix();
         generationBuffer.clear(0); // TODO check alpha behaviour
-        if ((frame - 1) % 10 === 0) {
-            // simulate low deforum strength: copy previous frame, very faded.
-            generationBuffer.tint(255, 220 * strength);
+        if ((frame) % cadence === 0) {
+            // High strength preserves more of the previous frame
+            generationBuffer.tint(255, (255*strength));
             generationBuffer.image(inputBuffer, 0, 0);
 
-            // generate new content over the top
-            const newImageAlpha = 200;
-            generationBuffer.tint(255, 255);
+            // generate new content over the top.
+            // High strength means new generation is weaker
+            const newImageAlpha = frame === 0 ? 255 :  (255 - (255*strength));
+            generationBuffer.noFill();
             generationBuffer.strokeWeight(3);
-            generationBuffer.stroke(0, 255, 255, newImageAlpha);
+            generationBuffer.stroke(0, Math.random()*255, 255, newImageAlpha);
             generationBuffer.rect(0, 0, inputBuffer.height - 10, inputBuffer.width - 10);
-            generationBuffer.stroke(255, 200, 200, newImageAlpha);
+            generationBuffer.stroke(Math.random()*255, 200, 200, newImageAlpha);
             generationBuffer.rect(0, 0, inputBuffer.height / 1.5, inputBuffer.height / 2)
-            generationBuffer.stroke(200, 200, 255, newImageAlpha);
+            generationBuffer.stroke(200, 200, Math.random()*255, newImageAlpha);
             generationBuffer.rect(0, 0, inputBuffer.height / 3, inputBuffer.height / 4)
-
+            generationBuffer.fill(0, 255, 255, newImageAlpha);
+            generationBuffer.textFont(myFont, 15);
+            generationBuffer.fill(255, 255, 255, newImageAlpha);            
+            generationBuffer.text(frame, 0, 0);
         } else {
             // simulate high deforum strength: copy previous frame, slightly faded.
-            generationBuffer.tint(255, 245);
+            generationBuffer.tint(255, 250 + 5*strength);
             generationBuffer.image(inputBuffer, 0, 0);
         }
 
         // Display generated image
         p5.image(generationBuffer, 0, 0);
-        p5.fill('#ED225D');
-        p5.textFont(myFont, 15);
-        p5.text(`frame: ${frame}`, -p5.width / 2 + 20, p5.height / 2 - 20);
+        //p5.text(text, -p5.width / 2 + 20, p5.height / 2 - 20);
 
         // Copy generated image to input for next loop
         inputBuffer.image(generationBuffer, 0, 0);
@@ -172,13 +202,15 @@ const sketch = (p5: P5CanvasInstance) => {
 
 type MovementPreviewProps = {
     renderedData: ParseqRenderedFrames,
+    fps: number,
 };
 
-export const MovementPreview = ({renderedData} : MovementPreviewProps ) => {
+export const MovementPreview = ({renderedData, fps} : MovementPreviewProps ) => {
 
     const [currentFrame, setCurrentFrame] = useState(0);
     const [manualTranslation, setManualTranslation] = useState([0, 0, 0]);
     const [manualRotation, setManualRotation] = useState([0, 0, 0]);
+    const [cadence, setCadence] = useState("10");
 
     onkeydown = (e) => {
         switch (e.key) {
@@ -235,22 +267,33 @@ export const MovementPreview = ({renderedData} : MovementPreviewProps ) => {
             frame={currentFrame}
             manualTranslation={manualTranslation}
             manualRotation={manualRotation}
+            fps={fps}
+            cadence={parseInt(cadence)}
         />;
-    }, [renderedData, currentFrame, manualRotation, manualTranslation]);
+    }, [renderedData, currentFrame, manualRotation, manualTranslation, cadence, fps]);
 
     return <Stack direction="column" spacing={2} alignItems={"center"}>
         <Alert severity="warning">
-                <p>This experimental feature gives you a rough idea of what your camera movements look like.
+                <p>This experimental feature gives you a rough idea of what your camera movements will look like.
                 Inspired by <a href="https://colab.research.google.com/github/pharmapsychotic/ai-notebooks/blob/main/pharmapsychotic_AnimationPreview.ipynb">AnimationPreview by @pharmapsychotic</a>.
                 </p>
-                <p>
-                Not identical to Deforum's algorithm.
-                Only works for 3D animation params (x, y, z translation and rotation).
-                Does not factor in FPS, strength or perspective.
-                </p>
-                Improvements soon. Feedback welcome!
+                <ul>
+                    <li>This is a rough reference only: the image warping algorithm is not identical to Deforum's.</li>
+                    <li>This currently only works for 3D animation params (x, y, z translation and 3d rotation).</li>
+                    <li>Does not factor in FPS or perspective params (fov, near, far).</li>
+                    <li>Using a higher cadence (~10) in this preview can make it easier to see the effect of your camera movements. However, whether you should use a high cadence during your real generation depends on how often you want the Diffusion process to run.</li>
+                </ul>
+                Feedback welcome on <a href="https://discord.gg/deforum">Discord</a> or <a href="https://github.com/rewbs/sd-parseq/issues">GitHub</a>.
             </Alert>
         {sketchElem}
+        <Tooltip title="In this preview, a higher cadence can make it easier to see the effect of your camera movements. However, whether you should use a high cadence during your actual generation depends on how often you want the Diffusion process to run.">
+            <SmallTextField 
+                value={cadence}
+                label="Cadence"
+                type="number"
+                onChange={(e) => setCadence(e.target.value)}
+            />
+        </Tooltip>
         <Typography fontFamily={"monospace"}>Frame: <span id="frameCount">0</span></Typography>
         <Typography fontSize={"0.75em"} fontFamily={"monospace"}><span id="prompt"></span></Typography>
     </Stack>
@@ -260,3 +303,5 @@ export const MovementPreview = ({renderedData} : MovementPreviewProps ) => {
 
 export default MovementPreview;
 
+
+// o = JSON.parse(JSON.parse($('pre').innerText).parseq_manifest); delete o['rendered_frames']; o

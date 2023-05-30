@@ -6,7 +6,8 @@ const config = {
   },
   setupFiles: [
     "fake-indexeddb/auto"
-  ]
+  ],
+  testMatch: ["<rootDir>/src/**/?(*.)test.ts"],
 };
 
 export default config;

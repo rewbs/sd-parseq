@@ -12,6 +12,8 @@
 # production
 /build
 
+/pw-output
+
 # misc
 .DS_Store
 .env.local

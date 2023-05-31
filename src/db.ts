@@ -1,5 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import { isStoragePersisted, persist } from './persistance';
+import { ParseqDoc, ParseqDocVersion } from './ParseqUI';
 
 export class ParseqDexie extends Dexie {
     parseqVersions!: Table<ParseqDocVersion>;

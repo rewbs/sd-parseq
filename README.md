@@ -9,22 +9,37 @@
 - [Usage](#usage)
 - [Examples](#examples)
 - [Features](#features)
-   - [Keyframed parameter values with scriptable interpolation](#keyframed-parameter-values-with-scriptable-interpolation)
-   - [Interpolation modifiers](#interpolation-modifiers)
-   - [Working with time & beats (audio synchronisation)](#working-with-time--beats-audio-synchronisation)
+ - [Keyframed parameter values with scriptable interpolation](#keyframed-parameter-values-with-scriptable-interpolation)
+ - [Interpolation modifiers](#interpolation-modifiers)
+   - [Values](#values)
+   - [Functions](#functions)
+   - [Simple maths functions](#simple-maths-functions)
+   - [Maths constants](#maths-constants)
+   - [Units](#units)
+   - [Unit conversion functions](#unit-conversion-functions)
+   - [Other operators and expressions](#other-operators-and-expressions)
+ - [Working with time & beats (audio synchronisation)](#working-with-time--beats-audio-synchronisation)
+   - [Beats per minute and frames per second](#beats-per-minute-and-frames-per-second)
+   - [Locking keyframes to beats or seconds](#locking-keyframes-to-beats-or-seconds)
+   - [Interval keyframe creation](#interval-keyframe-creation)
+   - [Keyframe labelling](#keyframe-labelling)
    - [Reference audio](#reference-audio)
+   - [Automatically generating keyframes from audio events](#automatically-generating-keyframes-from-audio-events)
+   - [Sync'ing to pitch and amplitude using time series](#syncing-to-pitch-and-amplitude-using-time-series)
    - [Legacy Audio Analyser](#legacy-audio-analyser)
+ - [Time series for arbtrary data sequences](#time-series-for-arbtrary-data-sequences)
+ - [Camera movement preview](#camera-movement-preview)
 - [Deforum integration features](#deforum-integration-features)
-   - [Keyframable parameters](#keyframable-parameters)
-   - [Prompt manipulation](#prompt-manipulation)
-   - [Using multiple prompts](#using-multiple-prompts)
-   - [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
-   - [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
+ - [Keyframable parameters](#keyframable-parameters)
+ - [Prompt manipulation](#prompt-manipulation)
+ - [Using multiple prompts](#using-multiple-prompts)
+ - [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
+ - [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
 - [Working with large number of frames (performance tips)](#working-with-large-number-of-frames-performance-tips)
 - [Development & running locally](#development--running-locally)
-   - [Deployment](#deployment)
+ - [Deployment](#deployment)
 - [Credits](#credits)
-- 
+
 ## What is this?
 
 For context:
@@ -329,7 +344,7 @@ You can quickly create keyframes aligned with regular events by using the "at in
 
 A common practice is to label keyframes to indicate the audio event they represent (e.g. "bassdrum", "snare", etc...). You can then reference all such keyframes in interpolation formulae with functions like `info_match_last()`, `info_match_next()` and `info_match_count()`, as well as in the bulk edit dialog. 
 
-### Reference audio
+#### Reference audio
 
 To help you align your keyframes and formula with audio, you can load an audio file to view its waveform alongside the your parameter graph. Zooming and panning the graph will apply to the audio (click and drag to pan, hold alt/option and mouse wheel to zoom). Scrolling the audio will pan the graph. A viewport control is available between the graph and audio. Prompt, beat and cursor markers are displayed on both visualisations.
 
@@ -386,22 +401,44 @@ There are two ways to reference timeseries:
 
 See pitch detection in action [in this tutorial](https://youtu.be/M6Z-kD2HnDQ?t=880).
 
-#### Time series for arbtrary data sequences
-
-
-### Legacy Audio Analyser
+#### Legacy Audio Analyser
 
 This feature is deprecated. See its [archived documentation on the Parseq wiki](https://github.com/rewbs/sd-parseq/wiki/Legacy-Audio-Analyser-documentation).
 
+### Time series for arbtrary data sequences
 
+In addition to audio pitch and amplitude data, you can also load any CSV as a timeseries. This means you can import essentially any series of numbers for use in Parseq.
 
+The format of the CSV file must be `timestamp,value` on each row. You can choose whether the timestamp represents milliseconds or frames before you import the file.
+   
+For example, here we have imported data given to us by ChatGPT 4 the after asking the following:
+   
+> Please generate CSV output in the format x,y , where x is a number increasing by 1 from 0 to 100, and the y value draws a simple city skyline.  Output only the CSV data, do not provide any explanation.
+   
+<img width="400" alt="image" src="https://github.com/rewbs/sd-parseq/assets/74455/7d6bc4c8-e765-4fa4-be43-b444b3cfea01">
+   
+
+### Camera movement preview
+   
+Parseq has an experimental feature that enables you to visualise your camera movements in real time. It is inspired by [AnimationPreview by @pharmapsychotic
+](https://colab.research.google.com/github/pharmapsychotic/ai-notebooks/blob/main/pharmapsychotic_AnimationPreview.ipynb).
+   
+It currently has a few caveats:
+   * It is a rough reference only: the image warping algorithm is not identical to Deforum's.
+   * It currently only works for 3D animation params (x, y, z translation and 3d rotation).
+   * It does not factor in FPS or perspective params (fov, near, far).   
+   
+Nonetheless, it is quite useful to get a general sense of what your movement params are going to do:
+   
+https://github.com/rewbs/sd-parseq/assets/74455/03a18a78-e804-4e90-a061-1d9c1d063564
+   
 ## Deforum integration features
 
 Parseq can be used with **all** Deforum animation modes (2D, 3D, prompt interpolation, video etc...). You don't need to do anything special in Parseq to switch between modes: simply tweak the parameters you're interested in. 
 
 ### Keyframable parameters
 
-Here are the parameters that Parseq controls. Any values you set in the A1111 UI for Deforum will be overridden.
+Here are the parameters that Parseq can control. You can select which ones are controlled by your document in the 'Managed Fields' section. Any 'Managed Fields' for which you also set values in the A1111 UI for Deforum will be overridden by Parseq. On the other hand, fields you don't select in 'Managed fields' can be controlled from the Deforum UI as normal. So you can 'mix & match' Parseq-controlled values with Deforum-controlled values.
    
 Stable diffusion generation parameters:
 

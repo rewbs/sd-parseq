@@ -785,10 +785,8 @@ const ParseqUI = (props) => {
   const promptsUI = useMemo(() => prompts ? <Prompts
     initialPrompts={prompts}
     lastFrame={lastFrame}
-    afterFocus={(e) => setTyping(true)}
-    afterBlur={(e) => setTyping(false)}
+    afterEdit={(b) => setTyping(b)}
     afterChange={_.debounce((p) => setPrompts(p), 200)}
-    //afterChange={(p) => setPrompts(p)}
   /> : <></>, [prompts, lastFrame]);
 
   // Managed field selection ------------------------

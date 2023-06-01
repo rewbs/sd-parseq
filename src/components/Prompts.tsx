@@ -7,12 +7,12 @@ import { Timeline, TimelineEffect, TimelineRow } from '@xzdarcy/react-timeline-e
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import StyledSwitch from './StyledSwitch';
 import { AdvancedParseqPrompts, ParseqPrompts, OverlapType, AdvancedParseqPrompt } from "../ParseqUI";
+import _ from 'lodash';
 
 interface PromptsProps {
     initialPrompts: AdvancedParseqPrompts,
     lastFrame: number,
-    afterBlur: (event: any) => void,
-    afterFocus: (event: any) => void,
+    afterEdit: (active:boolean) => void,
     afterChange: (event: any) => void
 }
 
@@ -56,6 +56,7 @@ export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) :
 export function Prompts(props: PromptsProps) {
 
     const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
+    const [editingPrompts, setEditingPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
 
@@ -68,22 +69,31 @@ export function Prompts(props: PromptsProps) {
             // The sentinel must be stripped before any kind of persistence.
             //@ts-ignore
             && !props.initialPrompts[0].sentinel) {
+            console.log('resetting prompts...');
+            setEditingPrompts(_.cloneDeep(props.initialPrompts));
             setPrompts(props.initialPrompts);
         }
     }, [props.initialPrompts]);
 
     // Call the parent's callback on every prompt change
     useEffect(() => {
+        setEditingPrompts(_.cloneDeep(prompts));
+
         // HACK: This is a hack to prevent infinite loops: if the sentinel is set,
         // we know that the prompts were set in this child component so we can ignore the update when
         // they come back through.
         //@ts-ignore HACK
         prompts[0].sentinel = true; 
         props.afterChange(prompts);
+        props.afterEdit(false);
     }, [prompts, props]);    
   
 
     const promptInput = useCallback((index: number, positive: boolean) => {
+
+        const posNegStr = positive?'positive':'negative';
+        const hasUnsavedChanges = (prompts[index][posNegStr] !== editingPrompts[index][posNegStr]);
+
         return <TextField
             multiline
             minRows={2}
@@ -91,22 +101,36 @@ export function Prompts(props: PromptsProps) {
             fullWidth={true}
             style={{ paddingRight: '20px' }}
             label={(positive ? "Positive" : "Negative") + " " + prompts[index]?.name?.toLowerCase()}
-            value={positive ? prompts[index]?.positive : prompts[index]?.negative}
-            InputProps={{ style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? 'DarkGreen' : 'Firebrick' } }}
-            onBlur={(e: any) => props.afterBlur(e)}
-            onFocus={(e: any) => props.afterFocus(e)}
-            onChange={(e: any) => {
-                if (positive) {
-                    prompts[index].positive = e.target.value;
-                } else {
-                    prompts[index].negative = e.target.value;
+            value={editingPrompts[index][posNegStr]}
+            InputProps={{
+                style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? 'DarkGreen' : 'Firebrick' },
+                sx: { background: hasUnsavedChanges ? 'ivory' : '', },
+                endAdornment: hasUnsavedChanges ? '🖊️' : ''                
+            }}
+            onBlur={(e: any) => {
+                setPrompts([...editingPrompts]);                
+            }}
+            onKeyDown={(e: any) => {
+                if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                        setTimeout(() => e.target.blur());
+                        e.preventDefault();
+                    }
+                } else if (e.key === 'Escape') {
+                    setEditingPrompts([...prompts]);
+                    setTimeout(() => e.target.blur());
+                    e.preventDefault();
                 }
-                setPrompts([...prompts]);
+            }}            
+            onChange={(e: any) => {
+                props.afterEdit(true);
+                editingPrompts[index][posNegStr] = e.target.value;
+                setEditingPrompts([...editingPrompts]);
             }}
             InputLabelProps={{ shrink: true, style: { fontSize: '0.9em' } }}
             size="small"
             variant="outlined" />
-    }, [prompts, props]);
+    }, [prompts, props, editingPrompts]);
 
     const addPrompt = useCallback(() => {
         const newIndex = prompts.length;
@@ -116,7 +140,7 @@ export function Prompts(props: PromptsProps) {
             nameNumber++;
         }
 
-        setPrompts([
+        const newPrompts = [
             ...prompts,
             {
                 positive: "",
@@ -132,11 +156,20 @@ export function Prompts(props: PromptsProps) {
                     custom: "prompt_weight_" + nameNumber,
                 }
             }
-        ]);
+        ];
+
+        //@ts-ignore
+        setPrompts(newPrompts);
+        //@ts-ignore
+        setEditingPrompts(_.cloneDeep(newPrompts));
     }, [prompts, props.lastFrame]);
 
     const delPrompt = useCallback((idxToDelete: number) => {
-        setPrompts(prompts.filter((_, idx) => idx !== idxToDelete));
+        const newPrompts = prompts.filter((_, idx) => idx !== idxToDelete);
+        //@ts-ignore
+        setPrompts(newPrompts);
+        //@ts-ignore
+        setEditingPrompts(_.cloneDeep(newPrompts));
     }, [prompts]);
 
 
@@ -202,7 +235,6 @@ export function Prompts(props: PromptsProps) {
                             setPrompts(newPrompts);                                
                         }
                     }}
-                    onFocus={(e: any) => props.afterFocus(e)}
                     onBlur={(e) => {
                         if (parseInt(e.target.value) > (prompts[promptIdx].to - prompts[promptIdx].from)) {
                             const newPrompts = prompts.slice(0);
@@ -214,7 +246,6 @@ export function Prompts(props: PromptsProps) {
                             newPrompts[promptIdx].overlap.inFrames = 0;
                             setPrompts(newPrompts);
                         }
-                        props.afterBlur(e);
                     }}
                 />
             </Tooltip>
@@ -233,7 +264,6 @@ export function Prompts(props: PromptsProps) {
                         newPrompts[promptIdx].overlap.outFrames = parseInt(e.target.value);
                         setPrompts(newPrompts);
                     }}
-                    onFocus={(e: any) => props.afterFocus(e)}
                     onBlur={(e) => {
                         if (parseInt(e.target.value) > (prompts[promptIdx].to - prompts[promptIdx].from)) {
                             const newPrompts = prompts.slice(0);
@@ -245,7 +275,6 @@ export function Prompts(props: PromptsProps) {
                             newPrompts[promptIdx].overlap.outFrames = 0;
                             setPrompts(newPrompts);
                         }
-                        props.afterBlur(e);
                     }}
                 />
             </Tooltip>
@@ -264,8 +293,6 @@ export function Prompts(props: PromptsProps) {
                         newPrompts[promptIdx].overlap.custom = e.target.value;
                         setPrompts(newPrompts);
                     }}
-                    onFocus={(e: any) => props.afterFocus(e)}
-                    onBlur={(e: any) => props.afterBlur(e)}
                 />
             </Tooltip>
         </>
@@ -326,7 +353,6 @@ export function Prompts(props: PromptsProps) {
                                                     newPrompts[idx].to = props.lastFrame;
                                                     setPrompts(newPrompts);
                                                 }
-                                                props.afterBlur(e);
                                             }}
                                         />
                                     </Tooltip>
@@ -360,7 +386,6 @@ export function Prompts(props: PromptsProps) {
                                                     newPrompts[idx].to = props.lastFrame;
                                                     setPrompts(newPrompts);
                                                 }
-                                                props.afterBlur(e);
                                             }}
                                         />
                                     </Tooltip>
@@ -511,7 +536,6 @@ export function Prompts(props: PromptsProps) {
                             return p;
                         });
                         setPrompts(newPrompts);
-                        props.afterBlur(e);
                     }}
                     getActionRender={(action: any, row: any) => {
                         return <div style={{ borderRadius: '5px', marginTop: '1px', overflow: 'hidden', maxHeight: '15px', backgroundColor: 'rgba(125,125,250,0.5)' }}>
@@ -575,7 +599,7 @@ export function Prompts(props: PromptsProps) {
             <FormControlLabel
                 sx = {{ padding:'0' }}
                 control={<StyledSwitch                    
-                    onChange={(e) => { setPromptsEnabled(e.target.checked); props.afterBlur(null); }}
+                    onChange={(e) => { setPromptsEnabled(e.target.checked) }}
                     checked={isPromptsEnabled()} />}
                 label={<small> Use Parseq to manage prompts (disable to control prompts with Deforum instead).</small>} />
         </Grid>
@@ -596,7 +620,7 @@ export function Prompts(props: PromptsProps) {
                             size="small"
                             fullWidth={true}
                             InputLabelProps={{ shrink: true }}
-                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em', background: 'whitesmoke' } }}
                             value={quickPreview}
                             label={`Quick preview [frame ${quickPreviewPosition}]`}
                             variant="outlined"

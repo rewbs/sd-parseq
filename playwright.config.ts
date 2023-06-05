@@ -6,4 +6,6 @@ export default defineConfig({
 
   // Glob patterns or regular expressions that match test files. 
   testMatch: '*playwright/*.spec.ts',
+
+  timeout: 5 * 60 * 1000,
 });

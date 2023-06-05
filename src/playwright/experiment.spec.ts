@@ -2,6 +2,7 @@ import { test } from '@playwright/test';
 import fs from 'fs';
 import _ from 'lodash';
 import { ParseqPersistableState } from '../ParseqUI';
+import { Octokit } from "@octokit/rest";
 
 const baseConfig : ParseqPersistableState = {
   "meta": {
@@ -38,15 +39,11 @@ const baseConfig : ParseqPersistableState = {
       "seed"
   ],
   "displayedFields": [
-      "translation_x"
   ],
   "keyframes": [
       {
           "frame": 0,
-          "zoom": 1,
-          "zoom_i": "C",
           "seed": 3272688462,
-          "strength_i": "S-pulse(p=4b, pw=1f, a=0.15)",
           "seed_i": "S+f",
       },
       {
@@ -210,7 +207,7 @@ const baseDeforumSettings = {
   "delete_imgs": false,
   "add_soundtrack": "File",
   "soundtrack_path": "/home/rewbs/Four-Four-short.mp3",
-  "r_upscale_video": true,
+  "r_upscale_video": false,
   "r_upscale_factor": "x4",
   "r_upscale_model": "realesrgan-x4plus",
   "r_upscale_keep_imgs": true,
@@ -237,6 +234,21 @@ const tamperConfig = (config:ParseqPersistableState, kf : number, field: string,
     [`${field}_i`]: interpolation
   }
   return newConfig;  
+}
+
+async function createGist(filename: string, content: string): Promise<string|undefined> {
+  const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN! });
+
+  const response = await octokit.gists.create({
+    files: {
+      [filename]: {
+        content: content,
+      },
+    },
+    public: true,
+  });
+
+  return response.data.html_url;
 }
 
 
@@ -273,14 +285,17 @@ test('Render many', async ({ page }) => {
       ].map(s => ({...s, ...category}))
     }));
 
-  fs.mkdirSync('pw-output', {recursive: true});
+  const output_dir = `pw-output-${Date.now()}`;
+
+  fs.mkdirSync(output_dir, {recursive: true});
 
   for (const setup of setups) {
     const outputLabel = `${setup.category}-${setup.field}-${setup.value}`;
     console.log(`Creating ${outputLabel}...`);
 
     const parseqInput = tamperConfig(baseConfig, 0, setup.field, setup.value, setup.interpolation);
-    fs.writeFileSync(`pw-output/parseq-input-${outputLabel}.json`, JSON.stringify(parseqInput, null, 2));      
+    const parseqInputStr = JSON.stringify(parseqInput, null, 2);
+    fs.writeFileSync(`${output_dir}/parseq-input-${outputLabel}.json`, parseqInputStr);
     
     const parseqInputUrlEncoded = encodeURIComponent(JSON.stringify(parseqInput));
     await page.goto('http://localhost:3000/raw?parseq=' + parseqInputUrlEncoded);
@@ -293,12 +308,38 @@ test('Render many', async ({ page }) => {
       const parseqOutput = JSON.parse(rawParseqOutput);
       const newDeforumSettings = {
         ...baseDeforumSettings,
+        batch_name: `Deforum_{timestring}_${outputLabel}`,
         parseq_manifest: JSON.stringify(parseqOutput, null, 2)
       }
-      fs.writeFileSync(`pw-output/deforum-settings-${outputLabel}.txt`, JSON.stringify(newDeforumSettings, null, 2));      
+      
+      const deforumSettingsStr = JSON.stringify(newDeforumSettings, null, 2)
+      fs.writeFileSync(`${output_dir}/deforum-settings-${outputLabel}.txt`, deforumSettingsStr);
+
+      if (process.env.GITHUB_TOKEN) {
+        const deforumSettingsGist = await createGist(`deforum-settings-${outputLabel}.json`, deforumSettingsStr);
+        const parseqInputGist = await createGist(`parseq-${outputLabel}.json`, parseqInputStr);
+        const postTemplate = `[Parseq example] ${outputLabel}
+
+        (Drag video file here to upload)
+
+        <Description for ${outputLabel} e.g. Continuous horizontal camera panning, cubic spline interpolation. Small strength dips every 4 beats.>
+        
+        🚀 [Parseq direct link](TODO) TODO
+        ⬇️ [Parsec doc](${parseqInputGist})
+        📃 [Deforum settings](${deforumSettingsGist})
+        ℹ️ Post processing notes: <e.g. x3 FILM (20fps to 60fps)>
+        `
+        fs.writeFileSync(`${output_dir}/example-library-${outputLabel}.txt`, postTemplate);
+
+      } else {
+        console.log("No GITHUB_TOKEN set, skipping post template creation.");
+      }
+
     } catch (e) {
       throw new Error("Failed to generate output for " + outputLabel + ": " + e);
     }
+
+
 
   }
 

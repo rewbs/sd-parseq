@@ -1,11 +1,11 @@
-import { isValidNumber } from "./utils/maths";
 import { calculateWeight } from './components/Prompts';
 import { defaultValues } from './data/defaultValues';
+import { isValidNumber } from "./utils/maths";
 //@ts-ignore
 import { LTTB } from 'downsample';
+import { AdvancedParseqPromptsV2, GraphableData, ParseqKeyframes, ParseqPersistableState, ParseqRenderedFrames, ParseqRenderedFramesMeta, RenderedData, SparklineData } from "./ParseqUI";
 import { InvocationContext, ParseqAstNode } from "./parseq-lang/parseq-lang-ast";
 import { defaultInterpolation, parse } from './parseq-lang/parseq-lang-parser';
-import { AdvancedParseqPrompts, GraphableData, ParseqKeyframes, ParseqPersistableState, ParseqRenderedFrames, ParseqRenderedFramesMeta, RenderedData, SparklineData } from "./ParseqUI";
 
 export class ParseqRendererException {
     message: string;
@@ -26,8 +26,8 @@ function getDefaultValue(field: string) {
     }
 }
 
-export const parseqRender = (input: ParseqPersistableState): {renderedData: RenderedData, graphData: GraphableData, sparklineData: SparklineData } => {
-    const stats : {[key:string] : number} = {
+export const parseqRender = (input: ParseqPersistableState): { renderedData: RenderedData, graphData: GraphableData, sparklineData: SparklineData } => {
+    const stats: { [key: string]: number } = {
         renderStartTime: Date.now(),
         parseEvents: 0,
         invokeEvents: 0
@@ -36,7 +36,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     const keyframes = input.keyframes;
     const timeSeries = input.timeSeries;
     const options = input.options;
-    const prompts = input.prompts as AdvancedParseqPrompts;
+    const prompts = input.prompts as AdvancedParseqPromptsV2;
 
     const managedFields = input.managedFields;
 
@@ -81,7 +81,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     const mainEvalStart = Date.now();
     let rendered_frames: ParseqRenderedFrames = [];
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
-    const graphData : GraphableData = {};
+    const graphData: GraphableData = {};
     managedFields.forEach((field) => {
 
         graphData[field] = [];
@@ -168,19 +168,15 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
 
     // Calculate rendered prompt based on prompts and weights
     const promptStart = Date.now();
-    if (typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled) {
+    if (typeof (prompts.enabled) === 'undefined' || prompts.enabled) {
         all_frame_numbers.forEach((frame) => {
 
             // Pipeline for prompts (assuming enabled) at each frame:
-            // - Combine overlapping prompts with composable diffusion, for both pos & neg
-            // - Append common prompt            
+            // - Establish which prompts are active at this frame, and with what weight. Append common prompt if necessary
             // - Perform parseq evaluation on both pos & neg
             // - Move terms between pos & neg if required
-
-
+            // - Stitch active prompts together using composable diffusion
             // - Blend  pos & neg into deforum style single prompt
-
-
             const variableMap = managedFields
                 .reduce((acc, field) => acc.set(field, rendered_frames[frame][field]), new Map<string, number | string>());
 
@@ -201,7 +197,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
 
                 const promptsWithWeights = getPromptsWithWeights(prompts, frame, lastKeyFrame.frame);
                 const evaluatedPrompts = promptsWithWeights.map(pww => {
-                    let [newPositive, newNegative] = [evaluateParseqExpressions(pww.positive, {...ctx, promptType:true}), evaluateParseqExpressions(pww.negative, {...ctx, promptType:false})];
+                    let [newPositive, newNegative] = [evaluateParseqExpressions(pww.positive, { ...ctx, promptType: true }), evaluateParseqExpressions(pww.negative, { ...ctx, promptType: false })];
                     [newPositive, newNegative] = moveSubstrings(newPositive, newNegative, 0);
                     [newNegative, newPositive] = moveSubstrings(newNegative, newPositive, 0);
                     return {
@@ -211,8 +207,8 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
                     }
                 });
 
-                const positive_prompt = evaluatedPrompts.map(ep => ep.positive + (evaluatedPrompts.length>1 ? `: ${ep.weight}` : '')).join(" AND ");
-                const negative_prompt = evaluatedPrompts.map(ep => ep.negative + (evaluatedPrompts.length>1 ? `: ${ep.weight}` : '')).join(" AND ");
+                const positive_prompt = evaluatedPrompts.map(ep => ep.positive + (evaluatedPrompts.length > 1 ? `: ${ep.weight}` : '')).join(" AND ");
+                const negative_prompt = evaluatedPrompts.map(ep => ep.negative + (evaluatedPrompts.length > 1 ? `: ${ep.weight}` : '')).join(" AND ");
 
                 //@ts-ignore
                 rendered_frames[frame] = {
@@ -248,7 +244,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     // Calculate min/max of each field
     const metaStartTime = Date.now();
     var rendered_frames_meta: ParseqRenderedFramesMeta = []
-    managedFields.forEach((field : string) => {
+    managedFields.forEach((field: string) => {
         let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
         let minValue = Math.min(...rendered_frames.map(rf => rf[field]))
         rendered_frames_meta = {
@@ -265,7 +261,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     // Calculate delta variants
     const deltaStartTime = Date.now();
     all_frame_numbers.forEach((frame) => {
-        managedFields.forEach((field : string) => {
+        managedFields.forEach((field: string) => {
 
             //@ts-ignore
             let maxValue = rendered_frames_meta[field].max;
@@ -281,30 +277,30 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
                     //@ts-ignore
                     [field + "_pc"]: pcValue,
                 }
-                graphData[field + '_pc'] = [{ x: 0, y:  pcValue}];
+                graphData[field + '_pc'] = [{ x: 0, y: pcValue }];
 
             } else {
                 //@ts-ignore
                 const pcValue = (maxValue !== 0) ? rendered_frames[frame][field] / maxValue * 100 : rendered_frames[frame][field]
                 rendered_frames[frame] = {
                     ...rendered_frames[frame] || {},
-                    [field + '_delta']: (field === 'zoom') ? 1+(rendered_frames[frame][field] - rendered_frames[frame - 1][field]) : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
+                    [field + '_delta']: (field === 'zoom') ? 1 + (rendered_frames[frame][field] - rendered_frames[frame - 1][field]) : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
                     //[field + '_delta']: (field === 'zoom') ? rendered_frames[frame][field] / rendered_frames[frame - 1][field] : rendered_frames[frame][field] - rendered_frames[frame - 1][field],
                     [field + "_pc"]: pcValue,
                 }
-                graphData[field + '_pc'].push({ x: frame, y:  pcValue});
+                graphData[field + '_pc'].push({ x: frame, y: pcValue });
             }
         });
     });
     stats.deltaCalcTimeMs = Date.now() - deltaStartTime;
 
     const decimationStartTime = Date.now();
-    const sparklineData : SparklineData = [];
-    managedFields.forEach((field : string) => {
-     //@ts-ignore
-     sparklineData[field] = LTTB(graphData[field], 100).map((point) => point.y);
-     //@ts-ignore
-     sparklineData[field + '_delta'] = LTTB(rendered_frames.map((frame) => [frame.frame, frame[field + '_delta']]), 100).map((point) => point[1]);
+    const sparklineData: SparklineData = [];
+    managedFields.forEach((field: string) => {
+        //@ts-ignore
+        sparklineData[field] = LTTB(graphData[field], 100).map((point) => point.y);
+        //@ts-ignore
+        sparklineData[field + '_delta'] = LTTB(rendered_frames.map((frame) => [frame.frame, frame[field + '_delta']]), 100).map((point) => point[1]);
     });
     stats.decimationTimeMs = Date.now() - decimationStartTime;
 
@@ -315,50 +311,50 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     }
 
     stats.keyframes = keyframes.length;
-    stats.fields = managedFields.length;    
+    stats.fields = managedFields.length;
     stats.frames = lastKeyFrame.frame;
     stats.renderTimeMs = Date.now() - stats.renderStartTime;
     console.log("render stats:", stats);
 
-    return {renderedData, graphData, sparklineData};
+    return { renderedData, graphData, sparklineData };
 }
 
 
 function moveSubstrings(str1: string, str2: string, insertPos: number): [string, string] {
     // find matches
     const matches = Array.from(str1.matchAll(/__PARSEQ_MOVE__(.*?)__PARSEQ_END_MOVE__/g))
-  
+
     // remove matches from str1
     for (const match of matches) {
-      str1 = str1.replace(match[0], '');
-      str2 = str2.slice(0, insertPos) + ` ${match[1]} ` + str2.slice(insertPos);
+        str1 = str1.replace(match[0], '');
+        str2 = str2.slice(0, insertPos) + ` ${match[1]} ` + str2.slice(insertPos);
     }
-  
+
     return [str1, str2];
-  }
-
-type UnevaluatedPromptsAndWeights = {
-        positive:string,
-        negative:string,
-        weight:string,
-    }[];
-
-
-function evaluateParseqExpressions(str: string, ctx : InvocationContext) : string {
-    return str.replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
-    .replace(/(\n)/g, " ");    
 }
 
-function getPromptsWithWeights(prompts: AdvancedParseqPrompts, frame: number, lastFrame: number) : UnevaluatedPromptsAndWeights {
-    return prompts
+type UnevaluatedPromptsAndWeights = {
+    positive: string,
+    negative: string,
+    weight: string,
+}[];
+
+
+function evaluateParseqExpressions(str: string, ctx: InvocationContext): string {
+    return str.replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
+        .replace(/(\n)/g, " ");
+}
+
+function getPromptsWithWeights(prompts: AdvancedParseqPromptsV2, frame: number, lastFrame: number): UnevaluatedPromptsAndWeights {
+    return prompts.promptList
         .map((p, idx) => ({
             ...p,
             name: "prompt" + (idx + 1),
         }))
         .filter(p => p.allFrames || (frame >= p.from && frame <= p.to))
         .map(p => ({
-            positive: p.positive,  //+ (p.commonPrompt.positive ? ` ${p.commonPrompt.positive}`: ''),
-            negative: p.negative , //+ (p.commonPrompt.negative ? ` ${p.commonPrompt.negative}`: ''),
+            positive: p.positive + (prompts.commonPrompt.positive ? ` ${prompts.commonPrompt.positive}` : ''),
+            negative: p.negative + (prompts.commonPrompt.negative ? ` ${prompts.commonPrompt.negative}` : ''),
             weight: calculateWeight(p, frame, lastFrame)
         }));
 }

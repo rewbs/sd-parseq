@@ -246,8 +246,8 @@ const ParseqUI = (props) => {
     // HACK: remove the sentinel from the prompts before saving. This way,
     // on load, revert, etc..., the Prompt component knows that the input prompts
     // are not a looped refresh from its own update.
-    if (prompts && prompts[0]) {
-      delete prompts[0]?.sentinel;
+    if (prompts) {
+      delete prompts.sentinel;
     }
 
     return {
@@ -795,7 +795,7 @@ const ParseqUI = (props) => {
   // Figure out which variables are used in the prompts.
   const promptVariables = useMemo(() => defaultFields.map(f => f.name).reduce((acc, field) => {
     const pattern = RegExp(`\\$\\{.*?${field}.*?\\}`);
-    if (prompts?.some(prompt => prompt.positive?.match(pattern) || prompt.negative?.match(pattern))) {
+    if (prompts?.promptList?.some(prompt => prompt.positive?.match(pattern) || prompt.negative?.match(pattern))) {
       acc.add(field);
     }
     return acc;
@@ -1066,7 +1066,7 @@ const ParseqUI = (props) => {
 
   // Prompt markers (also used on audio graph)
   const promptMarkers = useMemo(() => (prompts && showPromptMarkers)
-    ? prompts.flatMap((p, idx) => [{
+    ? prompts.promptList.flatMap((p, idx) => [{
       x: p.allFrames ? 0 : p.from,
       color: 'rgba(50,200,50, 0.8)',
       label: p.name + 'start',
@@ -1372,7 +1372,7 @@ const ParseqUI = (props) => {
     </Stack>
     , [needsRender, enqueuedRender, lastRenderTime]);
 
-  const stickyFooter = useMemo(() => <Paper sx={{ padding: '5px', position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(200,200,200,0.85)', opacity: '99%' }} elevation={3}>
+  const stickyFooter = useMemo(() => <Paper sx={{ zIndex:1000, padding: '5px', position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(200,200,200,0.85)', opacity: '99%' }} elevation={3}>
     <Grid container spacing={1}>
       <Grid xs={6}>
         <InitialisationStatus status={initStatus} alignItems='center' />

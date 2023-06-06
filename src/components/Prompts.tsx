@@ -4,21 +4,43 @@ import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
 import { Stack } from '@mui/system';
 import { Timeline, TimelineEffect, TimelineRow } from '@xzdarcy/react-timeline-editor';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import StyledSwitch from './StyledSwitch';
-import { AdvancedParseqPrompts, ParseqPrompts, OverlapType, AdvancedParseqPrompt } from "../ParseqUI";
 import _ from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AdvancedParseqPrompt, AdvancedParseqPromptsV2, OverlapType, ParseqPrompts, SimpleParseqPrompts } from "../ParseqUI";
+import StyledSwitch from './StyledSwitch';
 
 interface PromptsProps {
-    initialPrompts: AdvancedParseqPrompts,
+    initialPrompts: AdvancedParseqPromptsV2,
     lastFrame: number,
-    markDirty: (active:boolean) => void,
+    markDirty: (active: boolean) => void,
     commitChange: (event: any) => void
 }
 
-export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) : AdvancedParseqPrompts {
-    if (!oldPrompts) {
-        return [{
+export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): AdvancedParseqPromptsV2 {
+    //@ts-ignore
+    if (oldPrompts.format === 'v2') {
+        return oldPrompts as AdvancedParseqPromptsV2;
+    }
+
+    const defaultPrompts: AdvancedParseqPromptsV2 = {
+        format: 'v2' as const,
+        enabled: true,
+        commonPrompt: {
+            name: 'Common',
+            positive: "",
+            negative: "",
+            allFrames: true,
+            from: 0,
+            to: lastFrame,
+            overlap: {
+                inFrames: 0,
+                outFrames: 0,
+                type: "none" as "none" | "linear" | "custom",
+                custom: "prompt_weight_1",
+            }
+        },
+
+        promptList: [{
             name: 'Prompt 1',
             positive: "",
             negative: "",
@@ -28,27 +50,24 @@ export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) :
             overlap: {
                 inFrames: 0,
                 outFrames: 0,
-                type: "none",
+                type: "none" as "none" | "linear" | "custom",
                 custom: "prompt_weight_1",
             }
         }]
+    }
+
+    if (!oldPrompts) {
+        return defaultPrompts;
     } else if (!Array.isArray(oldPrompts)) {
-        return [{
-            name: 'Prompt 1',
-            positive: oldPrompts.positive,
-            negative: oldPrompts.negative,
-            allFrames: true,
-            from: 0,
-            to: lastFrame,
-            overlap: {
-                inFrames: 0,
-                outFrames: 0,
-                type: "none",
-                custom: "prompt_weight_1",
-            }
-        }]
+        // Old single-prompt format
+        defaultPrompts.promptList[0].positive = (oldPrompts as SimpleParseqPrompts).positive;
+        defaultPrompts.promptList[0].negative = (oldPrompts as SimpleParseqPrompts).negative;
+        return defaultPrompts;
     } else {
-        return oldPrompts as AdvancedParseqPrompts;
+        // Old multi-prompt format
+        defaultPrompts.promptList = oldPrompts;
+        defaultPrompts.enabled = oldPrompts[0].enabled === undefined || oldPrompts[0].enabled === null ? true : oldPrompts[0].enabled;
+        return defaultPrompts;
     }
 
 }
@@ -56,7 +75,7 @@ export function convertPrompts(oldPrompts : ParseqPrompts, lastFrame : number) :
 export function Prompts(props: PromptsProps) {
 
     //const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
-    const [unsavedPrompts, setUnsavedPrompts] = useState<AdvancedParseqPrompts>(_.cloneDeep(props.initialPrompts));
+    const [unsavedPrompts, setUnsavedPrompts] = useState<AdvancedParseqPromptsV2>(_.cloneDeep(props.initialPrompts));
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
 
@@ -71,7 +90,7 @@ export function Prompts(props: PromptsProps) {
             // or other change from outside this component.
             // The sentinel must be stripped before any kind of persistence.
             //@ts-ignore
-            && !props.initialPrompts[0].sentinel) {
+            && !props.initialPrompts.promptList[0].sentinel) {
             console.log('resetting prompts...');
             setUnsavedPrompts(_.cloneDeep(props.initialPrompts));
         }
@@ -80,26 +99,29 @@ export function Prompts(props: PromptsProps) {
 
     // Notify the parent that we have unsaved changes if the unsaved prompts are different from the initial prompts
     useEffect(() => props.markDirty(!_.isEqual(props.initialPrompts, unsavedPrompts)),
-        [props, props.markDirty, props.initialPrompts, unsavedPrompts]);    
+        [props, props.markDirty, props.initialPrompts, unsavedPrompts]);
 
     // Call the parent's callback on every prompt change
-    const commitChanges = useCallback((newPrompts : AdvancedParseqPrompts) => {
+    const commitChanges = useCallback((newPrompts: AdvancedParseqPromptsV2) => {
         // HACK: This is a hack to prevent infinite loops: if the sentinel is set,
         // we know that the prompts were set in this child component so we can ignore the update when
         // they come back through.
         //@ts-ignore HACK
-        newPrompts[0].sentinel = true;
+        newPrompts.sentinel = true;
 
         setUnsavedPrompts(newPrompts);
         props.commitChange(_.cloneDeep(newPrompts));
 
     }, [props]);
-  
+
 
     const promptInput = useCallback((index: number, positive: boolean) => {
 
-        const posNegStr = positive?'positive':'negative';
-        const hasUnsavedChanges = props.initialPrompts[index] && (unsavedPrompts[index][posNegStr] !== props.initialPrompts[index][posNegStr]);
+        const posNegStr = positive ? 'positive' : 'negative';
+        const unsavedPrompt = index >= 0 ? unsavedPrompts.promptList[index] : unsavedPrompts.commonPrompt;
+        const initPrompt = index >= 0 ? props.initialPrompts.promptList[index] : props.initialPrompts.commonPrompt;
+
+        const hasUnsavedChanges = initPrompt && (unsavedPrompt[posNegStr] !== initPrompt[posNegStr]);
 
         return <TextField
             multiline
@@ -107,12 +129,12 @@ export function Prompts(props: PromptsProps) {
             maxRows={16}
             fullWidth={true}
             style={{ paddingRight: '20px' }}
-            label={(positive ? "Positive" : "Negative") + " " + unsavedPrompts[index]?.name?.toLowerCase()}
-            value={unsavedPrompts[index][posNegStr]}
+            label={(positive ? "Positive" : "Negative") + " " + unsavedPrompt?.name?.toLowerCase()}
+            value={unsavedPrompt[posNegStr]}
             InputProps={{
                 style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? 'DarkGreen' : 'Firebrick' },
                 sx: { background: hasUnsavedChanges ? 'ivory' : '', },
-                endAdornment: hasUnsavedChanges ? '🖊️' : ''                
+                endAdornment: hasUnsavedChanges ? '🖊️' : ''
             }}
             onBlur={(e: any) => {
                 commitChanges(unsavedPrompts);
@@ -124,15 +146,15 @@ export function Prompts(props: PromptsProps) {
                         e.preventDefault();
                     }
                 } else if (e.key === 'Escape') {
-                    unsavedPrompts[index][posNegStr] = props.initialPrompts[index][posNegStr];
-                    setUnsavedPrompts([...unsavedPrompts]);
+                    unsavedPrompt[posNegStr] = initPrompt[posNegStr];
+                    setUnsavedPrompts({ ...unsavedPrompts });
                     setTimeout(() => e.target.blur());
                     e.preventDefault();
                 }
-            }}            
+            }}
             onChange={(e: any) => {
-                unsavedPrompts[index][posNegStr] = e.target.value;
-                setUnsavedPrompts([...unsavedPrompts]);
+                unsavedPrompt[posNegStr] = e.target.value;
+                setUnsavedPrompts({ ...unsavedPrompts });
             }}
             InputLabelProps={{ shrink: true, style: { fontSize: '0.9em' } }}
             size="small"
@@ -140,20 +162,21 @@ export function Prompts(props: PromptsProps) {
     }, [commitChanges, props, unsavedPrompts]);
 
     const addPrompt = useCallback(() => {
-        const newIndex = unsavedPrompts.length;
+        const newIndex = unsavedPrompts.promptList.length;
         let nameNumber = newIndex + 1;
         //eslint-disable-next-line no-loop-func
-        while (unsavedPrompts.some(unsavedPrompts => prompt.name === 'Prompt ' + nameNumber)) {
+        while (unsavedPrompts.promptList.some(unsavedPrompts => prompt.name === 'Prompt ' + nameNumber)) {
             nameNumber++;
         }
 
-        const newPrompts = [
-            ...unsavedPrompts,
+        const newPrompts = { ...unsavedPrompts };
+        newPrompts.promptList = [
+            ...unsavedPrompts.promptList,
             {
                 positive: "",
                 negative: "",
-                from: Math.min(props.lastFrame, unsavedPrompts[newIndex - 1].to + 1),
-                to: Math.min(props.lastFrame, unsavedPrompts[newIndex - 1].to + 50),
+                from: Math.min(props.lastFrame, unsavedPrompts.promptList[newIndex - 1].to + 1),
+                to: Math.min(props.lastFrame, unsavedPrompts.promptList[newIndex - 1].to + 50),
                 allFrames: false,
                 name: 'Prompt ' + nameNumber,
                 overlap: {
@@ -168,14 +191,15 @@ export function Prompts(props: PromptsProps) {
     }, [unsavedPrompts, props.lastFrame, commitChanges]);
 
     const delPrompt = useCallback((idxToDelete: number) => {
-        const newPrompts = unsavedPrompts.filter((_, idx) => idx !== idxToDelete);
+        const newPrompts = { ...unsavedPrompts };
+        newPrompts.promptList = unsavedPrompts.promptList.filter((_, idx) => idx !== idxToDelete);
         commitChanges(newPrompts);
     }, [unsavedPrompts, commitChanges]);
 
 
     const composableDiffusionWarning = useCallback((idx: number) => {
-        const prompt = unsavedPrompts[idx];
-        const overlappingPrompts = unsavedPrompts.filter(p => p !== prompt
+        const prompt = unsavedPrompts.promptList[idx];
+        const overlappingPrompts = unsavedPrompts.promptList.filter(p => p !== prompt
             && p.from <= prompt.to
             && prompt.from <= p.to);
 
@@ -194,8 +218,8 @@ export function Prompts(props: PromptsProps) {
 
 
     const displayFadeOptions = useCallback((promptIdx: number) => {
-        const prompt = unsavedPrompts[promptIdx];
-        
+        const prompt = unsavedPrompts.promptList[promptIdx];
+
         return <>
             <Tooltip arrow placement="top" title="Specify how this prompt will be weighted if it overlaps with other prompts.">
                 <TextField
@@ -208,8 +232,8 @@ export function Prompts(props: PromptsProps) {
                     InputProps={{ style: { fontSize: '0.75em' } }}
                     value={prompt.overlap.type}
                     onChange={(e: any) => {
-                        unsavedPrompts[promptIdx].overlap.type = (e.target.value as OverlapType);
-                        commitChanges([...unsavedPrompts]);
+                        unsavedPrompts.promptList[promptIdx].overlap.type = (e.target.value as OverlapType);
+                        commitChanges({ ...unsavedPrompts });
                     }}
                 >
                     <MenuItem value={"none"}>Fixed</MenuItem>
@@ -226,33 +250,33 @@ export function Prompts(props: PromptsProps) {
                     disabled={prompt.overlap.type === "none"}
                     inputProps={{
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                        sx: { background: unsavedPrompts[promptIdx].overlap.inFrames !== props.initialPrompts[promptIdx]?.overlap?.inFrames ? 'ivory' : '', },
+                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.inFrames !== props.initialPrompts.promptList[promptIdx]?.overlap?.inFrames ? 'ivory' : '', },
                     }}
                     InputLabelProps={{ shrink: true, }}
                     value={prompt.overlap.inFrames}
                     onChange={(e) => {
                         const val = parseInt(e.target.value);
                         if (!isNaN(val)) {
-                            unsavedPrompts[promptIdx].overlap.inFrames = val;
-                            setUnsavedPrompts([...unsavedPrompts]);
+                            unsavedPrompts.promptList[promptIdx].overlap.inFrames = val;
+                            setUnsavedPrompts({ ...unsavedPrompts });
                         }
                     }}
                     onBlur={(e) => {
-                        if (parseInt(e.target.value) > (unsavedPrompts[promptIdx].to - unsavedPrompts[promptIdx].from)) {
-                            unsavedPrompts[promptIdx].overlap.inFrames = (unsavedPrompts[promptIdx].to - unsavedPrompts[promptIdx].from);
+                        if (parseInt(e.target.value) > (unsavedPrompts.promptList[promptIdx].to - unsavedPrompts.promptList[promptIdx].from)) {
+                            unsavedPrompts.promptList[promptIdx].overlap.inFrames = (unsavedPrompts.promptList[promptIdx].to - unsavedPrompts.promptList[promptIdx].from);
                         }
                         if (parseInt(e.target.value) < 0) {
-                            unsavedPrompts[promptIdx].overlap.inFrames = 0;
+                            unsavedPrompts.promptList[promptIdx].overlap.inFrames = 0;
                         }
-                        commitChanges([...unsavedPrompts]);
+                        commitChanges({ ...unsavedPrompts });
                     }}
                     onKeyDown={(e: any) => {
                         if (e.key === 'Enter') {
                             setTimeout(() => e.target.blur());
                             e.preventDefault();
                         } else if (e.key === 'Escape') {
-                            unsavedPrompts[promptIdx].overlap.inFrames = props.initialPrompts[promptIdx]?.overlap?.inFrames;
-                            setUnsavedPrompts([...unsavedPrompts]);
+                            unsavedPrompts.promptList[promptIdx].overlap.inFrames = props.initialPrompts.promptList[promptIdx]?.overlap?.inFrames;
+                            setUnsavedPrompts({ ...unsavedPrompts });
                             setTimeout(() => e.target.blur());
                             e.preventDefault();
                         }
@@ -268,35 +292,35 @@ export function Prompts(props: PromptsProps) {
                     disabled={prompt.overlap.type === "none"}
                     inputProps={{
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                        sx: { background: unsavedPrompts[promptIdx].overlap.outFrames !== props.initialPrompts[promptIdx]?.overlap?.outFrames ? 'ivory' : '', },
+                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.outFrames !== props.initialPrompts.promptList[promptIdx]?.overlap?.outFrames ? 'ivory' : '', },
                     }}
                     InputLabelProps={{ shrink: true, }}
                     value={prompt.overlap.outFrames}
                     onChange={(e) => {
                         const value = parseInt(e.target.value);
                         if (!isNaN(value)) {
-                            unsavedPrompts[promptIdx].overlap.outFrames = value;
-                            setUnsavedPrompts([...unsavedPrompts]);
+                            unsavedPrompts.promptList[promptIdx].overlap.outFrames = value;
+                            setUnsavedPrompts({ ...unsavedPrompts });
                         }
                     }}
                     onBlur={(e) => {
                         const value = parseInt(e.target.value);
-                        if (value > (unsavedPrompts[promptIdx].to - unsavedPrompts[promptIdx].from)) {
-                            unsavedPrompts[promptIdx].overlap.outFrames = (unsavedPrompts[promptIdx].to - unsavedPrompts[promptIdx].from);
+                        if (value > (unsavedPrompts.promptList[promptIdx].to - unsavedPrompts.promptList[promptIdx].from)) {
+                            unsavedPrompts.promptList[promptIdx].overlap.outFrames = (unsavedPrompts.promptList[promptIdx].to - unsavedPrompts.promptList[promptIdx].from);
                         } else if (value < 0) {
-                            unsavedPrompts[promptIdx].overlap.outFrames = 0;
+                            unsavedPrompts.promptList[promptIdx].overlap.outFrames = 0;
                         } else if (isNaN(value)) {
-                            unsavedPrompts[promptIdx].overlap.outFrames = props.initialPrompts[promptIdx].overlap.outFrames;
+                            unsavedPrompts.promptList[promptIdx].overlap.outFrames = props.initialPrompts.promptList[promptIdx].overlap.outFrames;
                         }
-                        commitChanges([...unsavedPrompts]);
+                        commitChanges({ ...unsavedPrompts });
                     }}
                     onKeyDown={(e: any) => {
                         if (e.key === 'Enter') {
                             setTimeout(() => e.target.blur());
                             e.preventDefault();
                         } else if (e.key === 'Escape') {
-                            unsavedPrompts[promptIdx].overlap.outFrames = props.initialPrompts[promptIdx].overlap.outFrames;
-                            setUnsavedPrompts([...unsavedPrompts]);
+                            unsavedPrompts.promptList[promptIdx].overlap.outFrames = props.initialPrompts.promptList[promptIdx].overlap.outFrames;
+                            setUnsavedPrompts({ ...unsavedPrompts });
                             setTimeout(() => e.target.blur());
                             e.preventDefault();
                         }
@@ -312,28 +336,28 @@ export function Prompts(props: PromptsProps) {
                     disabled={prompt.overlap.type !== "custom"}
                     inputProps={{
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                        sx: { background: unsavedPrompts[promptIdx].overlap.custom !== props.initialPrompts[promptIdx]?.overlap?.custom ? 'ivory' : '', },
+                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.custom !== props.initialPrompts.promptList[promptIdx]?.overlap?.custom ? 'ivory' : '', },
                     }}
                     InputLabelProps={{ shrink: true, }}
                     value={prompt.overlap.custom}
                     onChange={(e) => {
-                        unsavedPrompts[promptIdx].overlap.custom = e.target.value;
-                        setUnsavedPrompts([...unsavedPrompts]);
+                        unsavedPrompts.promptList[promptIdx].overlap.custom = e.target.value;
+                        setUnsavedPrompts({ ...unsavedPrompts });
                     }}
                     onBlur={(e) => {
-                        commitChanges([...unsavedPrompts]);
+                        commitChanges({ ...unsavedPrompts });
                     }}
                     onKeyDown={(e: any) => {
                         if (e.key === 'Enter') {
                             setTimeout(() => e.target.blur());
                             e.preventDefault();
                         } else if (e.key === 'Escape') {
-                            unsavedPrompts[promptIdx].overlap.custom = props.initialPrompts[promptIdx].overlap.custom;
-                            setUnsavedPrompts([...unsavedPrompts]);
+                            unsavedPrompts.promptList[promptIdx].overlap.custom = props.initialPrompts.promptList[promptIdx].overlap.custom;
+                            setUnsavedPrompts({ ...unsavedPrompts });
                             setTimeout(() => e.target.blur());
                             e.preventDefault();
                         }
-                    }}                      
+                    }}
 
                 />
             </Tooltip>
@@ -341,10 +365,10 @@ export function Prompts(props: PromptsProps) {
     }, [unsavedPrompts, commitChanges, props]);
 
 
-    const displayPrompts = useCallback((advancedPrompts: AdvancedParseqPrompts) =>
-        <Grid container xs={12}  sx = {{ paddingTop:'0',paddingBottom:'0'}}>
+    const displayPrompts = useCallback((advancedPrompts: AdvancedParseqPromptsV2) =>
+        <Grid container xs={12} sx={{ paddingTop: '0', paddingBottom: '0' }}>
             {
-                advancedPrompts.map((prompt, idx) =>
+                advancedPrompts.promptList.map((prompt, idx) =>
                     <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
                         <Grid xs={12} style={{ padding: 0, margin: 0, border: 0 }}>
 
@@ -358,8 +382,8 @@ export function Prompts(props: PromptsProps) {
                                                 <Checkbox
                                                     checked={prompt.allFrames}
                                                     onChange={(e) => {
-                                                        unsavedPrompts[idx].allFrames = e.target.checked;
-                                                        commitChanges([...unsavedPrompts]);
+                                                        unsavedPrompts.promptList[idx].allFrames = e.target.checked;
+                                                        commitChanges({ ...unsavedPrompts });
                                                     }}
                                                     size='small' />
                                             } label={<Box component="div" fontSize="0.75em">All frames OR</Box>} />
@@ -374,31 +398,31 @@ export function Prompts(props: PromptsProps) {
                                             disabled={prompt.allFrames}
                                             inputProps={{
                                                 style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                                                sx: { background: unsavedPrompts[idx].from !== props.initialPrompts[idx]?.from ? 'ivory' : '', },
+                                                sx: { background: unsavedPrompts.promptList[idx].from !== props.initialPrompts.promptList[idx]?.from ? 'ivory' : '', },
                                             }}
                                             InputLabelProps={{ shrink: true, }}
                                             value={prompt.from}
                                             onChange={(e) => {
                                                 const value = parseInt(e.target.value);
                                                 if (!isNaN(value)) {
-                                                    unsavedPrompts[idx].from = value;
-                                                    setUnsavedPrompts([...unsavedPrompts]);
+                                                    unsavedPrompts.promptList[idx].from = value;
+                                                    setUnsavedPrompts({ ...unsavedPrompts });
                                                 }
                                             }}
                                             onBlur={(e) => {
                                                 const value = parseInt(e.target.value);
-                                                if (value >= unsavedPrompts[idx].to) {
-                                                    unsavedPrompts[idx].from = unsavedPrompts[idx].to;
+                                                if (value >= unsavedPrompts.promptList[idx].to) {
+                                                    unsavedPrompts.promptList[idx].from = unsavedPrompts.promptList[idx].to;
                                                 }
-                                                commitChanges([...unsavedPrompts]);
+                                                commitChanges({ ...unsavedPrompts });
                                             }}
                                             onKeyDown={(e: any) => {
                                                 if (e.key === 'Enter') {
                                                     setTimeout(() => e.target.blur());
                                                     e.preventDefault();
                                                 } else if (e.key === 'Escape') {
-                                                    unsavedPrompts[idx].from = props.initialPrompts[idx].from;
-                                                    setUnsavedPrompts([...unsavedPrompts]);
+                                                    unsavedPrompts.promptList[idx].from = props.initialPrompts.promptList[idx].from;
+                                                    setUnsavedPrompts({ ...unsavedPrompts });
                                                     setTimeout(() => e.target.blur());
                                                     e.preventDefault();
                                                 }
@@ -415,33 +439,33 @@ export function Prompts(props: PromptsProps) {
                                             disabled={prompt.allFrames}
                                             inputProps={{
                                                 style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                                                sx: { background: unsavedPrompts[idx].to !== props.initialPrompts[idx]?.to ? 'ivory' : '', },
+                                                sx: { background: unsavedPrompts.promptList[idx].to !== props.initialPrompts.promptList[idx]?.to ? 'ivory' : '', },
                                             }}
                                             InputLabelProps={{ shrink: true, }}
                                             value={prompt.to}
                                             onChange={(e) => {
                                                 const value = parseInt(e.target.value);
                                                 if (!isNaN(value)) {
-                                                    unsavedPrompts[idx].to = value;
-                                                    setUnsavedPrompts([...unsavedPrompts]);
+                                                    unsavedPrompts.promptList[idx].to = value;
+                                                    setUnsavedPrompts({ ...unsavedPrompts });
                                                 }
                                             }}
                                             onBlur={(e) => {
                                                 const value = parseInt(e.target.value);
-                                                if (value <= unsavedPrompts[idx].from) {
-                                                    unsavedPrompts[idx].to = unsavedPrompts[idx].from;
+                                                if (value <= unsavedPrompts.promptList[idx].from) {
+                                                    unsavedPrompts.promptList[idx].to = unsavedPrompts.promptList[idx].from;
                                                 } else if (value >= props.lastFrame) {
-                                                    unsavedPrompts[idx].to = props.lastFrame;
+                                                    unsavedPrompts.promptList[idx].to = props.lastFrame;
                                                 }
-                                                commitChanges([...unsavedPrompts]);
+                                                commitChanges({ ...unsavedPrompts });
                                             }}
                                             onKeyDown={(e: any) => {
                                                 if (e.key === 'Enter') {
                                                     setTimeout(() => e.target.blur());
                                                     e.preventDefault();
                                                 } else if (e.key === 'Escape') {
-                                                    unsavedPrompts[idx].to = props.initialPrompts[idx].to;
-                                                    setUnsavedPrompts([...unsavedPrompts]);
+                                                    unsavedPrompts.promptList[idx].to = props.initialPrompts.promptList[idx].to;
+                                                    setUnsavedPrompts({ ...unsavedPrompts });
                                                     setTimeout(() => e.target.blur());
                                                     e.preventDefault();
                                                 }
@@ -452,7 +476,7 @@ export function Prompts(props: PromptsProps) {
                                 </Box>
                                 <Box sx={{ display: 'flex', justifyContent: 'right', alignItems: 'center', paddingRight: '15px', width: '25%' }}>
                                     <Button
-                                        disabled={unsavedPrompts.length < 2}
+                                        disabled={unsavedPrompts.promptList.length < 2}
                                         size="small"
                                         variant="outlined"
                                         color='warning'
@@ -476,8 +500,35 @@ export function Prompts(props: PromptsProps) {
                         </Grid>
                     </Box>)
             }
+            {(advancedPrompts.commonPrompt.positive || advancedPrompts.commonPrompt.negative || advancedPrompts.promptList.length > 1) &&
+                <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                    <Grid container xs={12} style={{ margin: 0, padding: 0 }}>
+                        <Grid xs={12} style={{ margin: 0, padding: 0 }}>
+                            <h5>Common prompt (appended to all prompts)</h5>
+                        </Grid>
+
+                        <Grid xs={6} style={{ margin: 0, padding: 0 }}>
+                            {promptInput(-1, true)}
+                        </Grid>
+                        <Grid xs={6} style={{ margin: 0, padding: 0 }}>
+                            {promptInput(-1, false)}
+                        </Grid>
+                    </Grid>
+                </Box>
+            }
         </Grid>
         , [delPrompt, promptInput, unsavedPrompts, props, displayFadeOptions, composableDiffusionWarning, commitChanges]);
+
+
+    const reorderPrompts = useCallback(() => {
+        unsavedPrompts.promptList.sort((a, b) => a.from - b.from);
+        unsavedPrompts.promptList = unsavedPrompts.promptList.map((prompt, idx) => ({
+            ...prompt,
+            name: "Prompt " + (idx + 1), // + " (was " + prompt.name.split('(')[0] + ")",
+        }));
+        commitChanges({ ...unsavedPrompts });
+
+    }, [commitChanges, unsavedPrompts])
 
     const [openSpacePromptsDialog, setOpenSpacePromptsDialog] = useState(false);
     const [spacePromptsLastFrame, setSpacePromptsLastFrame] = useState(props.lastFrame);
@@ -487,16 +538,17 @@ export function Prompts(props: PromptsProps) {
     // I thought it would always re-evaluate.
     useEffect(() => {
         setSpacePromptsLastFrame(props.lastFrame);
-    }, [props.lastFrame]);  
+    }, [props.lastFrame]);
 
     const handleCloseSpacePromptsDialog = useCallback((e: any): void => {
-        setOpenSpacePromptsDialog(false);        
+        setOpenSpacePromptsDialog(false);
         if (e.target.id !== "space") {
             return;
         }
 
-        const span = (spacePromptsLastFrame + 1) / unsavedPrompts.length;
-        const newPrompts = unsavedPrompts.map((p, idx) => {
+        const span = (spacePromptsLastFrame + 1) / unsavedPrompts.promptList.length;
+        const newPrompts = { ...unsavedPrompts };
+        newPrompts.promptList = unsavedPrompts.promptList.map((p, idx) => {
             const newPrompt = { ...p };
             newPrompt.from = Math.max(0, Math.ceil(idx * span - spacePromptsOverlap / 2));
             newPrompt.to = Math.min(props.lastFrame, Math.floor((idx + 1) * span + spacePromptsOverlap / 2));
@@ -513,7 +565,7 @@ export function Prompts(props: PromptsProps) {
         <DialogTitle>↔️ Evenly space prompts </DialogTitle>
         <DialogContent>
             <DialogContentText>
-                Space all {unsavedPrompts.length} prompts evenly across the entire video, with optional fade between prompts.
+                Space all {unsavedPrompts.promptList.length} prompts evenly across the entire video, with optional fade between prompts.
                 <br />
 
             </DialogContentText>
@@ -548,7 +600,7 @@ export function Prompts(props: PromptsProps) {
     const [timelineWidth, setTimelineWidth] = useState(600);
     const timelineRef = useRef<any>(null);
     const timeline = useMemo(() => {
-        const data: TimelineRow[] = unsavedPrompts.map((p, idx) => ({
+        const data: TimelineRow[] = unsavedPrompts.promptList.map((p, idx) => ({
             id: idx.toString(),
             actions: [
                 {
@@ -580,7 +632,7 @@ export function Prompts(props: PromptsProps) {
         return (
             <span ref={timelineRef}>
                 <Timeline
-                    style={{ height: (50 + Math.min(unsavedPrompts.length, 4) * 25) + 'px', width: '100%' }}
+                    style={{ height: (50 + Math.min(unsavedPrompts.promptList.length, 4) * 25) + 'px', width: '100%' }}
                     editorData={data}
                     effects={effects}
                     scale={scale}
@@ -588,7 +640,8 @@ export function Prompts(props: PromptsProps) {
                     rowHeight={15}
                     gridSnap={true}
                     onChange={(e: any) => {
-                        const newPrompts = unsavedPrompts.map((p, idx) => {
+                        const newPrompts = { ...unsavedPrompts };
+                        newPrompts.promptList = unsavedPrompts.promptList.map((p, idx) => {
                             const action = e[idx].actions.find((a: any) => a.id === p.name);
                             p.from = Math.round(action.start);
                             p.to = Math.round(action.end);
@@ -636,8 +689,7 @@ export function Prompts(props: PromptsProps) {
     // update the quick preview when the cursor is dragged or prompts change
     useEffect(() => {
         const f = quickPreviewPosition;
-        const activePrompts = unsavedPrompts
-            .filter(p => p.allFrames || (f >= p.from && f <= p.to));
+        const activePrompts = unsavedPrompts.promptList.filter(p => p.allFrames || (f >= p.from && f <= p.to));
 
         let preview = '';
         if (activePrompts.length === 0) {
@@ -654,22 +706,25 @@ export function Prompts(props: PromptsProps) {
     }, [unsavedPrompts, quickPreviewPosition, props.lastFrame]);
 
     return <Grid xs={12} container style={{ margin: 0, padding: 0 }}>
-        <Grid xs={12} sx = {{ paddingTop:'0',paddingBottom:'0'}}>
+        <Grid xs={12} sx={{ paddingTop: '0', paddingBottom: '0' }}>
             <FormControlLabel
-                sx = {{ padding:'0' }}
-                control={<StyledSwitch                    
+                sx={{ padding: '0' }}
+                control={<StyledSwitch
                     onChange={(e) => { setPromptsEnabled(e.target.checked) }}
                     checked={isPromptsEnabled()} />}
                 label={<small> Use Parseq to manage prompts (disable to control prompts with Deforum instead).</small>} />
         </Grid>
         {isPromptsEnabled() ? <>
             {displayPrompts(unsavedPrompts)}
-            {spacePromptsDialog}        
-            <Grid xs={12}sx={{ paddingTop: '15px', paddingBottom: '15px'  }}  >
+            {spacePromptsDialog}
+            <Grid xs={12} sx={{ paddingTop: '15px', paddingBottom: '15px' }}  >
                 <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
-                <Button size="small" disabled={unsavedPrompts.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+                <Button size="small" disabled={unsavedPrompts.promptList.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+                <Tooltip title="Re-order and rename prompts based on their starting frame">
+                    <span><Button size="small" disabled={unsavedPrompts.promptList.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => reorderPrompts()}>⇵ Reorder prompts</Button></span>
+                </Tooltip>
             </Grid>
-            <Grid xs={4} sx={{ paddingRight: '15px'}} >
+            <Grid xs={4} sx={{ paddingRight: '15px' }} >
                 <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >
                     <Stack>
                         <TextField
@@ -697,14 +752,12 @@ export function Prompts(props: PromptsProps) {
     // HACK: this should really be a top-level field on the AdvancedPrompts type,
     // but there's a lot of code that relies on that being an array type.
     // So we make it a field of AdvancedPrompt (singular) and check the first prompt instead...
-    function setPromptsEnabled(enabled:boolean) {
-        commitChanges(unsavedPrompts.map(p => ({
-            ...p,
-            enabled: enabled
-        })));
+    function setPromptsEnabled(enabled: boolean) {
+        unsavedPrompts.enabled = enabled;
+        commitChanges({ ...unsavedPrompts });
     }
     function isPromptsEnabled(): boolean {
-        return typeof (unsavedPrompts[0].enabled) === 'undefined' || unsavedPrompts[0].enabled;
+        return typeof (unsavedPrompts.enabled) === 'undefined' || unsavedPrompts.enabled;
     }
 }
 
@@ -733,6 +786,3 @@ export function calculateWeight(p: AdvancedParseqPrompt, f: number, lastFrame: n
     }
 
 }
-
-
-

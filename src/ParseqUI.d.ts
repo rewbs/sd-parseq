@@ -106,12 +106,13 @@ type AdvancedParseqPrompt = {
 type AdvancedParseqPrompts = AdvancedParseqPrompt[] | [];
 
 type AdvancedParseqPromptsV2 = {
+    format: "v2";
     enabled: boolean;
     promptList: AdvancedParseqPrompt[] | [];
     commonPrompt: AdvancedParseqPrompt;
 }
 
-type ParseqPrompts = SimpleParseqPrompts | AdvancedParseqPrompts;
+type ParseqPrompts = SimpleParseqPrompts | AdvancedParseqPrompts | AdvancedParseqPromptsV2;
 
 
 type ParseqKeyframe = {

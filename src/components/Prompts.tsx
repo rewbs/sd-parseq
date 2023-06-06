@@ -80,7 +80,7 @@ export function Prompts(props: PromptsProps) {
 
     // Notify the parent that we have unsaved changes if the unsaved prompts are different from the initial prompts
     useEffect(() => props.markDirty(!_.isEqual(props.initialPrompts, unsavedPrompts)),
-        [props.markDirty, props.initialPrompts, unsavedPrompts]);    
+        [props, props.markDirty, props.initialPrompts, unsavedPrompts]);    
 
     // Call the parent's callback on every prompt change
     const commitChanges = useCallback((newPrompts : AdvancedParseqPrompts) => {
@@ -93,7 +93,7 @@ export function Prompts(props: PromptsProps) {
         setUnsavedPrompts(newPrompts);
         props.commitChange(_.cloneDeep(newPrompts));
 
-    }, [props.commitChange]);
+    }, [props]);
   
 
     const promptInput = useCallback((index: number, positive: boolean) => {

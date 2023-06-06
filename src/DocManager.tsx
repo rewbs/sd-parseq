@@ -523,8 +523,8 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     value={editingDocName}
                     InputProps={{
                         style: { fontSize: '0.75em' },
-                        sx: { background: (editingDocName != activeDoc.name) ? 'ivory' : '', },
-                        endAdornment: (editingDocName != activeDoc.name) ? '🖊️' : ''
+                        sx: { background: (editingDocName !== activeDoc.name) ? 'ivory' : '', },
+                        endAdornment: (editingDocName !== activeDoc.name) ? '🖊️' : ''
                     }}
                     size="small"
                     onChange={(e: any) => {

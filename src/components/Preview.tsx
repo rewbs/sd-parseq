@@ -3,6 +3,7 @@ import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useState } from 'react';
 import { percentageToColor } from "../utils/utils";
+import { RenderedData } from "../ParseqUI";
 
 interface PreviewProps {
     data: RenderedData

@@ -5,6 +5,7 @@ import { defaultValues } from './data/defaultValues';
 import { LTTB } from 'downsample';
 import { InvocationContext, ParseqAstNode } from "./parseq-lang/parseq-lang-ast";
 import { defaultInterpolation, parse } from './parseq-lang/parseq-lang-parser';
+import { AdvancedParseqPrompts, GraphableData, ParseqKeyframes, ParseqPersistableState, ParseqRenderedFrames, ParseqRenderedFramesMeta, RenderedData, SparklineData } from "./ParseqUI";
 
 export class ParseqRendererException {
     message: string;
@@ -170,6 +171,16 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     if (typeof (prompts[0].enabled) === 'undefined' || prompts[0].enabled) {
         all_frame_numbers.forEach((frame) => {
 
+            // Pipeline for prompts (assuming enabled) at each frame:
+            // - Combine overlapping prompts with composable diffusion, for both pos & neg
+            // - Append common prompt            
+            // - Perform parseq evaluation on both pos & neg
+            // - Move terms between pos & neg if required
+
+
+            // - Blend  pos & neg into deforum style single prompt
+
+
             const variableMap = managedFields
                 .reduce((acc, field) => acc.set(field, rendered_frames[frame][field]), new Map<string, number | string>());
 
@@ -187,12 +198,21 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
             };
 
             try {
-                let positive_prompt = composePromptAtFrame(prompts, frame, true, lastKeyFrame.frame)
-                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
-                    .replace(/(\n)/g, " ");
-                let negative_prompt = composePromptAtFrame(prompts, frame, false, lastKeyFrame.frame)
-                    .replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
-                    .replace(/(\n)/g, " ");
+
+                const promptsWithWeights = getPromptsWithWeights(prompts, frame, lastKeyFrame.frame);
+                const evaluatedPrompts = promptsWithWeights.map(pww => {
+                    let [newPositive, newNegative] = [evaluateParseqExpressions(pww.positive, {...ctx, promptType:true}), evaluateParseqExpressions(pww.negative, {...ctx, promptType:false})];
+                    [newPositive, newNegative] = moveSubstrings(newPositive, newNegative, 0);
+                    [newNegative, newPositive] = moveSubstrings(newNegative, newPositive, 0);
+                    return {
+                        positive: newPositive,
+                        negative: newNegative,
+                        weight: evaluateParseqExpressions(pww.weight, ctx)
+                    }
+                });
+
+                const positive_prompt = evaluatedPrompts.map(ep => ep.positive + (evaluatedPrompts.length>1 ? `: ${ep.weight}` : '')).join(" AND ");
+                const negative_prompt = evaluatedPrompts.map(ep => ep.negative + (evaluatedPrompts.length>1 ? `: ${ep.weight}` : '')).join(" AND ");
 
                 //@ts-ignore
                 rendered_frames[frame] = {
@@ -201,7 +221,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
                 }
             } catch (error) {
                 console.error(error);
-                throw new ParseqRendererException(`Error parsing prompt weight value: ` + error);
+                throw new ParseqRendererException(`Error parsing prompt on frame ${frame}: ` + error);
             }
 
         });
@@ -228,7 +248,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     // Calculate min/max of each field
     const metaStartTime = Date.now();
     var rendered_frames_meta: ParseqRenderedFramesMeta = []
-    managedFields.forEach((field) => {
+    managedFields.forEach((field : string) => {
         let maxValue = Math.max(...rendered_frames.map(rf => Math.abs(rf[field])))
         let minValue = Math.min(...rendered_frames.map(rf => rf[field]))
         rendered_frames_meta = {
@@ -245,7 +265,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
     // Calculate delta variants
     const deltaStartTime = Date.now();
     all_frame_numbers.forEach((frame) => {
-        managedFields.forEach((field) => {
+        managedFields.forEach((field : string) => {
 
             //@ts-ignore
             let maxValue = rendered_frames_meta[field].max;
@@ -280,7 +300,7 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
 
     const decimationStartTime = Date.now();
     const sparklineData : SparklineData = [];
-    managedFields.forEach((field) => {
+    managedFields.forEach((field : string) => {
      //@ts-ignore
      sparklineData[field] = LTTB(graphData[field], 100).map((point) => point.y);
      //@ts-ignore
@@ -304,25 +324,41 @@ export const parseqRender = (input: ParseqPersistableState): {renderedData: Rend
 }
 
 
-// TODO: some duplication here with quick prompt preview in Prompts.tsx
-function composePromptAtFrame(prompts: AdvancedParseqPrompts, frame: number, positive: boolean, lastFrame: number) {
-    const activePrompts = prompts
+function moveSubstrings(str1: string, str2: string, insertPos: number): [string, string] {
+    // find matches
+    const matches = Array.from(str1.matchAll(/__PARSEQ_MOVE__(.*?)__PARSEQ_END_MOVE__/g))
+  
+    // remove matches from str1
+    for (const match of matches) {
+      str1 = str1.replace(match[0], '');
+      str2 = str2.slice(0, insertPos) + ` ${match[1]} ` + str2.slice(insertPos);
+    }
+  
+    return [str1, str2];
+  }
+
+type UnevaluatedPromptsAndWeights = {
+        positive:string,
+        negative:string,
+        weight:string,
+    }[];
+
+
+function evaluateParseqExpressions(str: string, ctx : InvocationContext) : string {
+    return str.replace(/\$\{(.*?)\}/sg, (_, expr) => { const result = parse(expr).invoke(ctx); return typeof result === "number" ? result.toFixed(5) : result; })
+    .replace(/(\n)/g, " ");    
+}
+
+function getPromptsWithWeights(prompts: AdvancedParseqPrompts, frame: number, lastFrame: number) : UnevaluatedPromptsAndWeights {
+    return prompts
         .map((p, idx) => ({
             ...p,
             name: "prompt" + (idx + 1),
         }))
-        .filter(p => p.allFrames || (frame >= p.from && frame <= p.to));
-
-    let prompt;
-    if (activePrompts.length === 0) {
-        prompt = '';
-    } else if (activePrompts.length === 1) {
-        prompt = positive ? activePrompts[0].positive : activePrompts[0].negative;
-    } else {
-        prompt = activePrompts.map(p => {
-            const prompt = positive ? p.positive : p.negative;
-            return `${prompt} : ${calculateWeight(p, frame, lastFrame)}`
-        }).join(' AND ');
-    }
-    return prompt;
+        .filter(p => p.allFrames || (frame >= p.from && frame <= p.to))
+        .map(p => ({
+            positive: p.positive,  //+ (p.commonPrompt.positive ? ` ${p.commonPrompt.positive}`: ''),
+            negative: p.negative , //+ (p.commonPrompt.negative ? ` ${p.commonPrompt.negative}`: ''),
+            weight: calculateWeight(p, frame, lastFrame)
+        }));
 }

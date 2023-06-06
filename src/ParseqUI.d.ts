@@ -105,6 +105,12 @@ type AdvancedParseqPrompt = {
 
 type AdvancedParseqPrompts = AdvancedParseqPrompt[] | [];
 
+type AdvancedParseqPromptsV2 = {
+    enabled: boolean;
+    promptList: AdvancedParseqPrompt[] | [];
+    commonPrompt: AdvancedParseqPrompt;
+}
+
 type ParseqPrompts = SimpleParseqPrompts | AdvancedParseqPrompts;
 
 

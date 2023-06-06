@@ -50,6 +50,7 @@
     "mathjs": "^11.8.0",
     "moo": "^0.5.2",
     "nearley": "^2.20.1",
+    "noisejs": "^2.1.0",
     "pako": "^2.1.0",
     "path": "npm:path-browserify@^1.0.1",
     "path-browserify": "^1.0.1",
@@ -109,6 +110,7 @@
     ]
   },
   "devDependencies": {
+    "@octokit/rest": "^19.0.11",
     "@playwright/test": "^1.34.3",
     "@types/d3": "^7.4.0",
     "@types/file-saver": "^2.0.5",
@@ -116,6 +118,7 @@
     "@types/lodash.debounce": "^4.0.7",
     "@types/nearley": "^2.11.2",
     "@types/node": "^20.2.4",
+    "@types/noisejs": "^0.0.28",
     "@types/pako": "^2.0.0",
     "@types/react-color": "^3.0.6",
     "@types/react-copy-to-clipboard": "^5.0.4",

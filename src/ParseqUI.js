@@ -225,7 +225,8 @@ const ParseqUI = (props) => {
       || !equal(lastRenderedState.prompts, prompts)
       || !equal(lastRenderedState.managedFields, managedFields)
       || !equal(lastRenderedState.timeSeries, timeSeries)
-  }, [lastRenderedState, keyframes, options, prompts, managedFields, timeSeries]);
+      || typing
+  }, [lastRenderedState, keyframes, options, prompts, managedFields, timeSeries, typing]);
 
   useEffect(() => {
     if (needsRender && autoRender) {
@@ -785,10 +786,8 @@ const ParseqUI = (props) => {
   const promptsUI = useMemo(() => prompts ? <Prompts
     initialPrompts={prompts}
     lastFrame={lastFrame}
-    afterFocus={(e) => setTyping(true)}
-    afterBlur={(e) => setTyping(false)}
-    afterChange={_.debounce((p) => setPrompts(p), 200)}
-    //afterChange={(p) => setPrompts(p)}
+    markDirty={(b) => setTyping(b)}
+    commitChange={_.debounce((p) => setPrompts(p), 200)}
   /> : <></>, [prompts, lastFrame]);
 
   // Managed field selection ------------------------

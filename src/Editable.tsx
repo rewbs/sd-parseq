@@ -228,7 +228,7 @@ export class Editable extends React.Component<{
             parsing: false,
             normalised: true,
             spanGaps: true,
-            aspectRatio: 4,
+            aspectRatio: 6,
             responsive: true,
             animation: {
                 duration: 175,

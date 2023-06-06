@@ -28,7 +28,7 @@ export const loadVersion = async (docId?: DocId, versionId?: VersionId): Promise
         // Load a specific version of doc.
         // Verion IDs are globally unique, so we can just lookup by the versionId (no need to check docId).
         return db.parseqVersions.get(versionId);
-    } else if (docId)  {
+    } else if (docId) {
         // Load latest version of doc
         const versions = await db.parseqVersions.where('docId').equals(docId).reverse().sortBy('timestamp');
         if (versions.length > 0) {
@@ -52,7 +52,7 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
         content.meta.docName = document?.name ?? "Untitled";
         //@ts-ignore
         const version: ParseqDocVersion = {
-            ...content,            
+            ...content,
             docId: docId,
             timestamp: Date.now(),
             versionId: makeVersionId()
@@ -89,19 +89,21 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
     const [selectedTemplateId, setSelectedTemplateId] = useState("blank");
     const [selectedTemplateDescription, setSelectedTemplateDescription] = useState("blank");
     const [openLoadDialog, setOpenLoadDialog] = useState(false);
-    const [selectedDocForLoad, setSelectedDocForLoad] = useState<{id: DocId, label:string, key:string}|undefined>();
+    const [selectedDocForLoad, setSelectedDocForLoad] = useState<{ id: DocId, label: string, key: string } | undefined>();
     const [dataToImport, setDataToImport] = useState("");
     const [importError, setImportError] = useState("");
     const [openShareDialog, setOpenShareDialog] = useState(false);
     const [docVersions, setDocVersions] = useState([] as ParseqDocVersion[]);
     const [lastModified, setLastModified] = useState(lastSaved);
-    const [newSource, setNewSource] = useState<'fromCurrent'|'fromTemplate'>('fromTemplate');
+    const [newSource, setNewSource] = useState<'fromCurrent' | 'fromTemplate'>('fromTemplate');
+
+    const [editingDocName, setEditingDocName] = useState("Loading...");
 
     const [activeDoc, setActiveDoc] = useState({ docId: docId, name: "loading" } as ParseqDoc);
     const [exportableDoc, setExportableDoc] = useState("");
     const [parseqShareUrl, setParseqShareUrl] = useState("");
     const [uploadStatus, setUploadStatus] = useState(defaultUploadStatus);
-    const [loadingStatus, setLoadingStatus]= useState(false);
+    const [loadingStatus, setLoadingStatus] = useState(false);
 
     //@ts-ignore - this type check is too deep down for me to figure out right now.
     const { user } = useUserAuth();
@@ -109,36 +111,37 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
     // console.log("DocManager Auth", user);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     useEffect(() => {
-            db.parseqDocs.get(docId).then( async (doc) => {
-                if (doc) {
-                    //console.log(`Doc ${docId} loaded: `, doc);
-                    setActiveDoc(doc);
-                    return doc;
-                } else {
-                    let newDoc = { name: generateDocName(), docId: docId, timestamp: Date.now() };
-                    //console.log(`Creating new ${docId}: `, newDoc);                
-                    await db.parseqDocs.put(newDoc, docId);
-                    setActiveDoc(newDoc);
-                }
-            });
+        db.parseqDocs.get(docId).then(async (doc) => {
+            if (doc) {
+                //console.log(`Doc ${docId} loaded: `, doc);
+                setActiveDoc(doc);
+                return doc;
+            } else {
+                let newDoc = { name: generateDocName(), docId: docId, timestamp: Date.now() };
+                //console.log(`Creating new ${docId}: `, newDoc);                
+                await db.parseqDocs.put(newDoc, docId);
+                setActiveDoc(newDoc);
+            }
+        });
     }, [docId]);
 
     useEffect(() => {
         setLastModified(Math.max(activeDoc?.timestamp, lastSaved));
     }, [activeDoc, lastSaved]);
 
-    const allDocs : ParseqDoc[]|undefined = useLiveQuery(
+    const allDocs: ParseqDoc[] | undefined = useLiveQuery(
         async () => {
             return db.parseqDocs.orderBy("timestamp").reverse().toArray();
         }, []
     );
 
     useEffect(() => {
+        setEditingDocName(activeDoc.name);
         setLastModified(activeDoc?.timestamp ?? 0);
     }, [activeDoc]);
 
 
-    const handleClickOpenRevertDialog = async () =>  {
+    const handleClickOpenRevertDialog = async () => {
         setDocVersions(await db.parseqVersions.where('docId').equals(activeDoc.docId).reverse().sortBy('timestamp'));
         setSelectedVersionIdForRevert(undefined);
         setOpenRevertDialog(true);
@@ -172,7 +175,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
             >
                 <option>
                     Pick from {docVersions?.length} versions...
-                </option>                
+                </option>
                 {
                     docVersions?.map((version: ParseqDocVersion) => (
                         <option key={version.timestamp} value={version.versionId}>
@@ -187,7 +190,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
         </DialogContent>
         <DialogActions>
             <Button size="small" id="cancel_revert" onClick={handleCloseRevertDialog}>Cancel</Button>
-            <Button size="small" variant="contained"  disabled={!selectedVersionIdForRevert}  id="revert" onClick={handleCloseRevertDialog}>↩️ Revert</Button>
+            <Button size="small" variant="contained" disabled={!selectedVersionIdForRevert} id="revert" onClick={handleCloseRevertDialog}>↩️ Revert</Button>
         </DialogActions>
     </Dialog>
 
@@ -210,8 +213,8 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
         <DialogContent>
             <RadioGroup
                 value={newSource}
-                onChange={(e) => setNewSource(e.target.value as 'fromTemplate'|'fromCurrent')}
-                >
+                onChange={(e) => setNewSource(e.target.value as 'fromTemplate' | 'fromCurrent')}
+            >
                 <FormControlLabel value="fromTemplate" control={<Radio />} label="Create new document from template" />
                 <TextField style={{ marginTop: 20 }}
                     select
@@ -225,11 +228,11 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     }}
                     SelectProps={{ native: true, style: { fontSize: "0.75em" } }}
                     disabled={newSource !== 'fromTemplate'}
-                >             
+                >
                     {
                         Object.keys(templates).map((id) => (
                             <option key={id} value={id}>
-                                {templates[id].name + " - " + templates[id].description.substring(0, 75) +  (templates[id].description.length>75?"...":"")}
+                                {templates[id].name + " - " + templates[id].description.substring(0, 75) + (templates[id].description.length > 75 ? "..." : "")}
                             </option>
                         ))
                     }
@@ -237,7 +240,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                 {(newSource === 'fromTemplate') && <Typography fontSize={"0.7em"} paddingTop={"0.5em"}>
                     <strong>Description:</strong> {selectedTemplateDescription}
                 </Typography>}
-                <Divider style={{padding: '5px'}} />
+                <Divider style={{ padding: '5px' }} />
                 <FormControlLabel value="fromCurrent" control={<Radio />} label="Clone current document" />
                 <Typography fontSize={"0.7em"} paddingTop={"0.5em"}>Cloned document will not include version history.</Typography>
 
@@ -245,7 +248,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
         </DialogContent>
         <DialogActions>
             <Button size="small" id="cancel_new" onClick={handleCloseNewDialog}>Cancel</Button>
-            <Button size="small" variant="contained" id="new" onClick={handleCloseNewDialog}>🆕 New {newSource==='fromTemplate'?'(from template)':'(clone current)'}</Button>
+            <Button size="small" variant="contained" id="new" onClick={handleCloseNewDialog}>🆕 New {newSource === 'fromTemplate' ? '(from template)' : '(clone current)'}</Button>
         </DialogActions>
     </Dialog>
 
@@ -284,7 +287,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     db.parseqDocs.add(newDoc).then(() => {
                         saveVersion(newDoc.docId, dataToImport_parsed).then(() => {
                             setOpenLoadDialog(false);
-                            navigateToDocId(newDoc.docId, [{k:"successMessage", v:"New document created from imported data."}]);
+                            navigateToDocId(newDoc.docId, [{ k: "successMessage", v: "New document created from imported data." }]);
                         });
                     });
 
@@ -351,13 +354,13 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                             <TextField
                                 {...params}
                                 fullWidth
-                                InputProps={{ ...params.InputProps, style: { fontSize: "0.75em" }}}
-                                InputLabelProps={{ ...params.InputLabelProps, style: { fontSize: "0.75em" }}}
+                                InputProps={{ ...params.InputProps, style: { fontSize: "0.75em" } }}
+                                InputLabelProps={{ ...params.InputLabelProps, style: { fontSize: "0.75em" } }}
                                 placeholder={`Pick from ${allDocs?.length} docs...`} />
                         }
 
                     />
-                    <Typography paddingTop="5px" fontSize="0.6em">Remember the prompt but not the doc name? Try the <a href={'/browser?refDocId='+activeDoc.docId} target='_blank' rel="noreferrer">browser</a>.</Typography>
+                    <Typography paddingTop="5px" fontSize="0.6em">Remember the prompt but not the doc name? Try the <a href={'/browser?refDocId=' + activeDoc.docId} target='_blank' rel="noreferrer">browser</a>.</Typography>
                 </Grid>
                 <Grid xs={2} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'end' }}>
                     <Button size="small" disabled={!selectedDocForLoad} variant="contained" id="load" onClick={handleCloseLoadDialog}>⬇️ Load</Button>
@@ -497,7 +500,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     <CopyToClipboard text={exportableDoc}>
                         <Button size="small" id="copy_share" variant="contained"  >📋 Copy doc</Button>
                     </CopyToClipboard>
-                </Grid>                                   
+                </Grid>
             </Grid>
 
         </DialogContent>
@@ -511,33 +514,50 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
         {loadDialog}
         {shareDialog}
         {newDialog}
-        <Grid container>
-            <Stack direction="row" spacing={1}>
-            <Grid xs={4}>
+        <Stack width={'100%'} direction="row" spacing={1} flex={'flex-grow'} alignItems={'flex-start'}>
+            <Stack direction="column" flex={'flex-grow'} flexGrow={8} flexBasis={'100%'}>
                 <TextField
                     id="doc-name"
                     label="Doc name"
                     fullWidth={true}
-                    value={activeDoc?.name}
-                    InputProps={{ style: { fontSize: '0.75em' } }}
+                    value={editingDocName}
+                    InputProps={{
+                        style: { fontSize: '0.75em' },
+                        sx: { background: (editingDocName !== activeDoc.name) ? 'ivory' : '', },
+                        endAdornment: (editingDocName !== activeDoc.name) ? '🖊️' : ''
+                    }}
                     size="small"
                     onChange={(e: any) => {
+                        setEditingDocName(e.target.value);
+                    }}
+                    onBlur={(e: any) => {
                         const newDoc = { docId: docId, name: e.target.value, timestamp: Date.now() };
                         saveDocDebounced(newDoc);
                         setActiveDoc(newDoc);
                     }}
+                    onKeyDown={(e: any) => {
+                        if (e.key === 'Enter') {
+                            setTimeout(() => e.target.blur());
+                            e.preventDefault();
+                        } else if (e.key === 'Escape') {
+                            e.target.value = activeDoc.name;
+                            setTimeout(() => e.target.blur());
+                            e.preventDefault();
+                        }
+                    }}
                 />
-                <small><small>Last saved: {Math.max(lastModified, activeDoc.timestamp)  ? <ReactTimeAgo tooltip={true} date={Math.max(lastModified, activeDoc.timestamp)} locale="en-GB" /> : "never"} </small></small>
-            </Grid>
-            <Grid xs={8}>
-                <Stack direction="row" spacing={1}>
-                    <Button size="small" variant="outlined" onClick={handleClickOpenRevertDialog}>↩️ Revert...</Button>
-                    <Button size="small" variant="outlined" onClick={handleClickOpenLoadDialog} >⬇️ Load...</Button>
-                    <Button size="small" variant="outlined" onClick={handleClickOpenShareDialog} >🔗 Share...</Button>
-                    <Button size="small" variant="outlined" onClick={handleClickOpenNewDialog} >🆕 New...</Button>
-                </Stack>
-            </Grid>
+                <Typography fontSize={'0.5em'}>Last saved: {Math.max(lastModified, activeDoc.timestamp) ? <ReactTimeAgo tooltip={true} date={Math.max(lastModified, activeDoc.timestamp)} locale="en-GB" /> : "never"} </Typography>
             </Stack>
-        </Grid>
+            <Stack direction="row" spacing={1} flex={'flex-grow'} flexGrow={1}>
+                <Button size="small" variant="outlined" onClick={handleClickOpenRevertDialog}>↩️&nbsp;Revert...</Button>
+                <Button size="small" variant="outlined" onClick={handleClickOpenShareDialog} >🔗&nbsp;Share...</Button>
+            </Stack>
+            <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'flex-end'}>
+                <Stack direction="row" spacing={1}>
+                    <Button size="small" variant="outlined" onClick={handleClickOpenLoadDialog} >⬇️&nbsp;Load...</Button>
+                    <Button size="small" variant="outlined" onClick={handleClickOpenNewDialog} >🆕&nbsp;New...</Button>
+                </Stack>
+            </Stack>
+        </Stack>
     </div>
 }

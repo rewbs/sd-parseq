@@ -6,6 +6,10 @@ import BezierEasing from "bezier-easing";
 import { toFixedNumber, toFixedCeil, toFixedFloor, frameToBeat, frameToSec, secToFrame, beatToFrame } from '../utils/maths';
 import seedrandom from 'seedrandom';
 import { InterpolationType, TimeSeries } from './parseq-timeseries';
+//@ts-ignore
+import {Noise} from 'noisejs';
+
+//const noise = new Noise(Math.random());
 
 export type InvocationContext = {
   fieldName: string;
@@ -531,164 +535,83 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
         return node.getState('randValue');
       }
     }
-  },  
+  },
+  "smrand": {
+    description: "Simplex noise function (smooth random)",
+    argDefs: [
+      { description: "smoothing factor (1 for ragged, 100 for smooth)", names: ["smooth", "sm"], type: "number", required: false, default: 10 },
+      { description: "min", names: ["min", "n"], type: "number", required: false, default: 0 },
+      { description: "max", names: ["max", "x"], type: "number", required: false, default: 1 },
+      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now() },
+      { description: "y (2d component of noise function)", names: ["y"], type: "number", required: false, default: 0 },
+    ],
+    call: (ctx, args, node) => {
+      const [smoothing, min, max, seed, y] = [Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]), Number(args[4])];
+      const x = ctx.frame / (smoothing || 1);
+      const noiseGen: Noise = node.getOrComputeState('noiseGen', () => new Noise(seed.toString()));
+      return (noiseGen.simplex2(x, y)) * (max - min) / 2 + (max + min) / 2;
+    }
+  },
+  "perlin": {
+    description: "Simplex noise function (smooth random)",
+    argDefs: [
+      { description: "smoothing factor (1 for ragged, 100 for smooth)", names: ["smooth", "sm"], type: "number", required: false, default: 10 },
+      { description: "min", names: ["min", "n"], type: "number", required: false, default: 0 },
+      { description: "max", names: ["max", "x"], type: "number", required: false, default: 1 },
+      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now() },
+      { description: "y (2d component of noise function)", names: ["y"], type: "number", required: false, default: 0 },
+    ],
+    call: (ctx, args, node) => {
+      const [smoothing, min, max, seed, y] = [Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]), Number(args[4])];
+      const x = ctx.frame / (smoothing || 1);
+      const noiseGen: Noise = node.getOrComputeState('noiseGen', () => new Noise(seed.toString()));
+      return (noiseGen.perlin2(x, y)) * (max - min) + (max + min) / 2;
+    }
+  },
+  "vibe": {
+    description: "returns position on bezier curve for the current frame. x1, y1, x2 and y2 behave as with https://cubic-bezier.com/.",
+    argDefs: [
+      { description: "control point x1", names: ["x1"], type: "number", required: false, default: 0.5 },
+      { description: "control point y1", names: ["y1"], type: "number", required: false, default: 0 },
+      { description: "control point x2", names: ["x2"], type: "number", required: false, default: 0.5 },
+      { description: "control point y2", names: ["y2"], type: "number", required: false, default: 1 },
+      { description: "starting y position", names: ["from", "start", "s"], type: "number", required: false, default: (ctx) => getActiveKeyframeValue(ctx) },
+      { description: "ending y position", names: ["to", "end", "t"], type: "number", required: false, default: (ctx) => getNextKeyframeValue(ctx) },
+      { description: "duration of the bezier curve in frames", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe },
+      { description: "offset", names: ["offset","os"], type: "number", required: false, default: 2 },
+      { description: "period min", names: ["pmin"], type: "number", required: false, default: 1 },
+      { description: "period max", names: ["pmax"], type: "number", required: false, default: 20 },
+      { description: "amplitude min", names: ["min"], type: "number", required: false, default: 0 },
+      { description: "amplitude max", names: ["max"], type: "number", required: false, default: 1 },
+      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now() },
+    ],
+    call: (ctx, args, node) => {
+      const seed = Number(args[12]);
+      const initVibeStartFrame = Number(node.getState('vibeStartFrame'));
+      const initVibePeriod = Number(node.getState('vibePeriod'));
 
-  //////
-  // Raw maths
-  /////
-  "_sin": {
-    description: "Equivalent to Math.sin(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.sin(Number(args[0]))
-  },
-  "_cos": {
-    description: "Equivalent to Math.cos(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.cos(Number(args[0]))
-  },
-  "_tan": {
-    description: "Equivalent to Math.tan(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.tan(Number(args[0]))
-  },
-  "_asin": {
-    description: "Equivalent to Math.asin(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.asin(Number(args[0]))
-  },
-  "_acos": {
-    description: "Equivalent to Math.acos(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.acos(Number(args[0]))
-  },
-  "_atan": {
-    description: "Equivalent to Math.atan(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.atan(Number(args[0]))
-  },
-  "_log": {
-    description: "Equivalent to Math.log(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.log(Number(args[0]))
-  },
-  "_exp": {
-    description: "Equivalent to Math.exp(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.exp(Number(args[0]))
-  },
-  "_sqrt": {
-    description: "Equivalent to Math.sqrt(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.sqrt(Number(args[0]))
-  },
-  "_cbrt": {
-    description: "Equivalent to Math.cbrt(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.cbrt(Number(args[0]))
-  },
-  "_clz32": {
-    description: "Equivalent to Math.clz32(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.clz32(Number(args[0]))
-  },
-  "_expm1": {
-    description: "Equivalent to Math.expm1(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.expm1(Number(args[0]))
-  },
-  "_log1p": {
-    description: "Equivalent to Math.log1p(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.log1p(Number(args[0]))
-  },
-  "_log10": {
-    description: "Equivalent to Math.log10(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.log10(Number(args[0]))
-  },
-  "_log2": {
-    description: "Equivalent to Math.log2(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.log2(Number(args[0]))
-  },
-  "_sign": {
-    description: "Equivalent to Math.sign(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.sign(Number(args[0]))
-  },
-  "_sinh": {
-    description: "Equivalent to Math.sinh(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.sinh(Number(args[0]))
-  },
-  "_cosh": {
-    description: "Equivalent to Math.cosh(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.cosh(Number(args[0]))
-  },
-  "_tanh": {
-    description: "Equivalent to Math.tanh(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.tanh(Number(args[0]))
-  },
-  "_asinh": {
-    description: "Equivalent to Math.asinh(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.asinh(Number(args[0]))
-  },
-  "_acosh": {
-    description: "Equivalent to Math.acosh(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.acosh(Number(args[0]))
-  },
-  "_atanh": {
-    description: "Equivalent to Math.atanh(v)",
-    argDefs: [
-      { description: "value", names: ["v"], type: "number", required: true, default: 0 },
-    ],
-    call: (ctx, args) => Math.atanh(Number(args[0]))
+      if (isNaN(initVibeStartFrame)
+          || isNaN(initVibePeriod)
+          || ctx.frame > initVibeStartFrame + initVibePeriod) { 
+          // Starting new bezier
+          const generator : (() => number) = node.getOrComputeState('randGen', () => seedrandom(seed.toString())) as (() => number);          
+          node.setState('vibeStartFrame', ctx.frame);
+          
+          const oldEnd = node.getState('vibeEnd');
+          const newStart = isNaN(oldEnd) ? getActiveKeyframeValue(ctx) : oldEnd ;
+          node.setState('vibeStart', newStart);
+
+          const newEnd = generator() * (Number(args[11]) - Number(args[10])) + Number(args[10]);
+          node.setState('vibeEnd', newEnd);
+
+          const newPeriod = Math.floor(generator() * (Number(args[9]) - Number(args[8])) + Number(args[8]));
+          node.setState('vibePeriod', newPeriod);
+      }
+
+      const [x1, y1, x2, y2] = [Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3])];
+      const [vibeStart, vibeEnd, vibePeriod, vibeStartFrame] = [ node.getState('vibeStart'), node.getState('vibeEnd'), node.getState('vibePeriod'), node.getState('vibeStartFrame')];
+      return bezier(x1, y1, x2, y2, vibeStart, vibeEnd, vibePeriod, (ctx.frame-vibeStartFrame)/vibePeriod, ctx); 
+    }
   },
 
   /////////////////////
@@ -705,18 +628,20 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       { description: "starting y position", names: ["from", "start", "s"], type: "number", required: false, default: (ctx) => getActiveKeyframeValue(ctx) },
       { description: "ending y position", names: ["to", "end", "t"], type: "number", required: false, default: (ctx) => getNextKeyframeValue(ctx) },
       { description: "duration of the bezier curve in frames", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe },
+      { description: "offset", names: ["offset","os"], type: "number", required: false, default: 2 },
     ],
     call: (ctx, args) => bezier(Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]),
-      Number(args[4]), Number(args[5]), Number(args[6]), ctx)
+      Number(args[4]), Number(args[5]), Number(args[6]), Number(args[7]), ctx)
   },
   "slide": {
     description: "returns position on a linear slide with configurable starting and ending points.",
     argDefs: [
       { description: "start y", names: ["from", "start", "s"], type: "number", required: false, default: (ctx) => getActiveKeyframeValue(ctx) },
       { description: "end y", names: ["to", "end", "t"], type: "number", required: false, default: (ctx) => getNextKeyframeValue(ctx) },
-      { description: "duration in frames (span)", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe }
+      { description: "duration in frames (span)", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe },
+      { description: "offset", names: ["offset","os"], type: "number", required: false, default: 2 },
     ],
-    call: (ctx, args) => slide(Number(args[0]), Number(args[1]), Number(args[2]), ctx)
+    call: (ctx, args) => slide(Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]), ctx)
   },
 
   /////////////////////
@@ -889,36 +814,38 @@ function polyInterpolation(definedFrames: number[], definedValues: number[], fra
   return polynomial(frame, definedFrames, definedValues)[0];
 }
 
-function slide(from: number, to: number, over: number, ctx: InvocationContext) {
+function slide(from: number, to: number, over: number, offset: number, ctx: InvocationContext) {
   const x = ctx.frame - ctx.activeKeyframe;
   const start_y = from;
   const end_y = to;
   const range_x = over;
+  const position = Math.abs(offset)<1  ? offset*(range_x) : x
   if (range_x === 0) {
     return start_y;
   } else if (x >= range_x) {
     return end_y;
   } else {
     const slope = (end_y - start_y) / range_x;
-    return start_y + slope * x;
+    return start_y + slope * position;
   }
 }
 
 function bezier(x1: number, y1: number, x2: number, y2: number,
-  from: number, to: number, over: number, ctx: InvocationContext) {
+  from: number, to: number, over: number, offset: number, ctx: InvocationContext) {
   const start_x = ctx.activeKeyframe;
   const range_x = over;
   const start_y = from;
   const end_y = to;
   const range_y = end_y - start_y;
   const x = ctx.frame - start_x;
+  const position = Math.abs(offset)<1  ? offset : x / range_x
   if (range_x === 0) {
     return start_y;
-  } else if (x >= range_x) {
+  } else if (position>1) {
     return end_y;
   } else {
     const bezier = BezierEasing(x1, y1, x2, y2);
-    return start_y + bezier(x / range_x) * range_y;
+    return start_y + bezier(position) * range_y;
   }
 }
 

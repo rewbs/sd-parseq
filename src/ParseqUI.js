@@ -1495,16 +1495,27 @@ const ParseqUI = (props) => {
         borderBottom: 'var(--Grid-borderWidth) solid',
         borderColor: 'divider',
       },
+
     }}>
-      <React.StrictMode>
+    <React.StrictMode>
       <CssBaseline />
-      <Grid xs={8}>
-        {docManager}
-      </Grid>
-      <Grid xs={4}>
-        <Box display='flex' justifyContent="right" gap={1} alignItems='center' paddingTop={1}>
-        </Box>
-      </Grid>
+      <Stack direction={'row'} wrap='nowrap' width='100%'>
+        <Grid xs={'auto'} sx={{flexGrow: 1}} >
+          {docManager}
+        </Grid>
+        <Grid xs={'auto'}
+          sx={{
+            borderLeft: 'var(--Grid-borderWidth) solid',
+            borderRight: 'var(--Grid-borderWidth) solid',
+            borderBottom: 'var(--Grid-borderWidth) solid',
+            borderColor: 'divider',
+          }}>
+          <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'flex-end'}>
+            <Box width={"728px"} height="90px">
+            </Box>
+          </Stack>
+        </Grid>
+      </Stack>        
       <Grid xs={12}>
         <ExpandableSection title="Prompts">
           {promptsUI}

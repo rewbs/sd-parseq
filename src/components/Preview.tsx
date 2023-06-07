@@ -2,8 +2,8 @@ import { Slider } from "@mui/material";
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useState } from 'react';
-import { percentageToColor } from "../utils/utils";
 import { RenderedData } from "../ParseqUI";
+import { percentageToColor } from "../utils/utils";
 
 interface PreviewProps {
     data: RenderedData
@@ -47,7 +47,7 @@ export function Preview(props: PreviewProps) {
         </Grid>
         {
             [fields1, fields2].map((fields, col) =>
-                <Grid xs={6} key={fields.join('_').substring(5)+'_'+col}>
+                <Grid xs={6} key={fields.join('_').substring(5) + '_' + col}>
                     <div style={{ fontSize: "0.7em", fontFamily: "monospace" }}>
                         <ul>
                             {
@@ -62,7 +62,7 @@ export function Preview(props: PreviewProps) {
                                             backgroundColor: percentageToColor(valueAsPercent / 100, 100, 0, 0.5),
                                             width: (valueAsPercent + '%')
                                         }} >
-                                            {field}&nbsp;:&nbsp;{renderedFrames[frame][field].toFixed(4)}&nbsp;&nbsp;(Δ&nbsp;{renderedFrames[frame][field+'_delta'].toFixed(4)})
+                                            {field}&nbsp;:&nbsp;{renderedFrames[frame][field].toFixed(4)}&nbsp;&nbsp;(Δ&nbsp;{renderedFrames[frame][field + '_delta'].toFixed(4)})
                                         </div>
                                     </li>
                                 })

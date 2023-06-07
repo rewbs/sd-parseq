@@ -8,6 +8,10 @@ import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
 //@ts-ignore
 import MarkersPlugin, { Marker } from "wavesurfer.js/src/plugin/markers";
 //@ts-ignore
+import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
+import colormap from '../data/hot-colormap.json';
+
+//@ts-ignore
 import debounce from 'lodash.debounce';
 import { frameToBeat, frameToSec } from "../utils/maths";
 import { createAudioBufferCopy } from "../utils/utils";
@@ -66,6 +70,10 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const [detectedEvents, setDetectedEvents] = useState<number[]>([]);
 
     const [infoLabel, setInfoLabel] = useState(new Date().toTimeString().split(' ')[0]);
+
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const [showSpectrogram, setShowSpectrogram] = useState(false);
+    
 
     // Triggered when user makes viewport changes outside of wavesurfer, and we need to update wavesurfer.
     const scrollToPosition = useCallback((startFrame: number) => {
@@ -475,6 +483,15 @@ export function AudioWaveform(props: AudioWaveformProps) {
             }
         },
         {
+            plugin: SpectrogramPlugin,
+            options: {
+                container: "#spectrogram",
+                labels: true,
+                height: 75,
+                colorMap: colormap
+            }
+        },
+        {
             plugin: MarkersPlugin,
             options: {
                 markers: [{ draggable: true }]
@@ -626,6 +643,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             interact={true}
                         />
                         <div id="timeline" />
+                        <div style={{display:showSpectrogram? 'block' : 'none'}} id="spectrogram" />
                     </WaveSurfer>
                 </Grid>
                 <Grid xs={12}>
@@ -642,6 +660,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             {isPlaying ? "⏸️ Pause" : "▶️ Play"}
                         </Button>
                         <Typography fontSize={"0.75em"}>{playbackPos}</Typography>
+                        {/* <Button onClick={(e) => setShowSpectrogram(showSpectrogram => !showSpectrogram)} >{showSpectrogram? 'Hide' : 'Show'} spectrogram</Button> */}
                     </Stack>
                 </Grid>
                 <Grid xs={12}>

@@ -1,4 +1,8 @@
-import { Alert, Button, Checkbox, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, Collapse, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
+import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -37,6 +41,8 @@ import { parseqLoad } from "./parseq-loader";
 import { parseqRender } from './parseq-renderer';
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
 
 import prettyBytes from 'pretty-bytes';
 
@@ -91,6 +97,8 @@ const ParseqUI = (props) => {
   const [keyframeLock, setKeyframeLock] = useState("frames");
   const [gridHeight, setGridHeight] = useState(0);
   const [lastSaved, setLastSaved] = useState(0);
+  const [pinFooter, setPinFooter] = useState(true);
+  const [hoverFooter, setHoverFooter] = useState(false);
   const [movementPreviewEnabled, setMovementPreviewEnabled] = useState(false);
 
   const runOnceTimeout = useRef();
@@ -1094,8 +1102,8 @@ const ParseqUI = (props) => {
         </Typography>
     }
 
-    <Grid container>
-      <Grid xs={6}>
+    <Grid container wrap='false'>
+      <Grid xs={2}>
         <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
           <TextField
             select
@@ -1372,63 +1380,103 @@ const ParseqUI = (props) => {
     </Stack>
     , [needsRender, enqueuedRender, lastRenderTime]);
 
-  const stickyFooter = useMemo(() => <Paper sx={{ zIndex:1000, padding: '5px', position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(200,200,200,0.85)', opacity: '99%' }} elevation={3}>
-    <Grid container spacing={1}>
-      <Grid xs={6}>
-        <InitialisationStatus status={initStatus} alignItems='center' />
-        {renderStatus}
-      </Grid>
-      <Grid xs={2}>
-        <Stack direction={'column'}>
-          {renderButton}
-          <UserAuthContextProvider>
-            <UploadButton
-              docId={activeDocId}
-              renderedJson={renderedDataJsonString}
-              autoUpload={autoUpload}
-              onNewUploadStatus={(status) => setUploadStatus(status)}
-            />
-          </UserAuthContextProvider>
-        </Stack>
-      </Grid>
-      <Grid xs={2}>
-        <Stack direction={'column'}>
-          <FormControlLabel control={
-            <Checkbox
-              checked={autoRender}
-              id={"auto_render"}
-              onChange={(e) => setAutoRender(e.target.checked)}
-            />}
-            style={{ marginLeft: '0.75em' }}
-            label={<Box component="div" fontSize="0.75em">Auto-render</Box>}
-          />
-          <FormControlLabel control={
-            <Checkbox
-              checked={autoUpload}
-              id={"auto_render"}
-              onChange={(e) => setAutoUpload(e.target.checked)}
-            />}
-            style={{ marginLeft: '0.75em' }}
-            label={<Box component="div" fontSize="0.75em">Auto-upload</Box>}
-          />
-        </Stack>
-      </Grid>
-      <Grid xs={2}>
-        <Stack direction={'column'}>
-          <Stack direction={'column'}>
-            <CopyToClipboard text={renderedDataJsonString}>
-              <Button size="small" disabled={needsRender} variant="outlined">📋 Copy output</Button>
-            </CopyToClipboard>
-            <Typography fontSize={'0.7em'}>Size: {prettyBytes(renderedDataJsonString.length)}</Typography>
-          </Stack>
-          <Stack direction={'column'} justifyContent={'right'} justifyItems={'right'} justifySelf={'right'} >
-            {uploadStatus}
-          </Stack>
-        </Stack>
-      </Grid>
-    </Grid>  
+  const miniFooterContent = useMemo(() => {
 
-  </Paper>, [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender]);
+    let miniMessage;
+    if (enqueuedRender && !renderedErrorMessage) {
+      miniMessage = {icon: <WarningAmberRoundedIcon />, color: 'rgb(255, 244, 229)', message: "Render in progres..."};
+    } else if (renderedErrorMessage) {
+      miniMessage = {icon: <ErrorOutlineRoundedIcon />, color: 'rgb(253, 237, 237)',  message: "Error during render. Hover for details."};
+    } else if (needsRender) {
+      miniMessage = {icon: <InfoOutlinedIcon />, color:'rgb(229, 246, 253)', message: "Please render to update the output."};
+    } else {
+      miniMessage = {icon: <CheckCircleOutlineRoundedIcon />, color:'rgb(237, 247, 237)', message: "Output is up-to-date."};
+    }
+
+    return <Grid container spacing={1} alignItems='center' >
+      <Grid xs={'auto'} alignItems={'center'} flexGrow={100}>
+        <Stack direction={'row'} alignItems={'center'} justifyContent={'center'} backgroundColor={miniMessage.color}>
+          {miniMessage.icon}
+          <Typography fontSize={"0.75em"}>{miniMessage.message}</Typography>
+        </Stack>
+      </Grid>
+    </Grid>
+  }, [needsRender, renderedErrorMessage, enqueuedRender]);
+
+  const maxiFooterContent = useMemo(() => <Grid container spacing={1} wrap='nowrap'>
+    <Grid xs={'auto'}>
+      <Tooltip2 title='Pin/unpin the footer to the bottom of the screen'>
+        <Button variant='outlined' onClick={(e)=>setPinFooter(lockFooter => !lockFooter )}><FontAwesomeIcon icon={faThumbtack} rotation={pinFooter?0:270} /></Button>
+      </Tooltip2>
+    </Grid>
+    <Grid xs={'auto'}>
+    </Grid>
+    <Grid xs={6}>
+      <InitialisationStatus status={initStatus} alignItems='center' />
+      {renderStatus}
+    </Grid>
+    <Grid xs={2}>
+      <Stack direction={'column'}>
+        {renderButton}
+        <UserAuthContextProvider>
+          <UploadButton
+            docId={activeDocId}
+            renderedJson={renderedDataJsonString}
+            autoUpload={autoUpload}
+            onNewUploadStatus={(status) => setUploadStatus(status)} />
+        </UserAuthContextProvider>
+      </Stack>
+    </Grid>
+    <Grid xs={2}>
+      <Stack direction={'column'}>
+        <FormControlLabel control={<Checkbox
+          checked={autoRender}
+          id={"auto_render"}
+          onChange={(e) => setAutoRender(e.target.checked)} />}
+          style={{ marginLeft: '0.75em' }}
+          label={<Box component="div" fontSize="0.75em">Auto-render</Box>} />
+        <FormControlLabel control={<Checkbox
+          checked={autoUpload}
+          id={"auto_render"}
+          onChange={(e) => setAutoUpload(e.target.checked)} />}
+          style={{ marginLeft: '0.75em' }}
+          label={<Box component="div" fontSize="0.75em">Auto-upload</Box>} />
+      </Stack>
+    </Grid>
+    <Grid xs={2}>
+      <Stack direction={'column'}>
+        <Stack direction={'column'}>
+          <CopyToClipboard text={renderedDataJsonString}>
+            <Button size="small" disabled={needsRender} variant="outlined">📋 Copy output</Button>
+          </CopyToClipboard>
+          <Typography fontSize={'0.7em'}>Size: {prettyBytes(renderedDataJsonString.length)}</Typography>
+        </Stack>
+        <Stack direction={'column'} justifyContent={'right'} justifyItems={'right'} justifySelf={'right'}>
+          {uploadStatus}
+        </Stack>
+      </Stack>
+    </Grid>
+  </Grid>
+  , [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender, pinFooter]);
+
+
+  const stickyFooter = useMemo(() => <Paper
+    onMouseOver={(e) => setHoverFooter(true)}
+    onMouseOut={(e) => setHoverFooter(false)}
+    elevation={3}
+    sx={{
+      zIndex:1000,
+      padding: '5px',
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'rgba(200,200,200,0.85)',
+      opacity: '99%'
+    }}>
+    <Collapse in={pinFooter || hoverFooter}>{maxiFooterContent}</Collapse>
+    <Collapse in={!pinFooter && !hoverFooter}>{miniFooterContent}</Collapse>
+  </Paper>, [pinFooter, hoverFooter, maxiFooterContent, miniFooterContent]);
 
 
 

@@ -5,8 +5,9 @@ import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 //@ts-ignore
 import TimelinePlugin from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js';
-
-//import 'wavesurfer.js/dist/wavesurfer.min.css';
+//@ts-ignore
+import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
+import colormap from '../data/hot-colormap.json';
 
 interface AudioWaveformProps {
   audioBuffer: AudioBuffer;
@@ -40,6 +41,12 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
           TimelinePlugin.create({
             container: '#timeline_dialog',
           }),
+          SpectrogramPlugin.create({
+                container: "#spectrogram_dialog",
+                labels: true,
+                height: 75,
+                colorMap: colormap
+            }),         
         ],
         normalize: true
       });
@@ -86,6 +93,7 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
     <div>
       <div ref={waveformRef} id="waveform_dialog" />
       <div id="timeline_dialog" />
+      <div id="spectrogram_dialog" />
       <Button size="small" variant='outlined' onClick={(e) => {
         if (isPlaying) {
           waveSurferRef.current?.pause();

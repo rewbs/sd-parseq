@@ -130,5 +130,10 @@
     "crypto": "npm:crypto-browserify@3.12.0",
     "eslint-config-react-app": "^7.0.1",
     "react-git-info": "^2.0.1"
+  },
+  "overrides": {
+    "react-scripts": {
+      "typescript": "^5"
+    }
   }
 }

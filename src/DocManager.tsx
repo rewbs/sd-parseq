@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, Radio, RadioGroup, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, Radio, RadioGroup, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useLiveQuery } from "dexie-react-hooks";
@@ -556,6 +556,9 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                 <Stack direction="row" spacing={1}>
                     <Button size="small" variant="outlined" onClick={handleClickOpenLoadDialog} >⬇️&nbsp;Load...</Button>
                     <Button size="small" variant="outlined" onClick={handleClickOpenNewDialog} >🆕&nbsp;New...</Button>
+                    <Tooltip title="Explore your Parseq documents.">
+                        <Button size="small" variant="outlined" href={'/browser?refDocId=' + activeDoc.docId} target='_blank' rel="noreferrer">🔎&nbsp;Browse...</Button>
+                    </Tooltip>                    
                 </Stack>
             </Stack>
         </Stack>

@@ -4,37 +4,40 @@
 
 - [What is this?](#what-is-this)
 - [What's new?](#whats-new)
-- [Setup](#setup)
 - [Getting started](#getting-started)
-- [Usage](#usage)
 - [Examples](#examples)
 - [Features](#features)
- - [Keyframed parameter values with scriptable interpolation](#keyframed-parameter-values-with-scriptable-interpolation)
- - [Interpolation modifiers](#interpolation-modifiers)
-   - [Values](#values)
-   - [Functions](#functions)
-   - [Simple maths functions](#simple-maths-functions)
-   - [Maths constants](#maths-constants)
-   - [Units](#units)
-   - [Unit conversion functions](#unit-conversion-functions)
-   - [Other operators and expressions](#other-operators-and-expressions)
- - [Working with time & beats (audio synchronisation)](#working-with-time--beats-audio-synchronisation)
-   - [Beats per minute and frames per second](#beats-per-minute-and-frames-per-second)
-   - [Locking keyframes to beats or seconds](#locking-keyframes-to-beats-or-seconds)
-   - [Interval keyframe creation](#interval-keyframe-creation)
-   - [Keyframe labelling](#keyframe-labelling)
-   - [Reference audio](#reference-audio)
-   - [Automatically generating keyframes from audio events](#automatically-generating-keyframes-from-audio-events)
-   - [Sync'ing to pitch and amplitude using time series](#syncing-to-pitch-and-amplitude-using-time-series)
-   - [Legacy Audio Analyser](#legacy-audio-analyser)
- - [Time series for arbtrary data sequences](#time-series-for-arbtrary-data-sequences)
- - [Camera movement preview](#camera-movement-preview)
-- [Deforum integration features](#deforum-integration-features)
- - [Keyframable parameters](#keyframable-parameters)
- - [Prompt manipulation](#prompt-manipulation)
- - [Using multiple prompts](#using-multiple-prompts)
- - [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
- - [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
+  - [Keyframed parameter values with scriptable interpolation](#keyframed-parameter-values-with-scriptable-interpolation)
+  - [Interpolation expressions](#interpolation-expressions)
+    - [Operators](#operators)
+    - [Context variables](#context-variables)
+    - [Constants](#constants)
+    - [Units](#units)
+    - [Unit conversion functions](#unit-conversion-functions)
+    - [Oscillator functions](#oscillator-functions)
+    - [Transition functions](#transition-functions)
+    - [Noise functions](#noise-functions)
+    - [Maths functions](#maths-functions)
+    - [Javascript maths functions](#javascript-maths-functions)
+    - [Info text matching functions](#info-text-matching-functions)
+    - [Prompt manipulation functions](#prompt-manipulation-functions)
+  - [Working with time & beats (audio synchronisation)](#working-with-time--beats-audio-synchronisation)
+    - [Beats per minute and frames per second](#beats-per-minute-and-frames-per-second)
+    - [Locking keyframes to beats or seconds](#locking-keyframes-to-beats-or-seconds)
+    - [Interval keyframe creation](#interval-keyframe-creation)
+    - [Keyframe labelling](#keyframe-labelling)
+    - [Reference audio](#reference-audio)
+    - [Automatically generating keyframes from audio events](#automatically-generating-keyframes-from-audio-events)
+    - [Sync'ing to pitch and amplitude using time series](#syncing-to-pitch-and-amplitude-using-time-series)
+    - [Legacy Audio Analyser](#legacy-audio-analyser)
+  - [Time series for arbtrary data sequences](#time-series-for-arbtrary-data-sequences)
+  - [Camera movement preview](#camera-movement-preview)
+  - [Deforum integration features](#deforum-integration-features)
+    - [Keyframable parameters](#keyframable-parameters)
+  - [Prompt manipulation](#prompt-manipulation)
+  - [Using multiple prompts](#using-multiple-prompts)
+  - [Subseed control for seed travelling](#subseed-control-for-seed-travelling)
+  - [Delta values (aka absolute vs relative motion parameters)](#delta-values-aka-absolute-vs-relative-motion-parameters)
 - [Working with large number of frames (performance tips)](#working-with-large-number-of-frames-performance-tips)
 - [Development & running locally](#development--running-locally)
  - [Deployment](#deployment)
@@ -42,7 +45,9 @@
 
 ## What is this?
 
-For context:
+You can jump straight into Parseq here: https://sd-parseq.web.app/ . 
+
+To provide some context:
 
 * [Stable Diffusion](https://stability.ai/blog/stable-diffusion-public-release) is an AI image generation tool.
 * [Deforum](https://github.com/deforum-art/deforum-stable-diffusion) is a notebook-based UI for Stable Diffusion that is geared towards creating videos.
@@ -51,26 +56,31 @@ For context:
 
 Parseq (this tool) is a _parameter sequencer_ for the [Deforum extension for Automatic1111](https://github.com/deforum-art/deforum-for-automatic1111-webui). You can use it to generate animations with tight control and flexible interpolation over many Stable Diffusion parameters (such as seed, scale, prompt weights, noise, image strength...), as well as input processing parameter (such as zoom, pan, 3D rotation...).
 
-<img width="500"  src="https://www.evernote.com/shard/s246/sh/6601a99d-4078-4589-a26c-22c02fa07ac7/u3TayR3OPMjXkDIYphPO-FhUpBZRM5FXqqyBaHB87cT4GJtuk6532rEHzQ/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />
+For now, Parseq is almost entirely front-end and stores all state in browser local storage by default. All processing, including audio processing, is done in the browser. Signed-in users can optionally upload their work from the UI for easier sharing.
 
-You can jump straight into the UI here: https://sd-parseq.web.app/ . 
+Using Parseq, you can:
 
-For now Parseq is almost entirely front-end and stores all state in browser local storage by default. Signed-in users can optionally upload their work from the UI for easier sharing.
+| | | |
+|---|---|---|
+|  Sequence, evolve and blend prompts with scriptable logic right in the prompt text | Control how parameters and prompt weights change over time, both visually and with an advanced expression language | Automatically detect audio events, and use them to influence your video. |
+| <img width="400" alt="image" src="https://github.com/rewbs/sd-parseq/assets/74455/518def5f-df7b-4921-a020-ff580c5cc3ba"> | <img width="400" alt="image" src="https://github.com/rewbs/sd-parseq/assets/74455/ed6fabee-528b-447f-8b68-73f695d23dec"> | <img width="400" alt="image" src="https://github.com/rewbs/sd-parseq/assets/74455/44e40f83-72f0-4d1e-8386-7ab8e0a109a7">  |
+| Extract pitch and amplitude data from audio, and import any raw timeseries data, for use in your expressions | Preview 3D motion and final prompts before kicking off your diffusion | Simple integration with the A1111 Deforum extension - just copy one link! |
+| <img width="400" alt="image" src="https://github.com/rewbs/sd-parseq/assets/74455/29f06f84-1542-4585-88d3-0a501fda8333"> | <img width="400" alt="image" src="https://github.com/rewbs/sd-parseq/assets/74455/74669809-0153-4593-a17a-aaa65e1a4de4"> | <img width="1195" alt="image" src="https://github.com/rewbs/sd-parseq/assets/74455/784dd7c9-d486-49f7-b640-7181e6abcdad"> |
+
 
 ## What's new?
 
 See the [Parseq change log](https://github.com/rewbs/sd-parseq/wiki/Parseq-change-log) on the project wiki.
 
-## Setup
+## Getting started
+
+### Pre-reqs
 
 - Start by ensuring you have a working installation of [Automatic1111's Stable Diffusion UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - Next, install the [Deforum extension](https://github.com/deforum-art/deforum-for-automatic1111-webui).
-– You should now see a `Parseq` section right at the bottom for the `Init` tab under the `Deforum` extension (click to expand it):
+– You should now see a `Parseq` section right at the bottom for the `Init` tab under the `Deforum` extension (click to expand it).
 
-<img width="500" alt="image" src="https://i.imgur.com/pGC8im8.png">
-
-
-## Getting started
+### Ramping up
 
 The best way to get your head around Parseq's capabilities and core concepts is to watch the [following tutorials](https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8):
 
@@ -78,17 +88,15 @@ The best way to get your head around Parseq's capabilities and core concepts is 
 |--- |--- |---
 | [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | [<img width=400 src="https://i.ytimg.com/vi/M6Z-kD2HnDQ/hqdefault.jpg?sqp=-oaymwEcCNACELwBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDZX4Xf6a_FNCBZCkfaYLmHyS1q6A">](https://www.youtube.com/watch?v=M6Z-kD2HnDQ)	|
 
-## Usage
+### Usage overview
 
-In summary, there are 2 steps to perform:
+In summary, your workflow with Parseq involves 2 main steps:
 
 ### Step 1: Create your parameter manifest
 
 * Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
 * Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
-* Hit `Render` to generate the JSON config for every frame.
-* Copy the contents of the textbox at the bottom.
-   *  If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All changes will be pushed to the same URL, so you won't need to copy & paste again.
+* Copy the contents of the "Output" textbox at the bottom. If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All subsequent changes will be pushed to the same URL, so you won't need to copy & paste again.
 
 ### Step 2: Generate the video
 
@@ -97,49 +105,22 @@ In summary, there are 2 steps to perform:
 * Fiddle with any other Deforum / Stable Diffusion settings you want to tweak. Rember in particular to check the animation mode, the FPS and the total number of frames to make sure they match Parseq.
 * Click generate.
 
-<img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205213997-fc9bd7f2-2996-4475-9653-993055ad4cf1.png">
-
-
 
 ## Examples
 
-Here are some examples of what you can do with this. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate or FILM.
+Here are some examples showing what can do. Most of these were generated at 20fps then smoothed to 60fps with ffmpeg minterpolate or FILM. See the also the [Parseq Example Library](https://github.com/rewbs/sd-parseq/discussions/categories/parseq-example-library) for a range of simple examples and all required settings to recreate them.
 
-- Img2img loopback using Deforum, with fluctiations on many parameters, and sync'ed to audio :
+| Example | Description |
+|--- |--- |
+| <video src="https://github.com/rewbs/sd-parseq/assets/74455/67013869-1dfc-4144-9640-6000ec4a4fe1" /> | Audio-controlled prompt: the amplitude affects the facial expression, and the pitch affects the pastel/vector effect. See [the video on Youtube](https://www.youtube.com/watch?v=fgiev3A93RU) for higher quality and all settings. |
+| <video src="https://github.com/rewbs/sd-parseq/assets/74455/a7ff8731-c82a-4809-b128-487926aff40f" />  | Audio synchronisation example from [Parseq Tutorial 3](https://www.youtube.com/watch?v=M6Z-kD2HnDQ). Watch [on Youtube  for higher quality](https://www.youtube.com/watch?v=LzWXxCbTaOU). |
+| <video src="https://user-images.githubusercontent.com/74455/209022677-568bd283-3e2a-457c-93ab-b27182db7bc6.mp4" /> | Another example of advanced audio synchronisation. A [detailed description of how this was created is available here](https://www.reddit.com/r/StableDiffusion/comments/zh8lk8/advanced_audio_sync_with_deforum_and_sdparseq/). The music is an excerpt of [The Prodigy - Smack My Bitch Up (Noisia Remix)](https://www.youtube.com/watch?v=r5OgQCvqbYA). |
+| <video src="https://user-images.githubusercontent.com/74455/228871042-a7a26e6f-aa42-4b24-837a-b5dc93812602.mp4" /> | Combining 3D y-axis rotation with x-axis pan to rotate around a subject. See the [Parseq Example Library](https://github.com/rewbs/sd-parseq/discussions/106) for more information. |
+| <video src="https://user-images.githubusercontent.com/74455/228868895-75da2d24-2fa0-49a3-ba7b-6ac644014935.mp4" /> | Seed travelling example featured in [Parseq Tutorial 2](https://www.youtube.com/watch?v=PvWckT0Pik8). |
+| <video src="https://user-images.githubusercontent.com/74455/228870311-0f59ea4b-880b-449f-8552-daeba5a8d7c9.mp4" /> | - Prompt manipulation example featured in [Parseq Tutorial 2](https://www.youtube.com/watch?v=PvWckT0Pik8). | 
+| <video src="https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91f-8e9e89e252dc.mp4" /> | Oscillating between a few famous faces with some 3d movement and occasional denoising spikes to reset the context. |
 
-https://user-images.githubusercontent.com/74455/199890662-9f446def-0582-4021-8249-84ce6b7df5d7.mp4
-
-- Example of advanced audio synchronisation. A [detailed description of how this was created is available here](https://www.reddit.com/r/StableDiffusion/comments/zh8lk8/advanced_audio_sync_with_deforum_and_sdparseq/). The music is an excerpt of [The Prodigy - Smack My Bitch Up (Noisia Remix)](https://www.youtube.com/watch?v=r5OgQCvqbYA).
-
-https://user-images.githubusercontent.com/74455/209022677-568bd283-3e2a-457c-93ab-b27182db7bc6.mp4
-
-
-- An older version of the same audio sync idea, with side-by-side comparisons with the input video and a preview render that bypasses SD:
-
-https://user-images.githubusercontent.com/74455/199890420-9c939e3a-ae8e-4262-9805-da0f45b4c0bc.mp4
-
-
-- Oscillating between a few famous faces with some 3d movement and occasional denoising spikes to reset the context:
-
-https://user-images.githubusercontent.com/74455/199898527-edcf7537-25ac-4d3f-b91f-8e9e89e252dc.mp4
-
-
-- Using pitch to influence prompt weight. A higher pitch generates a more luxurious house, and a lower pitch a more decrepit house. The audio analyser was used to to autodetect the notes, create keyframes for each note, and assign the pitch to a prompt weight value. Because Parseq support expression evaluation directly in the prompt, we can then have a positive prompt like: `Photo of the outside of a (${if prompt_weight_1>=0 "modern:"  else "crumbling old:"} ${abs(prompt_weight_1)}) realistic house. <rest of your positive prompt>` and a negative prompt like `(${if prompt_weight_1<0 "modern:"  else "crumbling old:"} ${abs(prompt_weight_1)}) <rest of your negative prompt>`.
-
-https://user-images.githubusercontent.com/74455/213343711-c66c25d6-9ad1-4070-950f-7122db7a1a07.mp4
-
-- Seed travelling example featured in [Parseq Tutorial 2](https://www.youtube.com/watch?v=PvWckT0Pik8):
-
-https://user-images.githubusercontent.com/74455/228868895-75da2d24-2fa0-49a3-ba7b-6ac644014935.mp4
-
-- Prompt manipulation example featured in [Parseq Tutorial 2](https://www.youtube.com/watch?v=PvWckT0Pik8):
-
-https://user-images.githubusercontent.com/74455/228870311-0f59ea4b-880b-449f-8552-daeba5a8d7c9.mp4
-
-- Combining 3D y-axis rotation with x-axis pan to rotate around a subject:
-
-https://user-images.githubusercontent.com/74455/228871042-a7a26e6f-aa42-4b24-837a-b5dc93812602.mp4
-
+ 
 
 ## Features
 
@@ -158,17 +139,44 @@ The interpolation formula can be an arbitrarily complex mathematical expression,
 <img width="500" alt="image" src="https://user-images.githubusercontent.com/74455/205217130-74e8e5b0-f432-4dc7-a190-d6f0eacb3844.png">
 
 
-### Interpolation modifiers
+### Interpolation expressions
 
-#### Values
+Interpolation expressions define how the value for a given field should be computed at each frame. Expressions can return numbers or strings. String literals must be enclosed in double quotes (`""`).
+
+Here are the operators, values, constants and functions you can use in Parseq expressions. 
+
+#### Operators
+
+| operator  	|  description 	| example  	|
+|---	   |---	|---	|
+| `<expr1> + <expr2>`   	| Add two expressions. Also acts as string concatenation if either expression is a string (with the same type conversion semantics as Javascript string concatenation). 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
+| `<expr1> - <expr2>` 	| Subtract two expressions. |   	|
+| `<expr1> * <expr2>`  	| Multiply two expressions. |   	|
+| `<expr1> / <expr2>`  	| Divide two expressions. 	|   	|
+| `<expr1> % <expr2>`  	| Modulus  |  Reset the seed every 4 beats: <img width="802" alt="image" src="https://user-images.githubusercontent.com/74455/205402901-52f78382-b36a-403a-a6d9-6277af0c758f.png"> |
+| `<expr1> != <expr2>`  	| 1 if expressions are not equal, 0 otherwise.       	      |   	|
+| `<expr1> == <expr2>`  	| 1 if expressions are equal, 0 otherwise.   	            |   	|
+| `<expr1> < <expr2>`  	   | 1 if <expr1> less than <expr2>, 0 otherwise.   	         |   	|
+| `<expr1> <= <expr2>`  	| 1 if <expr1> less than or equals <expr2>, 0 otherwise.    |    	|
+| `<expr1> >= <expr2>`  	| 1 if <expr1> greater than <expr2>, 0 otherwise.  	      |   	|
+| `<expr1> < <expr2>`  	   | 1 if <expr1> greater than or equals <expr2>, 0 otherwise. |   	|
+| `<expr1> and <expr2>`  	| 1 if <expr1> and <expr2> are non-zero, 0 otherwise.  	   |   	|
+| `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
+| `if <cond> <consequent> else <alt>` | if `cond` evaluates to any value other than 0, return `consequent`, else return `alt`. `cond`, `consequent` and `alt` are all arbitrary expressions. | Use a square wave which alternates between 1 and -1 with a period of 10 frames to alternatively render the step and cubic spline interpolations: <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205402345-88cfea53-382e-463d-a3a4-38d4b332f5f3.png"> |
+| `<expr1> : <expr2>`  | Syntactic sugar for easily creating strings of the format `(<term>:<weight>)`. For example, putting the following in your prompt `${"cat":prompt_weight_1}` will render to `${(cat:0.5)}` where 0.5 is the value of `prompt_weight_1` for that frame. `expr1` must return a string and `expr2` a number. |  |  
+
+
+#### Context variables
+
+Your expression runs in a context that provides access to a number of useful variables:
 
 | value  	|  description 	| examples  |
 |---	      |---	            |---	      |
-| `S`   	| Step interpolation: use the last keyframed value 	| <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205225902-72d80405-855f-49ab-9d6b-38e940cf8332.png"> |
-| `L` 	  | (default) Linear interpolation betwen the last and next keyframed value | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205225983-72667c6b-3f15-4c19-b4b4-5567b9bc8022.png"> |
-| `C`  	| Cubic spline interpolation betwen the last and next keyframed value  	| <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226043-13796fa8-8b76-4360-841c-a7f25835d224.png">|
-| `P`  	| Polinomial interpolation betwen the last and next keyframed value. Very similar to Cubic spline. | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226091-09958f94-25fa-4646-944e-a3f07ad8d214.png"> |
-| `f`  	| The frame number. Not very useful alone, but can be used to reference the overall video position in your interpolation algoritm. For example, add it to your seed value to increment the seed on every frame. |  <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226179-ff524dfa-aa40-4491-b4c1-2be56f7dda5a.png"> |
+| `L` 	| (default) The value at this frame assuming linear interpolation betwen the previous and next keyframed value | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205225983-72667c6b-3f15-4c19-b4b4-5567b9bc8022.png"> |
+| `S`   	| The value at this frame assuming step interpolation. This is equivalent to `active_keyframe_value`, i.e. the value last seen in the value column.	| <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205225902-72d80405-855f-49ab-9d6b-38e940cf8332.png"> |
+| `C`  	| The value at this frame assuming cubic spline over all keyframed values. | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226043-13796fa8-8b76-4360-841c-a7f25835d224.png">|
+| `P`  	| As above, but using polynomial interp. Very similar to Cubic spline. | <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226091-09958f94-25fa-4646-944e-a3f07ad8d214.png"> |
+| `f`  	| The current frame number. Not very useful alone, but can be used to reference the overall video position in your interpolation algoritm. For example, add it to your seed value to increment the seed on every frame. |  <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205226179-ff524dfa-aa40-4491-b4c1-2be56f7dda5a.png"> |
 | `k`  	| The number of frames elapsed since the active keyframe started for this field |  <img width="360"  src="https://www.evernote.com/l/APZb70iFBttLsK4ioqLTDV-UF5rxaLUy2tcB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `b`  	| The current position in beats. Depends on BPM and FPS. |   |
 | `s`  	| The current position in seconds. Depends on FPS. |   |
@@ -178,7 +186,43 @@ The interpolation formula can be an arbitrarily complex mathematical expression,
 | `next_keyframe_value`  	| The value set at the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APakRylM_mdLcK-MZcKm4wmEL7AEJfuzddoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 | `prev_computed_value`  	| The value calculated at the previous frame for this field, or 0 for the first frame. 	| <img src="https://www.evernote.com/l/APaAsSyhbg5AZofq4JLUNFHLvY0N7NjwjEEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 
-#### Functions
+#### Constants
+
+| Constant | description | example |
+|--- |--- |--- |
+| `PI` | Constant pi. | |
+| `E` | Constant e. | |
+| `SQRT2` | Square root of 2. | |
+| `SQRT1_2` |  Square root of 2. | |
+| `LN2` | Natural logarithm of 2. | |
+| `LN10` | Natural logarithm of 10. | |
+| `LOG2E` | Base 2 logarithm of e. | |
+| `LOG10E` |  Base 10 logarithm of e. | |
+
+#### Units
+
+Units can be appended to numerical constants to convert from frame to beats/seconds using the document's FPS and BPM. This is particularly useful when specifying the period of an oscillator (or anything else representing a time period).
+
+| unit  	|  description 	| example  	|
+|---	   |---	|---	|
+| `f`   	| (default) frames 	| `sin(p=10f)` (equivalent to `sin(p=10)`) |
+| `s` 	| seconds | `sin(p=2s)`  	|
+| `b`  	| beats  	| `sin(p=4b)`	|
+
+
+#### Unit conversion functions
+
+Use these functions to convert between frames, beats and seconds:
+
+| unit  	|  function 	| example  	|
+|---	   |---	|---	|
+| `f2b(x)`   	| Frames to beats	|   	|
+| `b2f(x)`  	| Beats to frames |   	|
+| `f2s(x)`  	| Frames to seconds  	|   	|
+| `s2f(x)`  	| Seconds to frames  	|   	|
+
+
+#### Oscillator functions
 
 All functions can be called either with unnamed args (e.g. `sin(10,2)`) or named args (e.g. `sin(period=10, amplitude=2)`). Most arguments have long and short names (e.g. `sin(p=10, a=2)`).
 
@@ -191,19 +235,6 @@ In the examples below, note how the oscillators' amplitude is set to the linearl
 | `tri()`  	| Triangle wave oscillator.  	| <img width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205227903-2c7ebdda-981c-4a78-9a82-7b75ef014499.png"> |
 | `saw()`  	| Sawtooth wave oscillator.  	| <img  width="512" src="https://www.evernote.com/l/APbDR-xZ779Jh431tTc2qEc56-EoMETlb2QB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 | `pulse()`  	| Pulse wave oscillator.  	| <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228355-863dcf8d-3d10-4d63-9c5f-32ce75e7b8b3.png"> |
-| `bez()`  	| Bezier curve between previous and next keyframe. Arguments are the same as https://cubic-bezier.com/ . If none specified, defaults to `bez(0.5,0,0.5,1)`. Optional parameters include `to`, `from` and `in` to override current and next keyframes as the anchor points (similar to `slide` below).    | <img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png"> |
-| `slide()` | Linear slide over a fixed time period. Requires at least one of `to` or `from` parameters (frame value will be used if missing), and `in` parameter defines how long the slide should last. See image for 3 examples. | <img width="512" src="https://www.evernote.com/l/APazj_b3MGRHBbDNHi30Imb-ZnCubVFGI7YB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
-| `min()`  	| Return the minimum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APZX1k4fvOlJP6eyrKSFaw-9KeonwNkS7tEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
-| `max()`  	| Return the maximum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APb9CEaqhEhF6L0FRWovG2Rt-qacyphjc_cB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />	|
-| `abs()`  	| Return the asolute value of the argument | <img src="https://www.evernote.com/l/APar6IXJsoxK6LDrTeyeHr9c-42Cnrk05qgB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
-| `round()`  	| Return the rounded value of the argument. Second argument specifies precision (default: 0). | <img src="https://www.evernote.com/l/APZWLyA1YPVMWao-Zke_v7X2adVxjk_0rEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
-| `floor()`  	| Return the value of the argument rounded down.  Second argument specifies precision (default: 0). | |
-| `ceil()`  	| Return the value of the argument rounded up.  Second argument specifies precision (default: 0). | |
-| `rand()`     | Returns a random number between 'min' and 'max' (default 0 and 1), using seed 's' (default current time using high precison timer), holding that value for 'h' frames (default 1). See the image for 3 examples. `prompt_weight_1` changes value between 0 and 1 on every frame and will get a new set of values on every render. `prompt_weight_2` gets a new random value between 1 and 2 every 40 frames, and will also get a new set of values on every render.  `prompt_weight_3` gets a new random value between 2 and 3 every beat, and will use the same series of values on every render. | <img src="https://www.evernote.com/shard/s246/sh/69b7115e-e3af-4561-a1ad-a5050653cd44/xXB0OKsJ9CVaoSZy7lmzGLwZaIxOgTKwRIOKXrnLaWUe3N4gP8LAtCIaaw/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
-| `info_match()` | Takes a **regular expression** as an argument. Returns 1 if the info label of the current active kefframe matches the regex, 0 otherwise.  | <img src="https://www.evernote.com/l/APbS0YKyh2ZHw7ZKEIwCvRTyjIMGL5h2ZNkB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
-| `info_match_count()` | Takes a **regular expression** as an argument. Returns the number of keyframes that have info labels that matched the regex so far. | <img src="https://www.evernote.com/l/APaln7KfMdNNwI1I6vKNwORBzE0Br_BfTxYB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
-| `info_match_last()` | Takes a **regular expression** as an argument. Returns the frame number of the last keyframe that matched the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
-| `info_match_next()` | Takes a **regular expression** as an argument. Returns the frame number of the next keyframe that matches the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 
 Oscillator arguments: 
 * Period `p` *required*:  The period of the oscillation. By default the unit is frames, but you can specify seconds or beats by appending the appropriate suffix (e.g. `sin(p=4b)` or `sin(p=5s)`).
@@ -221,7 +252,63 @@ Examples:
 |<img src="https://www.evernote.com/l/APacHmL0zHtGK6xWrzQKFFLkTSwlAzBzQDwB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />| By setting the phase shift to the negative offset of the active keyframe with `ps=-active_keyframe`, we can ensure the period starts at the keyframe point. |
 
 
-#### Simple maths functions
+#### Transition functions
+
+<table>
+  <tbody>
+    <tr>
+      <th>function</th>
+      <th>description</th>
+      <th>example</th>
+    </tr>
+    <tr>
+      <td>`bez()`</td>
+      <td>Bezier curve between previous and next keyframe. All arguments are optional:
+         <ul>
+            <li>`x1`, `y1`, `x2`, `y2`: control point co-ordinates. Set these explicitly if you don't like any of the pre-defined curves you can set with `c` as described below. https://cubic-bezier.com/ to establish the values . Defaults to `bez(0.5,0,0.5,1)` if none specified.</li>
+            <li>`from` or `start`: Starting y position. Ignore the previous keyframe value and start from this value instead.</li>
+            <li>`to` or `end`: Ending y position. Ignore the next keyframe value and curve towards this value instead.</li>
+            <li>`in`: duration. Ignore the duration between the previous and next keyframe, and draw the curve over this number of frames instead.</li>
+            <li>`os`: offset. Ignore how far along the curve the current value is, and use this value instead, where 0 is the start of the curve and 1 is the end of the curve.</li>
+            <li>Curve type `c`: a string defining the shape of the curve, e.g. `bez(c="easeOut")`. Supports all values on https://easings.net/ except elastic an bounce, plus some convenience aliases. See [the code for the full list](https://github.com/rewbs/sd-parseq/blob/master/src/parseq-lang/parseq-lang-ast.ts#LL948C18-L948C18). Better documentation with pretty pictures TODO. :) </li>            
+         </ul>
+      </td>
+      <td><img  width="512" alt="image" src="https://user-images.githubusercontent.com/74455/205228620-8db81d38-2010-4059-99bc-ed84ec80ffa9.png"></td>
+    </tr>
+    <tr>
+      <td>`slide()`</td>
+      <td>Linear slide over a fixed time period. Requires at least one of `to` or `from` parameters (frame value will be used if missing), and `in` parameter defines how long the slide should last. Optional value `os` behaves like offset for `bez()`. See image for 3 examples.</td>
+      <td><img width="512" src="https://www.evernote.com/l/APazj_b3MGRHBbDNHi30Imb-ZnCubVFGI7YB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /></td>
+    </tr>
+  </tbody>
+</table>
+
+
+#### Noise functions
+
+| function  	|  description 	| example  	|
+|---	         |---	            |---        |
+| `rand()`     | Returns a random number between `min` and `max` (default 0 and 1), using seed `s` (default current time using high precison timer), holding that value for 'h' frames (default 1). See the image for 3 examples. `prompt_weight_1` changes value between 0 and 1 on every frame and will get a new set of values on every render. `prompt_weight_2` gets a new random value between 1 and 2 every 40 frames, and will also get a new set of values on every render.  `prompt_weight_3` gets a new random value between 2 and 3 every beat, and will use the same series of values on every render. | <img src="https://www.evernote.com/shard/s246/sh/69b7115e-e3af-4561-a1ad-a5050653cd44/xXB0OKsJ9CVaoSZy7lmzGLwZaIxOgTKwRIOKXrnLaWUe3N4gP8LAtCIaaw/deep/0/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
+| `smrand()`  	| Smooth random function (simplex noise). Arguments are smoothing factor `sm` (higher values mean smoother noise, default 10), `min` (default 0), `max` (default 1) and seed `s` (default current time using high precison timer). Because simplex is inherently a >2D noise generation algorithm, there is also a `y` parameter  (default 0) you can increase by small increments (e.g. 0.05) to slightly alter the overall noise pattern.  |  |
+| `perlin()`   | Similar to `smrand()` but using perlin algorithm instead of simplex. | |
+| `vibe()`     | Plots points at random intervals and draws bezier curves between them. Takes `min` and `max` to define the value range (defaults 0, 1), `pmin` and `pmax` to define the range of frame-count intervals between points (defaults: 1, 20) or alternatively `p` which overrides `pmin` and `pmax` to the same value, rand seed `s` (default current time using high precison timer), and `c` or `x1,y1,x2,y2` to define the shape of the bezier curve (see `bez()` above).   | |
+
+
+
+#### Maths functions
+
+| function  	|  description 	| example  	|
+|---	         |---	            |---        |
+| `min()`  	| Return the minimum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APZX1k4fvOlJP6eyrKSFaw-9KeonwNkS7tEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `max()`  	| Return the maximum of 2 argument  	| <img width="512" src="https://www.evernote.com/l/APb9CEaqhEhF6L0FRWovG2Rt-qacyphjc_cB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />	|
+| `abs()`  	| Return the asolute value of the argument | <img src="https://www.evernote.com/l/APar6IXJsoxK6LDrTeyeHr9c-42Cnrk05qgB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `round()`  	| Return the rounded value of the argument. Second argument specifies precision (default: 0). | <img src="https://www.evernote.com/l/APZWLyA1YPVMWao-Zke_v7X2adVxjk_0rEoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  	|
+| `floor()`  	| Return the value of the argument rounded down.  Second argument specifies precision (default: 0). | |
+| `ceil()`  	| Return the value of the argument rounded up.  Second argument specifies precision (default: 0). | |
+
+
+
+#### Javascript maths functions
 
 A range of methods from the Javascript [Math object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math) are exposed as follows, with a `_` prefix.
 
@@ -252,65 +339,44 @@ Note that unlike the `sin()` oscillator above, these functions are **not oscilla
 | `_tanh()` | Equivalent to Javascript's [Math.tanh()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/tanh)| |
 | `_sin()` | Equivalent to Javascript's [Math.sin()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sin)| |
 
-#### Maths constants
 
-| Constant | description | example |
-|--- |--- |--- |
-| `PI` | Constant pi. | |
-| `E` | Constant e. | |
-| `SQRT2` | Square root of 2. | |
-| `SQRT1_2` |  Square root of 2. | |
-| `LN2` | Natural logarithm of 2. | |
-| `LN10` | Natural logarithm of 10. | |
-| `LOG2E` | Base 2 logarithm of e. | |
-| `LOG10E` |  Base 10 logarithm of e. | |
+#### Info text matching functions
 
-#### Units
+All keyframes have an optional "info" field which can hold an arbitrary string. You can query these from your expressions. For example, you can use functions to check whether the text of the current keyframe matches a regex,  or to count how many past keyframes contained a given substring, or look forwards to when the next keyframe with a given string will occur.
+ 
+| function  	|  description 	| example  	|
+|---	         |---	            |---        |
+| `info_match()` | Takes a **regular expression** as an argument. Returns 1 if the info label of the current active kefframe matches the regex, 0 otherwise.  | <img src="https://www.evernote.com/l/APbS0YKyh2ZHw7ZKEIwCvRTyjIMGL5h2ZNkB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `info_match_count()` | Takes a **regular expression** as an argument. Returns the number of keyframes that have info labels that matched the regex so far. | <img src="https://www.evernote.com/l/APaln7KfMdNNwI1I6vKNwORBzE0Br_BfTxYB/image.png" alt="Cursor%20and%20Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `info_match_last()` | Takes a **regular expression** as an argument. Returns the frame number of the previous keyframe that matched the regex, the current frame number if it is a matching keyframe, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
+| `info_match_next()` | Takes a **regular expression** as an argument. Returns the frame number of the next keyframe that matches the regex, or -1 if none.  | <img src="https://www.evernote.com/l/APajGqQUxC5Jnr4trTPzpkLXXevQyIFRVqoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" /> |
 
-Units can be used to modify numbers representing frame ranges to match second of beat offsets calculated using the FPS and BPM values. This is particularly useful when specifying the period of an oscillator.
+#### Prompt manipulation functions
 
-| unit  	|  description 	| example  	|
-|---	   |---	|---	|
-| `f`   	| (default) frames 	|   	|
-| `s` 	| seconds |   	|
-| `b`  	| beats  	|   	|
+Prompts can include any Parseq expression. For example, the following is a valid prompt using a conditional, the prompt weight operator `:` and string concatenation `+`:
 
-#### Unit conversion functions
+```
+A painting of 
+${
+ if (f<10)
+   "a cat":prompt_weight_1
+ else
+   "a dog":prompt_weight_2 + " with floppy ears"
+}
+, highly detailed
+```
 
-Use these functions to convert between frames, beats and seconds:
+On frames less than 10, it will produce a rendered prompt like `A painting of (a cat:0.45), highly detailed`, and on frames 10 and above, it will yield `A painting of (a dog:0.45) with floppy ears, highly detailed`.
 
-| unit  	|  function 	| example  	|
-|---	   |---	|---	|
-| `f2b(x)`   	| Frames to beats	|   	|
-| `b2f(x)` 	| Beats to frames |   	|
-| `f2s(x)`  	| Frames to seconds  	|   	|
-| `s2f(x)`  	| Seconds to frames  	|   	|
+Note that if you want to ensure something does *not* appear in your generated image, giving it a negative weight in the positive prompt is generally not sufficient: you need to put the term in the negative prompt.
+Therefore, if you want something to appear then disappear, it becomes necessary to "move" it between the positive and negative prompts. This can be done with conditionals, but the following functions make it easier.
 
+| function  	|  description 	| example  	|
+|---	         |---	            |---        |
+| `posneg(<term>, <weight>)` | `<term>` must evaluate to a string and `<weight>` to a number.  Automatically shuffle a term between the positive and negative prompt depending on the weight. For example,  if `posneg("cat", prompt_weight_1)` is in the positive prompt, frames on which `prompt_weight_1` are positive will have (cat:abs(prompt_weight_1)) in the positive prompt, and frames on which  `prompt_weight_1` is negative  will have (cat:abs(prompt_weight_1)) in the negative prompt. | See [this example video on Youtube](https://www.youtube.com/watch?v=fgiev3A93RU). The video description includes a link to the parseq document.  |
+| `posneg_lora(<lora_name>, <weight>)` | Same as above but for loras. `posneg("Smoke", prompt_weight_1)` evaluates to `<"lora":"Smoke":prompt_weight_1>` | See [this example video on Youtube](https://www.youtube.com/watch?v=fgiev3A93RU). The video description includes a link to the parseq document. |
 
-
-#### Other operators and expressions
-
-| if expression  	|  description 	| example  	|
-|---	    |---	|---	|
-| `if <cond> <consequent> else <alt>` | if `cond` evaluates to any value other than 0, return `consequent`, else return `alt`. `cond`, `consequent` and `alt` are all arbitrary expressions. | Use a square wave which alternates between 1 and -1 with a period of 10 frames to alternatively render the step and cubic spline interpolations: <img width="360" alt="image" src="https://user-images.githubusercontent.com/74455/205402345-88cfea53-382e-463d-a3a4-38d4b332f5f3.png"> |
-
-| operator  	|  description 	| example  	|
-|---	   |---	|---	|
-| `<expr1> : <expr2>`  | Syntactic sugar for easily creating strings of the format `(<term>:<weight>)`. For example, putting the following in your prompt `${"cat":prompt_weight_1}` will render to `${(cat:0.5)}` where 0.5 is the value of `prompt_weight_1` for that frame. `expr1` must return a string and `expr2` a number. |  |  
-| `<expr1> + <expr2>`   	| Add two expressions. Also acts as string concatenation if either expression is a string (with the same type conversion semantics as Javascript string concatenation). 	| Make the seed increase by 0.25 on every frame (Parseq uses fractional seeds to infuence the subseed strength): <img width="800" alt="image" src="https://user-images.githubusercontent.com/74455/205402606-9d9ede7e-f763-4bb4-ab5a-993dbc65d29e.png"> |
-| `<expr1> - <expr2>` 	| Subtract two expressions. |   	|
-| `<expr1> * <expr2>`  	| Multiply two expressions. |   	|
-| `<expr1> / <expr2>`  	| Divide two expressions. 	|   	|
-| `<expr1> % <expr2>`  	| Modulus  |  Reset the seed every 4 beats: <img width="802" alt="image" src="https://user-images.githubusercontent.com/74455/205402901-52f78382-b36a-403a-a6d9-6277af0c758f.png"> |
-| `<expr1> != <expr2>`  	| 1 if expressions are not equal, 0 otherwise.       	      |   	|
-| `<expr1> == <expr2>`  	| 1 if expressions are equal, 0 otherwise.   	            |   	|
-| `<expr1> < <expr2>`  	   | 1 if <expr1> less than <expr2>, 0 otherwise.   	         |   	|
-| `<expr1> <= <expr2>`  	| 1 if <expr1> less than or equals <expr2>, 0 otherwise.    |    	|
-| `<expr1> >= <expr2>`  	| 1 if <expr1> greater than <expr2>, 0 otherwise.  	      |   	|
-| `<expr1> < <expr2>`  	   | 1 if <expr1> greater than or equals <expr2>, 0 otherwise. |   	|
-| `<expr1> and <expr2>`  	| 1 if <expr1> and <expr2> are non-zero, 0 otherwise.  	   |   	|
-| `<expr1> or <expr2>`  	| 1 if <expr1> or <expr2> are non-zero, 0 otherwise.  	   |   	|
-
+ See also the `:` operator above.
 
 
 ### Working with time & beats (audio synchronisation)

@@ -2,7 +2,7 @@ import * as React from 'react';
 import Grid from '@mui/material/Unstable_Grid2';
 import { Chip, Typography, Box } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCoffee, faBook, faBug, faFilm } from '@fortawesome/free-solid-svg-icons'
+import { faCoffee, faBook, faBug, faFilm, faMoon, faLightbulb } from '@fortawesome/free-solid-svg-icons'
 import { faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons'
 import { UserAuthContextProvider } from "../UserAuthContext";
 import Login from "../Login";
@@ -28,11 +28,13 @@ const GIT_COMMIT_SHORTHASH = gitInfo.commit.shortHash;
 const GIT_COMMIT_DATE = gitInfo.commit.date;
 
 type MyProps = {
-    title: string
+    title: string,
+    darkMode: boolean,
+    updateDarkMode: boolean
 };
 
 // TODO: separate React UI component from the service class.
-export default function Header({ title }: MyProps) {
+export default function Header({ title, darkMode, updateDarkMode }: MyProps) {
 
     const displayDate = GIT_COMMIT_DATE;
     const displayBranch = (!GIT_BRANCH || GIT_BRANCH === 'master') ? '' : `Branch: ${GIT_BRANCH};`;
@@ -57,10 +59,8 @@ export default function Header({ title }: MyProps) {
                 </Box>
             </Grid>
             <Grid xs={6} display='flex' justifyContent="right" gap={1} alignItems='center'>
-
-                <Chip variant="outlined" component="a" clickable label="Dark mode" />
-                
-
+                {darkMode && <Chip variant="outlined" component="a" clickable onClick={() => updateDarkMode(false)} icon={<FontAwesomeIcon icon={faLightbulb} />} label="Light Mode" />}
+                {!darkMode && <Chip variant="outlined" component="a" clickable onClick={() => updateDarkMode(true)} icon={<FontAwesomeIcon icon={faMoon} />} label="Dark Mode" />}
                 <Chip variant="outlined" component="a" href="https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8" clickable icon={<FontAwesomeIcon icon={faFilm} />} label="Tutorial" />
                 <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />
                 <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon icon={faBug} />} label="Bugs" />

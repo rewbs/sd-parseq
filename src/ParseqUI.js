@@ -101,6 +101,7 @@ const ParseqUI = (props) => {
   const [pinFooter, setPinFooter] = useState(true);
   const [hoverFooter, setHoverFooter] = useState(false);
   const [movementPreviewEnabled, setMovementPreviewEnabled] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -271,16 +272,18 @@ const ParseqUI = (props) => {
       displayedFields: displayedFields,
       keyframes: keyframes,
       timeSeries: timeSeries,
-      keyframeLock: keyframeLock
+      keyframeLock: keyframeLock,
+      darkMode: darkMode
     }
   }
-  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
+  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock, darkMode]);
 
 
   // Converts document object to React state.
   // Assumes any required deep copying has already occurred.  
   const setPersistableState = useCallback((doc) => {
     if (doc) {
+      setDarkMode(doc.darkMode)
       setPrompts(convertPrompts(doc.prompts, Math.max(...doc.keyframes.map(kf => kf.frame))));
       setOptions(doc.options);
       setManagedFields(doc.managedFields);

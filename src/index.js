@@ -21,7 +21,6 @@ import Labs from './Labs';
 import Raw from './Raw';
 import reportWebVitals from './reportWebVitals';
 
-
 Sentry.init({
   dsn: "https://4706cbba5987462184a3e541c4b8a9d4@o175750.ingest.sentry.io/4504274009325568",
   integrations: [new BrowserTracing()],
@@ -31,20 +30,23 @@ Sentry.init({
 
 TimeAgo.addDefaultLocale(en)
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
+const router = <BrowserRouter>
+  <Routes>
+    <Route path="/" element={<Deforum />} />
+    <Route path="/deforum" element={<Deforum />} />
+    <Route path="/browser" element={<Browser />} />
+    <Route path="/legacy" element={<App />} />
+    <Route path="/analyser" element={<Analyser />} />
+    <Route path="/labs" element={<Labs />} />
+    <Route path="/raw" element={<Raw />} />
+  </Routes>
+</BrowserRouter>
 
+const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<Deforum />} />
-      <Route path="/deforum" element={<Deforum />} />
-      <Route path="/browser" element={<Browser />} />
-      <Route path="/legacy" element={<App />} />
-      <Route path="/analyser" element={<Analyser />} />
-      <Route path="/labs" element={<Labs />} />
-      <Route path="/raw" element={<Raw />} />
-    </Routes>
-  </BrowserRouter>
+  <>
+    {router}
+  </>
 );
 
 reportWebVitals(console.log);

@@ -1,8 +1,10 @@
-import { Alert, Button, Checkbox, Collapse, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
+import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import { Alert, Button, Checkbox, Collapse, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -15,14 +17,13 @@ import Grid from '@mui/material/Unstable_Grid2';
 import { AgGridReact } from 'ag-grid-react';
 import equal from 'fast-deep-equal';
 import _ from 'lodash';
+import prettyBytes from 'pretty-bytes';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
-import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
-import { Editable } from './Editable';
-import { UserAuthContextProvider } from "./UserAuthContext";
+
 import { AudioWaveform } from './components/AudioWaveform';
 import { ExpandableSection } from './components/ExpandableSection';
 import { FieldSelector } from "./components/FieldSelector";
@@ -31,27 +32,27 @@ import { InitialisationStatus } from "./components/InitialisationStatus";
 import { AddKeyframesDialog, BulkEditDialog, DeleteKeyframesDialog, MergeKeyframesDialog } from './components/KeyframeDialogs';
 import { MovementPreview } from "./components/MovementPreview";
 import { Preview } from "./components/Preview";
-import { Prompts, convertPrompts } from "./components/Prompts";
+import { convertPrompts, Prompts } from "./components/Prompts";
 import StyledSwitch from "./components/StyledSwitch";
 import { TimeSeriesUI } from './components/TimeSeriesUI';
 import { UploadButton } from "./components/UploadButton";
 import { Viewport } from './components/Viewport';
+import { defaultFields } from './data/fields';
 import runDbTasks from './dbTasks';
+import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
+import { Editable } from './Editable';
 import { parseqLoad } from "./parseq-loader";
 import { parseqRender } from './parseq-renderer';
+import { UserAuthContextProvider } from "./UserAuthContext";
 import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
-import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
-
-import prettyBytes from 'pretty-bytes';
-
-import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
-import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
-import './robin.css';
-
-import { defaultFields } from './data/fields';
 import { frameToXAxisType, xAxisTypeToFrame } from './utils/maths';
+import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
+
+// Optional theme CSS
+import './robin.css';
+import 'ag-grid-community/styles/ag-grid.css';
+// Core grid CSS, always needed
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
@@ -1326,7 +1327,7 @@ const ParseqUI = (props) => {
           </Alert>
           : <></>
       }
-      <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', maxHeight: '40em', overflow: 'scroll' }}>
+      <div style={{ fontSize: '0.75em', maxHeight: '40em', overflow: 'scroll' }}>
         <pre data-testid="output">{renderedDataJsonString.substring(0, getOutputTruncationLimit())}</pre>
       </div>
     </>, [renderedDataJsonString]);

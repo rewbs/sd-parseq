@@ -2,6 +2,7 @@ import { Box, Button, Grid, List, ListItem, ListItemButton, ListItemIcon, ListIt
 import { styled } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { useMeasure } from "react-use";
+
 import { defaultFields } from '../data/fields';
 import { isDefinedField } from '../utils/utils';
 import StyledSwitch from './StyledSwitch';
@@ -29,7 +30,7 @@ const StyledList = styled(List)<{ component?: React.ElementType }>({
         border: '1px solid rgb(250, 250, 245)',
     },
     '& .MuiListItemButton-dense:hover': {
-        backgroundColor: 'rgb(245, 245, 255)',
+        // backgroundColor: 'rgb(245, 245, 255)',
         border: '1px solid rgb(220, 220, 240)'
     }
 });
@@ -64,7 +65,7 @@ export function FieldSelector({selectedFields, customFields, keyframes, promptVa
                         onClick={(_) => selectedFields.some(f => f === field.name)
                             ? onChange(selectedFields.filter(f => f !== field.name))
                             : onChange([...selectedFields, field.name])}
-                        sx={{ backgroundColor: selectedFields.some(f => f === field.name) ? 'rgb(245, 245, 255)' : '' }}
+                        sx={{ backgroundColor: selectedFields.some(f => f === field.name) ? 'todo: darkmode/lightmode' : '' }}
                     >
                         <ListItemIcon>
                             <Typography color={`rgb(${field.color[0]},${field.color[1]},${field.color[2]})`} >█</Typography>

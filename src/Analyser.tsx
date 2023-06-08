@@ -1136,7 +1136,7 @@ export default function Analyser() {
             <Grid xs={12}>
                 <div
                     id="generated"
-                    style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: Math.min(80,keyframesString.split(/\r\n|\r|\n/).length) + 'em', overflow: 'scroll' }}
+                    style={{ fontSize: '0.75em', height: Math.min(80,keyframesString.split(/\r\n|\r|\n/).length) + 'em', overflow: 'scroll' }}
                     onClick={(e) =>
                         //@ts-ignore
                         window.getSelection().selectAllChildren(document.getElementById('generated'))

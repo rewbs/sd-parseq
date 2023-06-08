@@ -393,7 +393,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   }, [audioBuffer, pitchMethod, selectionEndMs, selectionStartMs, updateChartData]);
 
   const timeSeriesList = useMemo(() => allTimeSeries.map(({ ts, alias }, idx) => <>
-    <Box key={"ts-" + idx} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+    <Box key={"ts-" + idx} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, borderRadius: 1 }} >
       <Grid xs={2}>
         <SmallTextField
           value={allTimeSeries[idx].alias}

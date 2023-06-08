@@ -369,7 +369,7 @@ export function Prompts(props: PromptsProps) {
         <Grid container xs={12} sx={{ paddingTop: '0', paddingBottom: '0' }}>
             {
                 advancedPrompts.promptList.map((prompt, idx) =>
-                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, borderRadius: 1 }} >
                         <Grid xs={12} style={{ padding: 0, margin: 0, border: 0 }}>
 
                             <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%' }}>
@@ -501,7 +501,7 @@ export function Prompts(props: PromptsProps) {
                     </Box>)
             }
             {(advancedPrompts.commonPrompt.positive || advancedPrompts.commonPrompt.negative || advancedPrompts.promptList.length > 1) &&
-                <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0,  borderRadius: 1 }} >
                     <Grid container xs={12} style={{ margin: 0, padding: 0 }}>
                         <Grid xs={12} style={{ margin: 0, padding: 0 }}>
                             <h5>Common prompt (appended to all prompts)</h5>
@@ -734,7 +734,7 @@ export function Prompts(props: PromptsProps) {
                             size="small"
                             fullWidth={true}
                             InputLabelProps={{ shrink: true }}
-                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em', background: 'whitesmoke' } }}
+                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em',  } }}
                             value={quickPreview}
                             label={`Quick preview [frame ${quickPreviewPosition}]`}
                             variant="outlined"

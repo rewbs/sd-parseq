@@ -12,6 +12,7 @@ import './index.css';
 //@ts-ignore
 import * as Sentry from "@sentry/react";
 import { BrowserTracing } from "@sentry/tracing";
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import TimeAgo from 'javascript-time-ago';
 import en from 'javascript-time-ago/locale/en.json';
 import Analyser from './Analyser';
@@ -20,6 +21,18 @@ import Deforum from './Deforum';
 import Labs from './Labs';
 import Raw from './Raw';
 import reportWebVitals from './reportWebVitals';
+
+// const theme = createTheme({
+//   palette: {
+//     // primary: {},
+//   },
+// });
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+  },
+});
 
 Sentry.init({
   dsn: "https://4706cbba5987462184a3e541c4b8a9d4@o175750.ingest.sentry.io/4504274009325568",
@@ -43,10 +56,7 @@ const router = <BrowserRouter>
 </BrowserRouter>
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
-  <>
-    {router}
-  </>
-);
+
+root.render(<ThemeProvider theme={darkTheme}>{router}</ThemeProvider>);
 
 reportWebVitals(console.log);

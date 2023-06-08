@@ -640,12 +640,12 @@ function getPromptSummary(prompts: ParseqPrompts, offset: number, trim: boolean)
     if (Array.isArray(prompts)) {
         return <>
             <Tooltip title={prompts[offset]?.positive}>
-                <Typography fontSize='0.75em' color='DarkGreen'>
+                <Typography fontSize='0.75em' >
                     {smartTrim(prompts[offset]?.positive, trim ? 80 : Number.MAX_SAFE_INTEGER)}
                 </Typography>
             </Tooltip>
             <Tooltip title={prompts[offset]?.negative}>
-                <Typography fontSize='0.75em' color='Firebrick' >
+                <Typography fontSize='0.75em' >
                     {smartTrim(prompts[offset]?.negative, trim ? 80 : Number.MAX_SAFE_INTEGER)}
                 </Typography>
             </Tooltip>
@@ -655,12 +655,12 @@ function getPromptSummary(prompts: ParseqPrompts, offset: number, trim: boolean)
         // Old style single prompt (backwards compat)
         return <>
             <Tooltip title={prompts.positive}>
-                <Typography fontSize='0.75em' color='DarkGreen'>
+                <Typography fontSize='0.75em' >
                     {smartTrim(prompts.positive, trim ? 80 : Number.MAX_SAFE_INTEGER)}
                 </Typography>
             </Tooltip>
             <Tooltip title={prompts.negative}>
-                <Typography fontSize='0.75em' color='Firebrick' >
+                <Typography fontSize='0.75em' >
                     {smartTrim(prompts.negative, trim ? 80 : Number.MAX_SAFE_INTEGER)}
                 </Typography>
             </Tooltip>

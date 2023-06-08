@@ -57,7 +57,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
-  const defaultTemplate = props.defaultTemplate;
+  const { defaultTemplate, darkMode } = props
   const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
   
   //////////////////////////////////////////
@@ -101,7 +101,6 @@ const ParseqUI = (props) => {
   const [pinFooter, setPinFooter] = useState(true);
   const [hoverFooter, setHoverFooter] = useState(false);
   const [movementPreviewEnabled, setMovementPreviewEnabled] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
@@ -273,17 +272,17 @@ const ParseqUI = (props) => {
       keyframes: keyframes,
       timeSeries: timeSeries,
       keyframeLock: keyframeLock,
-      darkMode: darkMode
+      // TODO: darkMode
     }
   }
-  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock, darkMode]);
+  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
 
 
   // Converts document object to React state.
   // Assumes any required deep copying has already occurred.  
   const setPersistableState = useCallback((doc) => {
     if (doc) {
-      setDarkMode(doc.darkMode)
+      // setDarkMode(doc.darkMode) // TODO: implement dark mode persistence
       setPrompts(convertPrompts(doc.prompts, Math.max(...doc.keyframes.map(kf => kf.frame))));
       setOptions(doc.options);
       setManagedFields(doc.managedFields);
@@ -798,9 +797,10 @@ const ParseqUI = (props) => {
   const promptsUI = useMemo(() => prompts ? <Prompts
     initialPrompts={prompts}
     lastFrame={lastFrame}
+    darkMode={darkMode}
     markDirty={(b) => setTyping(b)}
     commitChange={_.debounce((p) => setPrompts(p), 200)}
-  /> : <></>, [prompts, lastFrame]);
+  /> : <></>, [prompts, lastFrame, darkMode]);
 
   // Managed field selection ------------------------
 

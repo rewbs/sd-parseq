@@ -27,11 +27,11 @@ const StyledList = styled(List)<{ component?: React.ElementType }>({
         marginRight: 16,
     },
     '& .MuiListItemButton-dense': {
-        border: '1px solid rgb(250, 250, 245)',
+        // border: '1px solid rgb(250, 250, 245)',
     },
     '& .MuiListItemButton-dense:hover': {
         // backgroundColor: 'rgb(245, 245, 255)',
-        border: '1px solid rgb(220, 220, 240)'
+        // border: '1px solid rgb(220, 220, 240)'
     }
 });
 

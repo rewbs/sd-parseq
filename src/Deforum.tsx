@@ -1,24 +1,31 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import Header from "./components/Header";
 //@ts-ignore
 import ParseqUI from './ParseqUI';
-import {createTheme, ThemeProvider} from '@mui/material/styles';
+import {createTheme, ThemeOptions, ThemeProvider} from '@mui/material/styles';
+import { useMediaQuery } from "@mui/material";
 
 const Deforum = () => {
-  const [darkMode, setDarkMode] = useState(false);
+  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+  const [darkMode, setDarkMode] = useState(prefersDarkMode);
+  const theme = useMemo(() => createTheme(themeFactory(darkMode)), [darkMode]);
   const updateDarkMode = useCallback((darkMode: boolean) => setDarkMode(darkMode), []);
 
-  const darkTheme = createTheme({
-    palette: {
-      mode: darkMode ? 'dark' : 'light',
-    },
-  });
-    
-  return (<ThemeProvider theme={darkTheme}>
-    <Header title="Parseq for Deforum" updateDarkMode={updateDarkMode} darkMode={darkMode} />
-    <ParseqUI defaultTemplate='catduck' />
+  return (<ThemeProvider theme={theme}>
+    <Header title="Parseq for Deforum" darkMode={darkMode} updateDarkMode={updateDarkMode} />
+    <ParseqUI defaultTemplate='catduck' darkMode={darkMode} />
   </ThemeProvider>)
 }
 
 export default Deforum;
 
+function themeFactory(darkMode: boolean): ThemeOptions { 
+  return {
+    palette: {
+      mode: darkMode ? 'dark' : 'light',
+      background: {
+        default: darkMode ? '#252525' : '#fff',
+      }
+    }
+  }
+}

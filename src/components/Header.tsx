@@ -30,7 +30,7 @@ const GIT_COMMIT_DATE = gitInfo.commit.date;
 type MyProps = {
     title: string,
     darkMode: boolean,
-    updateDarkMode: boolean
+    updateDarkMode: (darkMode: boolean) => void
 };
 
 // TODO: separate React UI component from the service class.

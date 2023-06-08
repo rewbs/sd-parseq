@@ -12,6 +12,7 @@ import StyledSwitch from './StyledSwitch';
 interface PromptsProps {
     initialPrompts: AdvancedParseqPromptsV2,
     lastFrame: number,
+    darkMode: boolean,
     markDirty: (active: boolean) => void,
     commitChange: (event: any) => void
 }
@@ -73,7 +74,6 @@ export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): Ad
 }
 
 export function Prompts(props: PromptsProps) {
-
     //const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
     const [unsavedPrompts, setUnsavedPrompts] = useState<AdvancedParseqPromptsV2>(_.cloneDeep(props.initialPrompts));
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
@@ -123,6 +123,11 @@ export function Prompts(props: PromptsProps) {
 
         const hasUnsavedChanges = initPrompt && (unsavedPrompt[posNegStr] !== initPrompt[posNegStr]);
 
+        const inputTextColors = {
+            positive: props.darkMode ? 'LightGreen' : 'DarkGreen',
+            negative: props.darkMode ? '#ff8d8d' : 'Firebrick'
+        }
+
         return <TextField
             multiline
             minRows={2}
@@ -132,7 +137,7 @@ export function Prompts(props: PromptsProps) {
             label={(positive ? "Positive" : "Negative") + " " + unsavedPrompt?.name?.toLowerCase()}
             value={unsavedPrompt[posNegStr]}
             InputProps={{
-                style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? 'DarkGreen' : 'Firebrick' },
+                style: { fontSize: '0.7em', fontFamily: 'Monospace', color: inputTextColors[positive ? 'positive' : 'negative']},
                 sx: { background: hasUnsavedChanges ? 'ivory' : '', },
                 endAdornment: hasUnsavedChanges ? '🖊️' : ''
             }}

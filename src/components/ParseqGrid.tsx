@@ -5,33 +5,32 @@ import _ from 'lodash';
 import { frameToXAxisType, xAxisTypeToFrame } from '../utils/maths';
 import { fieldNametoRGBa } from '../utils/utils';
 
-
-
 type RangeSelection = {
     anchor?: { x: number; y: number; };
     tip?: { x: number; y: number; };
 }
 
 type ParseqGridProps = {
-    onCellValueChanged : () => {},
-    onCellKeyPress : () => {},
-    onGridReady : () => {},
-    onFirstDataRendered : () => {},
-    onChangeGridCursorPosition: (frame:number) => {},
-    onSelectRange: (range: RangeSelection) => {},
+    onCellValueChanged : () => void,
+    onCellKeyPress : () => void,
+    onGridReady : () => void,
+    onFirstDataRendered : () => void,
+    onChangeGridCursorPosition: (frame:number) => void,
+    onSelectRange: (range: RangeSelection) => void,
     rangeSelection: RangeSelection,
     showCursors : boolean,
     keyframeLock : 'frames' | 'beats' | 'seconds',
     fps: number,
     bpm: number,
     managedFields: string[],
+    agGridProps: {}
+    agGridStyle: {}
     
 };
 
-export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridReady, onCellValueChanged, onCellKeyPress, onFirstDataRendered, onChangeGridCursorPosition, showCursors, keyframeLock, fps, bpm, managedFields }: ParseqGridProps, gridRef) => {
+export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridReady, onCellValueChanged, onCellKeyPress, onFirstDataRendered, onChangeGridCursorPosition, showCursors, keyframeLock, fps, bpm, managedFields, agGridProps, agGridStyle }: ParseqGridProps, gridRef) => {
 
-
-    const navigateToNextCell = useCallback((params: { previousCellPosition: any; nextCellPosition: any; api: { getDisplayedRowAtIndex: (arg0: any) => any; }; event: { shiftKey: any; }; }) => {
+  const navigateToNextCell = useCallback((params: { previousCellPosition: any; nextCellPosition: any; api: { getDisplayedRowAtIndex: (arg0: any) => any; }; event: { shiftKey: any; }; }) => {
         const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
         if (!nextCell || nextCell.rowIndex < 0) {
           return;
@@ -107,7 +106,9 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         },
         cellStyle: (params: { api: { getFocusedCell: () => any; }; }) => ({
           borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-        })
+        }),
+        flex: 1,
+
       },
       {
         headerName: 'Info',
@@ -136,7 +137,8 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
               borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
             }
           }
-        }        
+        },
+        flex: 2,
       },
       ...(managedFields ? managedFields.flatMap((field: string) => [
         {
@@ -157,8 +159,8 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
                 borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
               }
             }
-          }
-
+          },
+          flex: 2,
         },
         {
           headerName: '➟' + field,
@@ -186,7 +188,9 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
                 borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
               }
             }
-          }
+          },
+          flex: 3,
+
         }
       ]) : [])
     ]
@@ -209,7 +213,8 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
   }), [fps, bpm]);
 
   //@ts-ignore
-  return <div className="ag-theme-alpine" style={{ width: '100%', minHeight: '150px', maxHeight: '1150px', height: '150px' }}> <AgGridReact
+  return <div className="ag-theme-alpine" style={agGridStyle}> <AgGridReact
+    {...agGridProps}
     ref={gridRef}
     columnDefs={columnDefs}
     defaultColDef={defaultColDef}

@@ -168,7 +168,7 @@ const ParseqUI = (props) => {
        });
     }
 
-    if (gridRef.current.api) {
+    if (gridRef?.current?.api) {
       clearTimeout(runOnceTimeout.current);
       runOnce();
     } else {
@@ -811,6 +811,7 @@ const ParseqUI = (props) => {
   // Grid ------------------------
 
   const grid = useMemo(() => <ParseqGrid
+    ref={gridRef}  
     onCellValueChanged={onCellValueChanged} 
     onCellKeyPress={onCellKeyPress}
     onGridReady={onGridReady}
@@ -820,8 +821,10 @@ const ParseqUI = (props) => {
     keyframeLock={keyframeLock}
     showCursors={showCursors}
     managedFields={managedFields}
-    ref={gridRef}
-  />, [onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
+    fps={options?.output_fps}
+    bpm={options?.bpm}
+    agGridStyle={{ width: '100%', minHeight: '150px', height: '150px', maxHeight: '1150px', }}
+  />, [options, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
 
 
   const displayedFieldSelector = useMemo(() => displayedFields &&
@@ -967,6 +970,7 @@ const ParseqUI = (props) => {
     gridCursorPos={showCursors ? gridCursorPos : -1}
     audioCursorPos={showCursors ? audioCursorPos : -1}
     beatMarkerInterval={beatMarkerInterval}
+    height={"400px"} // TODO - make this configurable
     updateKeyframe={(field, index, value) => {
       let rowId = frameToRowId(index)
       gridRef.current.api.getRowNode(rowId).setDataValue(field, value);

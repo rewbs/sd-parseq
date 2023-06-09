@@ -77,6 +77,9 @@ export class ParseqGraph extends React.Component<{
     audioCursorPos : number;
     xscales: { xmin: number, xmax: number };
     xaxisType: string
+    height: number|string;
+    editingDisabled?: boolean;
+    hideLegend?: boolean;
 }> {
 
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
@@ -229,7 +232,8 @@ export class ParseqGraph extends React.Component<{
             parsing: false,
             normalised: true,
             spanGaps: true,
-            aspectRatio: 6,
+            //aspectRatio: 4,
+            maintainAspectRatio: false,
             responsive: true,
             animation: {
                 duration: 175,
@@ -265,7 +269,7 @@ export class ParseqGraph extends React.Component<{
                 },
             },
             onClick: (event: any, elements: any, chart: any) => {
-                if (!capturedThis.isDecimating() && elements[0] && event.native.shiftKey) {
+                if (!capturedThis.props.editingDisabled && !capturedThis.isDecimating() && elements[0] && event.native.shiftKey) {
                     const datasetIndex = elements[0].datasetIndex;
                     const field = chart.data.datasets[datasetIndex].label;
                     const index = Math.round(chart.scales.x.getValueForPixel(event.x));
@@ -275,6 +279,7 @@ export class ParseqGraph extends React.Component<{
             plugins: {
                 legend: {
                     position: 'top' as const,
+                    display: !this.props.hideLegend,
                     labels: {
                         usePointStyle: true,
                         sort: (a: LegendItem, b: LegendItem) => {
@@ -357,13 +362,13 @@ export class ParseqGraph extends React.Component<{
                     round: 4,
                     showTooltip: true,
                     onDragStart: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        return !this.isDecimating() && this.isKeyframe(point.x);
+                        return !this.props.editingDisabled && !this.isDecimating() && this.isKeyframe(point.x);
                     },
                     onDrag: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        return !this.isDecimating() && this.isKeyframe(point.x);
+                        return !this.props.editingDisabled && !this.isDecimating() && this.isKeyframe(point.x);
                     },
                     onDragEnd: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        if (this.isDecimating() || !this.isKeyframe(point.x)) {
+                        if (this.props.editingDisabled || this.isDecimating() || !this.isKeyframe(point.x)) {
                             return false;
                         }
                         let field = this.props.displayedFields[datasetIndex];
@@ -417,6 +422,6 @@ export class ParseqGraph extends React.Component<{
             ]
         };
 
-        return <Line options={options} data={chartData} />;
+        return <div style={{height:this.props.height, width:'100%', position:"relative"}}><Line options={options} data={chartData} /></div>;
     }
 }

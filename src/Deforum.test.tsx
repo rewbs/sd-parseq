@@ -8817,3 +8817,244 @@ test('TimeSeries', async () => {
   await loadAndRender(fixture);
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
+
+test('posneg() functions', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+        "name": "Common",
+        "positive": "",
+        "negative": "",
+        "allFrames": true,
+        "from": 0,
+        "to": 119,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 0,
+          "type": "none",
+          "custom": "prompt_weight_1"
+        }
+      },
+      "promptList": [
+        {
+          "name": "Prompt 1",
+          "positive": "hello\n${posneg(\"positive phrase\", prompt_weight_1)}\n${posneg(\"negative phrase\", -prompt_weight_1)}\n${posneg_lora(\"positive_lora\", prompt_weight_1)}\n${posneg_lora(\"negative_lora\", -prompt_weight_1)}",
+          "negative": "hello\n${posneg(\"np positive phrase\", -prompt_weight_2)}\n${posneg(\"np negative phrase\", prompt_weight_2)}\n${posneg_lora(\"np_positive_lora\", -prompt_weight_2)}\n${posneg_lora(\"np_negative_lora\", prompt_weight_2)}",
+          "allFrames": true,
+          "from": 0,
+          "to": 119,
+          "overlap": {
+            "inFrames": 0,
+            "outFrames": 0,
+            "type": "none",
+            "custom": "prompt_weight_1"
+          }
+        }
+      ]
+    },
+    "managedFields": [
+      "prompt_weight_1",
+      "prompt_weight_2"
+    ],
+    "displayedFields": [
+      "prompt_weight_1",
+      "prompt_weight_2"
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "prompt_weight_1_i": "sin(1b)",
+        "prompt_weight_2_i": "sin(-2b)"
+      },
+      {
+        "frame": 20
+      }
+    ],
+    "timeSeries": [],
+    "keyframeLock": "frames",
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});
+
+
+test('common prompts', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+        "name": "Common",
+        "positive": "promptc.p",
+        "negative": "promptc.n",
+        "allFrames": true,
+        "from": 0,
+        "to": 119,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 0,
+          "type": "none",
+          "custom": "prompt_weight_1"
+        }
+      },
+      "promptList": [
+        {
+          "name": "Prompt 1",
+          "positive": "prompt1.p",
+          "negative": "prompt1.n",
+          "allFrames": false,
+          "from": 0,
+          "to": 13,
+          "overlap": {
+            "inFrames": 0,
+            "outFrames": 5,
+            "type": "linear",
+            "custom": "prompt_weight_1"
+          }
+        },
+        {
+          "positive": "prompt2.p",
+          "negative": "prompt2.n",
+          "from": 8,
+          "to": 20,
+          "allFrames": false,
+          "name": "Prompt 2",
+          "overlap": {
+            "inFrames": 5,
+            "outFrames": 0,
+            "type": "linear",
+            "custom": "prompt_weight_2"
+          }
+        }
+      ]
+    },
+    "managedFields": [
+      "seed",
+    ],
+    "displayedFields": [
+      "seed",
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "seed": 0,
+        "seed_i": "S+f",
+      },
+      {
+        "frame": 20
+      }
+    ],
+    "timeSeries": [],
+    "keyframeLock": "frames",
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});
+
+
+test('info_match_gap, info_match_progress and bez offset', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+        "name": "Common",
+        "positive": "",
+        "negative": "",
+        "allFrames": true,
+        "from": 0,
+        "to": 119,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 0,
+          "type": "none",
+          "custom": "prompt_weight_1"
+        }
+      },
+      "promptList": [
+        {
+          "name": "Prompt 1",
+          "positive": "",
+          "negative": "",
+          "allFrames": true,
+          "from": 0,
+          "to": 119,
+          "overlap": {
+            "inFrames": 0,
+            "outFrames": 0,
+            "type": "none",
+            "custom": "prompt_weight_1"
+          }
+        }
+      ]
+    },
+    "managedFields": [
+      "translation_z",
+      "prompt_weight_1",
+      "prompt_weight_2"
+    ],
+    "displayedFields": [
+      "translation_z",
+      "prompt_weight_1",
+      "prompt_weight_2"
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "info": "trigger",
+        "translation_z_i": "bez(\n  c=\"easeOut6\",\n  from=info_match_count(\"trigger\")*S,\n  to=(info_match_count(\"trigger\")+1)*S,\n  in=2b,\n  os=(info_match_progress(\"trigger\"))\n)",
+        "translation_z": 5,
+        "rotation_3d_z_i": "",
+        "prompt_weight_1_i": "info_match_gap(\"trigger\")",
+        "prompt_weight_2_i": "info_match_progress(\"trigger\")"
+      },
+      {
+        "frame": 10,
+        "info": "trigger"
+      },
+      {
+        "frame": 20,
+        "info": null
+      },
+      {
+        "frame": 30,
+        "info": "trigger"
+      },
+      {
+        "frame": 40,
+        "info": null
+      },
+      {
+        "frame": 50,
+        "info": "trigger"
+      },
+      {
+        "frame": 60,
+        "info": "trigger"
+      },
+      {
+        "frame": 70,
+        "info": null
+      },
+      {
+        "frame": 80,
+        "info": null
+      },
+      {
+        "frame": 90,
+        "info": "trigger"
+      },
+      {
+        "frame": 100,
+        "info": "trigger"
+      }
+    ],
+    "timeSeries": [],
+    "keyframeLock": "frames",
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});
+

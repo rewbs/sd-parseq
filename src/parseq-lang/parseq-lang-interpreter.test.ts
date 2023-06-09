@@ -30,7 +30,7 @@ const runParseq = (formula: string) => {
   });
 }
 
-const runTest = (label: string, formula: string, expected: (number | string)[]) => {
+const runTest = (label: string, formula: string, expected: (number | string | null)[]) => {
   const testTag = label + ': ' + formula;
   //  eslint-disable-next-line jest/valid-title
   test(testTag, () => {
@@ -253,6 +253,23 @@ runTest('slide', 'slide(from=-10, to=10, span=3)', [-10, -3.333333333333333, 3.3
 runTest('rand', 'round(rand(s=1), 2)', [0.27,0.43,0.87,0.25,0.55,0.52,0.75,0.21,0.42,0,0.12]);
 runTest('rand', 'round(rand(s=1, min=4, max=50), 2)', [16.39,23.98,44.21,15.42,29.19,27.86,38.41,13.66,23.54,4.22,9.45]);
 runTest('rand', 'round(rand(s=1, min=4, max=50, h=3.5), 2)', [16.39,16.39,16.39,16.39,23.98,44.21,44.21,44.21,44.21,15.42,29.19]);
+
+runTest('_sin', 'round(_sin(f), 2)', [0,0.84,0.91,0.14,-0.76,-0.96,-0.28,0.66,0.99,0.41,-0.54]);
+runTest('_cos', 'round(_cos(f), 2)', [1,0.54,-0.42,-0.99,-0.65,0.28,0.96,0.75,-0.15,-0.91,-0.84]);
+runTest('_tan', 'round(_tan(f), 2)', [0,1.56,-2.19,-0.14,1.16,-3.38,-0.29,0.87,-6.8,-0.45,0.65]);
+runTest('_atanh', 'round(_atanh(f), 2)', [0,null,null,null,null,null,null,null,null,null,null]);
+runTest('_acosh', 'round(_acosh(f), 2)', [null,0,1.32,1.76,2.06,2.29,2.48,2.63,2.77,2.89,2.99]);
+runTest('_tanh', 'round(_tanh(f), 2)', [0,0.76,0.96,1,1,1,1,1,1,1,1]);
+runTest('_sign', 'round(_sign(f), 2)', [0,1,1,1,1,1,1,1,1,1,1]);
+runTest('_log2', 'round(_log2(f), 2)', [null,0,1,1.58,2,2.32,2.58,2.81,3,3.17,3.32]);
+runTest('_log10', 'round(_log10(f), 2)', [null,0,0.3,0.48,0.6,0.7,0.78,0.85,0.9,0.95,1]);
+runTest('_atan', 'round(_atan(f), 2)', [0,0.79,1.11,1.25,1.33,1.37,1.41,1.43,1.45,1.46,1.47]);
+runTest('_acosh', 'round(_acosh(f), 2)', [null,0,1.32,1.76,2.06,2.29,2.48,2.63,2.77,2.89,2.99]);
+runTest('_asinh', 'round(_asinh(f), 2)', [0,0.88,1.44,1.82,2.09,2.31,2.49,2.64,2.78,2.89,3]);
+
+runTest('smrand', 'round(smrand(s=1), 2)', [0.5,0.5,0.5,0.46,0.39,0.32,0.31,0.39,0.52,0.66,0.78]);
+runTest('perlin', 'round(perlin(s=1), 2)', [0.5,0.49,0.45,0.39,0.31,0.25,0.23,0.25,0.31,0.4,0.5]);
+runTest('vibe', 'round(vibe(s=1), 2)', [5,0.27,0.87,0.55,0.75,0.42,0.12,0.36,0.6,0.98,0.45]);
 
 runTestExpectError('func-arg-error', 'min()', "1 or more missing required arguments for function 'min (returns the smaller of 2 arguments 'a' and 'b')'. Required arguments: a, b");
 runTestExpectError('func-arg-error', 'min("goo", "pee")', "Invalid argument type for argument 'a' for function 'min (returns the smaller of 2 arguments 'a' and 'b')'. Expected type 'number', got 'string'");

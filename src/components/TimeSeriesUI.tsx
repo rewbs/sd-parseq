@@ -33,7 +33,6 @@ import { SmallTextField } from './SmallTextField';
 
 type TimeSeriesUIProps = {
   lastFrame: number,
-  bpm: number,
   fps: number,
   allTimeSeries: {
     alias: string;

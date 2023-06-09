@@ -9,6 +9,7 @@ import CopyToClipboard from 'react-copy-to-clipboard';
 //@ts-ignore
 import ReactTimeAgo from 'react-time-ago';
 import { useUserAuth } from "../UserAuthContext";
+import { DocId } from '../ParseqUI';
 
 type UploadButtonProps = {
     docId: DocId,

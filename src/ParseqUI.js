@@ -1,3 +1,4 @@
+// @ts-nocheck 
 import { Alert, Button, Checkbox, Collapse, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
@@ -12,7 +13,7 @@ import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
-import { AgGridReact } from 'ag-grid-react';
+
 import equal from 'fast-deep-equal';
 import _ from 'lodash';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,12 +22,12 @@ import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
 import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
-import { Editable } from './Editable';
+import { ParseqGraph } from './components/ParseqGraph';
+import { ParseqGrid } from './components/ParseqGrid';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { AudioWaveform } from './components/AudioWaveform';
 import { ExpandableSection } from './components/ExpandableSection';
 import { FieldSelector } from "./components/FieldSelector";
-import { GridTooltip } from './components/GridToolTip';
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { AddKeyframesDialog, BulkEditDialog, DeleteKeyframesDialog, MergeKeyframesDialog } from './components/KeyframeDialogs';
 import { MovementPreview } from "./components/MovementPreview";
@@ -43,6 +44,7 @@ import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
+
 
 import prettyBytes from 'pretty-bytes';
 
@@ -85,8 +87,9 @@ const ParseqUI = (props) => {
   const [uploadStatus, setUploadStatus] = useState(<></>);
   const [lastRenderTime, setLastRenderTime] = useState(0);
   const [gridCursorPos, setGridCursorPos] = useState(0);
-  const [audioCursorPos, setAudioCursorPos] = useState(0);
   const [rangeSelection, setRangeSelection] = useState({});
+  const [audioCursorPos, setAudioCursorPos] = useState(0);
+  
   const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
   const [sparklineData, setSparklineData] = useState([]);
@@ -294,150 +297,9 @@ const ParseqUI = (props) => {
   }, []);
 
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Grid config & utils - TODO move out into Grid component
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  const isInRangeSelection = useCallback((cell) => {
-    return rangeSelection.anchor && rangeSelection.tip && cell
-      && cell.rowIndex >= Math.min(rangeSelection.anchor.y, rangeSelection.tip.y)
-      && cell.rowIndex <= Math.max(rangeSelection.anchor.y, rangeSelection.tip.y)
-      && cell.column.instanceId >= Math.min(rangeSelection.anchor.x, rangeSelection.tip.x)
-      && cell.column.instanceId <= Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
-  }, [rangeSelection]);
-
-  const isSameCellPosition = (cell1, cell2) => {
-    return cell1 && cell2 && cell1.rowIndex === cell2.rowIndex
-      && cell1.column.instanceId === cell2.column.instanceId;
-  }
-
-  const columnDefs = useMemo(() => {
-    return [
-      {
-        headerName: _.startCase(keyframeLock).slice(0, -1) + (keyframeLock !== 'frames' ? ` (frame)` : ''), // Frame / Second / Beat
-        field: 'frame',
-        comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
-        sort: 'asc',
-        valueSetter: (params) => {
-          var newValue = parseFloat(params.newValue);
-          if (newValue && !isNaN(newValue)) {
-            const newFrame = Math.round(xAxisTypeToFrame(newValue, keyframeLock, options.output_fps, options.bpm));
-            params.data.frame = newFrame;
-          }
-        },
-        valueFormatter: (params) => {
-          return frameToXAxisType(params.value, keyframeLock, options?.output_fps, options?.bpm);
-        },
-        cellRenderer: (params) => {
-          return frameToXAxisType(params.value, keyframeLock, options?.output_fps, options?.bpm) + (keyframeLock !== 'frames' ? ` (${params.value})` : '');
-        },
-        pinned: 'left',
-        suppressMovable: true,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        cellStyle: params => ({
-          borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-        })
-      },
-      {
-        headerName: 'Info',
-        field: 'info',
-        valueSetter: (params) => {
-          params.data.info = params.newValue;
-        },
-        cellEditor: 'agLargeTextCellEditor',
-        cellEditorPopup: true,
-        cellEditorParams: {
-          maxLength: 1000,
-          rows: 2,
-          cols: 50
-        },
-        pinned: 'left',
-        suppressMovable: true,
-        cellStyle: params => {
-          if (isInRangeSelection(params)) {
-            return {
-              backgroundColor: 'lightgrey',
-              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-            }
-          } else {
-            return {
-              backgroundColor: 'white', 
-              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-            }
-          }
-        }        
-      },
-      ...(managedFields ? managedFields.flatMap(field => [
-        {
-          field: field,
-          valueSetter: (params) => {
-            params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
-          },
-          suppressMovable: true,
-          cellStyle: params => {
-            if (isInRangeSelection(params)) {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.4),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-              }
-            } else {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.1),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-              }
-            }
-          }
-
-        },
-        {
-          headerName: '➟' + field,
-          field: field + '_i',
-          cellEditor: 'agLargeTextCellEditor',
-          cellEditorPopup: true,
-          cellEditorParams: {
-            maxLength: 1000,
-            rows: 2,
-            cols: 50
-          },
-          valueSetter: (params) => {
-            params.data[field + '_i'] = params.newValue;
-          },
-          suppressMovable: true,
-          cellStyle: params => {
-            if (isInRangeSelection(params)) {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.4),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
-              }
-            } else {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.1),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
-              }
-            }
-          }
-        }
-      ]) : [])
-    ]
-
-  }, [managedFields, isInRangeSelection, keyframeLock, options]);
-
-  const defaultColDef = useMemo(() => ({
-    editable: true,
-    resizable: true,
-    tooltipField: 'frame',
-    tooltipComponent: GridTooltip,
-    tooltipComponentParams: { getBpm: _ => options?.bpm, getFps: _ => options?.output_fps },
-    suppressKeyboardEvent: (params) => {
-      return params.event.ctrlKey && (
-        params.event.key === 'a'
-        || params.event.key === 'd'
-        || params.event.key === 'r'
-      );
-    }
-  }), [options]);
+//////
+//
+//////
 
   const frameToRowId = useCallback((frame) => {
     if (_frameToRowId_cache.current === undefined) {
@@ -556,35 +418,6 @@ const ParseqUI = (props) => {
     });
   }, [gridRef]);
 
-  const navigateToNextCell = useCallback((params) => {
-    const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
-    if (!nextCell || nextCell.rowIndex < 0) {
-      return;
-    }
-
-    if (showCursors) {
-      const nextRow = params.api.getDisplayedRowAtIndex(nextCell.rowIndex);
-      if (nextRow && nextRow.data && !isNaN(nextRow.data.frame)) {
-        setGridCursorPos(nextRow.data.frame);
-      }
-    }
-    if (params.event.shiftKey) {
-      if (rangeSelection.anchor === undefined) {
-        setRangeSelection({
-          anchor: { x: previousCell.column.instanceId, y: previousCell.rowIndex },
-          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
-        })
-      } else {
-        setRangeSelection({
-          ...rangeSelection,
-          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
-        })
-      }
-    } else {
-      setRangeSelection({});
-    }
-    return nextCell;
-  }, [rangeSelection, showCursors]);
 
   const onCellKeyPress = useCallback((e) => {
     if (e.event) {
@@ -977,65 +810,18 @@ const ParseqUI = (props) => {
 
   // Grid ------------------------
 
-  const grid = useMemo(() => <>
-    <div className="ag-theme-alpine" style={{ width: '100%', minHeight: '150px', maxHeight: '1150px', height: '150px' }}>
-      <AgGridReact
-        ref={gridRef}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        onCellValueChanged={onCellValueChanged}
-        onCellKeyPress={onCellKeyPress}
-        onGridReady={onGridReady}
-        onFirstDataRendered={onFirstDataRendered}
-        animateRows={true}
-        columnHoverHighlight={true}
-        enableCellChangeFlash={true}
-        tooltipShowDelay={0}
-        navigateToNextCell={navigateToNextCell}
-        suppressColumnVirtualisation={process.env?.NODE_ENV === "test"}
-        suppressRowVirtualisation={process.env?.NODE_ENV === "test"}
-        onCellKeyDown={(e) => {
-          if (e.event.keyCode === 46 || e.event.keyCode === 8) {
-            if (rangeSelection.anchor && rangeSelection.tip) {
-              const x1 = Math.min(rangeSelection.anchor.x, rangeSelection.tip.x);
-              const x2 = Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
-              const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
-              const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);
-              for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
-                const col = e.columnApi.getAllGridColumns().find(c => c.instanceId === colInstanceId);
-                if (col && col.visible && col.colId !== 'frame') {
-                  for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
-                    e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
-                  }
-                }
-              }
-            }
-          }
-        }}
-        onCellClicked={(e) => {
-          if (showCursors) {
-            setGridCursorPos(e.data.frame);
-          }
-          if (e.event.shiftKey) {
-            setRangeSelection({
-              anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
-              tip: { x: e.column.instanceId, y: e.rowIndex }
-            })
-          } else {
-            setRangeSelection({});
-          }
-        }}
-        onCellMouseOver={(e) => {
-          if (e.event.buttons === 1) {
-            setRangeSelection({
-              anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
-              tip: { x: e.column.instanceId, y: e.rowIndex }
-            })
-          }
-        }}
-      />
-    </div>
-  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, navigateToNextCell, rangeSelection, showCursors]);
+  const grid = useMemo(() => <ParseqGrid
+    onCellValueChanged={onCellValueChanged} 
+    onCellKeyPress={onCellKeyPress}
+    onGridReady={onGridReady}
+    onFirstDataRendered={onFirstDataRendered}
+    onSelectRange={(range) => setRangeSelection(range)}
+    onChangeGridCursorPosition={(frame) => setGridCursorPos(frame)}
+    keyframeLock={keyframeLock}
+    showCursors={showCursors}
+    managedFields={managedFields}
+    ref={gridRef}
+  />, [onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
 
 
   const displayedFieldSelector = useMemo(() => displayedFields &&
@@ -1170,7 +956,7 @@ const ParseqUI = (props) => {
 
   </>, [graphAsPercentages, showPromptMarkers, showCursors, beatMarkerInterval, graphScales, xaxisType])
 
-  const editableGraph = useMemo(() => renderedData && renderedData.rendered_frames && <Editable
+  const editableGraph = useMemo(() => renderedData && renderedData.rendered_frames && <ParseqGraph
     renderedData={renderedData} // just used for keyframes?
     graphableData={graphableData}
     displayedFields={displayedFields}

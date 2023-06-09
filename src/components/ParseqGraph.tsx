@@ -3,18 +3,19 @@ import {
     CategoryScale, Chart as ChartJS, Legend, LegendItem, LinearScale, LineElement, PointElement, Title,
     Tooltip
 } from 'chart.js';
-import './components/chartjs-plugins/drag'
+import './chartjs-plugins/drag'
 //@ts-ignore
 import annotationPlugin from 'chartjs-plugin-annotation';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
-import { fieldNametoRGBa, } from './utils/utils';
-import { frameToBeats, frameToSeconds } from './utils/maths';
+import { fieldNametoRGBa, } from '../utils/utils';
+import { frameToBeats, frameToSeconds } from '../utils/maths';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { DECIMATION_THRESHOLD } from './utils/consts';
+import { DECIMATION_THRESHOLD } from '../utils/consts';
 import debounce from 'lodash.debounce';
 //@ts-ignore
 import range from 'lodash.range';
+import { RenderedData, GraphableData } from '../ParseqUI';
 
 
 const ChartJSAddPointPlugin = {
@@ -60,7 +61,7 @@ ChartJS.register(
 //@ts-ignore
 //Interaction.modes.interpolate = Interpolate
 
-export class Editable extends React.Component<{
+export class ParseqGraph extends React.Component<{
     renderedData: RenderedData,
     graphableData: GraphableData,
     displayedFields: string[],
@@ -416,8 +417,6 @@ export class Editable extends React.Component<{
             ]
         };
 
-        // console.log("Markers", this.props.markers);
-        // console.log("Annotations", annotations);
         return <Line options={options} data={chartData} />;
     }
 }

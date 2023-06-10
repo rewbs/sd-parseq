@@ -6,59 +6,60 @@ import { frameToXAxisType, xAxisTypeToFrame } from '../utils/maths';
 import { fieldNametoRGBa } from '../utils/utils';
 
 type RangeSelection = {
-    anchor?: { x: number; y: number; };
-    tip?: { x: number; y: number; };
+  anchor?: { x: number; y: number; };
+  tip?: { x: number; y: number; };
 }
 
 type ParseqGridProps = {
-    onCellValueChanged : () => void,
-    onCellKeyPress : () => void,
-    onGridReady : () => void,
-    onFirstDataRendered : () => void,
-    onChangeGridCursorPosition: (frame:number) => void,
-    onSelectRange: (range: RangeSelection) => void,
-    rangeSelection: RangeSelection,
-    showCursors : boolean,
-    keyframeLock : 'frames' | 'beats' | 'seconds',
-    fps: number,
-    bpm: number,
-    managedFields: string[],
-    agGridProps: {}
-    agGridStyle: {}
-    
+  onCellValueChanged: () => void,
+  onCellKeyPress: () => void,
+  onGridReady: () => void,
+  onFirstDataRendered: () => void,
+  onChangeGridCursorPosition: (frame: number) => void,
+  onSelectRange: (range: RangeSelection) => void,
+  rangeSelection: RangeSelection,
+  showCursors: boolean,
+  keyframeLock: 'frames' | 'beats' | 'seconds',
+  fps: number,
+  bpm: number,
+  managedFields: string[],
+  agGridProps: {}
+  agGridStyle: {}
+
 };
 
 export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridReady, onCellValueChanged, onCellKeyPress, onFirstDataRendered, onChangeGridCursorPosition, showCursors, keyframeLock, fps, bpm, managedFields, agGridProps, agGridStyle }: ParseqGridProps, gridRef) => {
 
+  if (!rangeSelection) {
+    rangeSelection = {};
+  }
+
   const navigateToNextCell = useCallback((params: { previousCellPosition: any; nextCellPosition: any; api: { getDisplayedRowAtIndex: (arg0: any) => any; }; event: { shiftKey: any; }; }) => {
-        const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
-        if (!nextCell || nextCell.rowIndex < 0) {
-          return;
-        }
-    
-        if (showCursors) {
-          const nextRow = params.api.getDisplayedRowAtIndex(nextCell.rowIndex);
-          if (nextRow && nextRow.data && !isNaN(nextRow.data.frame)) {
-            onChangeGridCursorPosition(nextRow.data.frame);
-          }
-        }
-        if (params.event.shiftKey) {
-          if (rangeSelection.anchor === undefined) {
-            onSelectRange({
-              anchor: { x: previousCell.column.instanceId, y: previousCell.rowIndex },
-              tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
-            })
-          } else {
-            onSelectRange({
-              ...rangeSelection,
-              tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
-            })
-          }
-        } else {
-          onSelectRange({});
-        }
-        return nextCell;
-      }, [onChangeGridCursorPosition, onSelectRange, rangeSelection, showCursors]);    
+    const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
+    if (!nextCell || nextCell.rowIndex < 0) {
+      return;
+    }
+
+    // Broadcast and broadcast the cursor position
+    // TODO: showCursors doesn't need to be a prop, it could be local
+    // to the parent (this isn't perf sensitive so we could call the callback unconditionally)
+    if (showCursors) {
+      const nextRow = params.api.getDisplayedRowAtIndex(nextCell.rowIndex);
+      if (nextRow && nextRow.data && !isNaN(nextRow.data.frame)) {
+        onChangeGridCursorPosition(nextRow.data.frame);
+      }
+    }
+
+    // Update and broadcast the range selection
+    const newRangeSelection = (params.event.shiftKey) ? {
+      anchor: (rangeSelection.anchor) || { x: previousCell.column.instanceId, y: previousCell.rowIndex },
+      tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
+    } : {};
+    onSelectRange(newRangeSelection);
+
+    return nextCell;
+
+  }, [onChangeGridCursorPosition, onSelectRange, rangeSelection, showCursors]);
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Grid config & utils - TODO move out into Grid component
@@ -125,7 +126,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         },
         pinned: 'left',
         suppressMovable: true,
-        cellStyle: (params: any) : any => {
+        cellStyle: (params: any): any => {
           if (isInRangeSelection(params)) {
             return {
               backgroundColor: 'lightgrey',
@@ -133,7 +134,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
             }
           } else {
             return {
-              backgroundColor: 'white', 
+              backgroundColor: 'white',
               borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
             }
           }
@@ -176,7 +177,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
             params.data[field + '_i'] = params.newValue;
           },
           suppressMovable: true,
-          cellStyle: (params: any ) => {
+          cellStyle: (params: any) => {
             if (isInRangeSelection(params)) {
               return {
                 backgroundColor: fieldNametoRGBa(field, 0.4),
@@ -229,7 +230,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
     navigateToNextCell={navigateToNextCell}
     suppressColumnVirtualisation={process.env?.NODE_ENV === "test"}
     suppressRowVirtualisation={process.env?.NODE_ENV === "test"}
-    onCellKeyDown={(e : any) => {
+    onCellKeyDown={(e: any) => {
       if (e.event.keyCode === 46 || e.event.keyCode === 8) {
         if (rangeSelection.anchor && rangeSelection.tip) {
           const x1 = Math.min(rangeSelection.anchor.x, rangeSelection.tip.x);
@@ -237,7 +238,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
           const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
           const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);
           for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
-            const col = e.columnApi.getAllGridColumns().find((c:any) => c.instanceId === colInstanceId);
+            const col = e.columnApi.getAllGridColumns().find((c: any) => c.instanceId === colInstanceId);
             if (col && col.visible && col.colId !== 'frame') {
               for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
                 e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
@@ -247,7 +248,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         }
       }
     }}
-    onCellClicked={(e : any) => {
+    onCellClicked={(e: any) => {
       if (showCursors) {
         onChangeGridCursorPosition(e.data.frame);
       }
@@ -260,7 +261,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         onSelectRange({});
       }
     }}
-    onCellMouseOver={(e : any) => {
+    onCellMouseOver={(e: any) => {
       if (e.event.buttons === 1) {
         onSelectRange({
           anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
@@ -269,6 +270,6 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       }
     }}
   />
-</div>
+  </div>
 
 });

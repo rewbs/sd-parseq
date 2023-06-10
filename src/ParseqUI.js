@@ -811,20 +811,21 @@ const ParseqUI = (props) => {
   // Grid ------------------------
 
   const grid = useMemo(() => <ParseqGrid
-    ref={gridRef}  
+    ref={gridRef}
     onCellValueChanged={onCellValueChanged} 
     onCellKeyPress={onCellKeyPress}
     onGridReady={onGridReady}
     onFirstDataRendered={onFirstDataRendered}
     onSelectRange={(range) => setRangeSelection(range)}
     onChangeGridCursorPosition={(frame) => setGridCursorPos(frame)}
+    rangeSelection={rangeSelection}    
     keyframeLock={keyframeLock}
     showCursors={showCursors}
     managedFields={managedFields}
     fps={options?.output_fps}
     bpm={options?.bpm}
     agGridStyle={{ width: '100%', minHeight: '150px', height: '150px', maxHeight: '1150px', }}
-  />, [options, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
+  />, [rangeSelection, options, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
 
 
   const displayedFieldSelector = useMemo(() => displayedFields &&

@@ -172,7 +172,7 @@ const Labs = () => {
 
     const interps = ['L', 'C', 'S', 'bez(c="easeIn1")', 'bez(c="easeIn6")', 'bez(c="easeInOut6")',
         'rand()', 'smrand(20)'];
-    const singleValinterps = ['vibe(p=1b)'];        
+    const singleValinterps = ['vibe(p=1b, c="easeOut6")'];        
 
     return <>
         <Header title="Parseq Labs (experiments)" />

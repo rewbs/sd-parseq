@@ -10,7 +10,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.4.0",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@mui/icons-material": "^5.11.16",
-    "@mui/material": "^5.13.4",
+    "@mui/material": "^5.13.5",
     "@p5-wrapper/react": "^4.2.0",
     "@sentry/react": "^7.54.0",
     "@sentry/tracing": "^7.54.0",

@@ -15,37 +15,37 @@ type MiniParseqProps = {
 }
 
 const miniParseqDefaults = {
-    fields: ["example"],
+    fields: ["translation_z"],
     keyframes: [
         {
             "frame": 0,
             "info": "hello",
-            "example": (0 as string|number),
-            "example_i": 'L'
+            "translation_z": (0 as string|number),
+            "translation_z_i": 'L'
         },
         {
             "frame": 15,
             "info": "hello",
-            "example": 0.5 ,
-            "example_i": ''
+            "translation_z": 500 ,
+            "translation_z_i": ''
         },
         {
             "frame": 30,
             "info": "hello",
-            "example": 0.25 ,
-            "example_i": ''
+            "translation_z": 250 ,
+            "translation_z_i": ''
         },
         {
             "frame": 80,
             "info": "hello",
-            "example": 0.6 ,
-            "example_i": ''
+            "translation_z": 600 ,
+            "translation_z_i": ''
         },
         {
             "frame": 99,
             "info": "hello",
-            "example": 1,
-            "example_i": ''
+            "translation_z": 1000,
+            "translation_z_i": ''
         }
     ]
 };
@@ -158,12 +158,21 @@ const MiniParseq = ({ keyframes, fields }: MiniParseqProps) => {
         xaxisType={""} /> : <> </>
 
     return <Stack direction={"row"}>
-        <Box width="50%">
+        <Box width="33%">
             {grid}
         </Box>
-        <Box width="50%">
+        <Box width="33%">
             {graph}
         </Box>
+        {/* <Box width="33%">
+            {renderedData && <MovementPreview 
+                renderedData={renderedData.rendered_frames}
+                fps={10}
+                height={250}
+                width={250}
+                />
+            }
+        </Box> */}
     </Stack>;
 }
 
@@ -192,23 +201,24 @@ const Labs = () => {
             <Grid padding={2} xs={12}>
                 <>
                 {
-                    interps.map((interp) => {
+                    interps.slice(0,5).map((interp) => {
                         const miniParseqConfig = _.cloneDeep(miniParseqDefaults);
-                        miniParseqConfig.keyframes[0].example_i = interp;
+                        miniParseqConfig.keyframes[0].translation_z_i = interp;
                         return <MiniParseq {...miniParseqConfig} />;
                     })
                 }
                 {
                     singleValinterps.map((interp) => {
                         const miniParseqConfig = _.cloneDeep(miniParseqDefaults);
-                        miniParseqConfig.keyframes[0].example_i = interp;
-                        miniParseqConfig.keyframes[1].example = '';
-                        miniParseqConfig.keyframes[2].example = '';
-                        miniParseqConfig.keyframes[3].example = '';
-                        miniParseqConfig.keyframes[4].example = '';
+                        miniParseqConfig.keyframes[0].translation_z_i = interp;
+                        miniParseqConfig.keyframes[1].translation_z = '';
+                        miniParseqConfig.keyframes[2].translation_z = '';
+                        miniParseqConfig.keyframes[3].translation_z = '';
+                        miniParseqConfig.keyframes[4].translation_z = '';
                         return <MiniParseq {...miniParseqConfig} />;
                     })
-                }
+                }           
+                
                 </>      
 
             </Grid>

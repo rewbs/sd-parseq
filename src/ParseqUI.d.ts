@@ -80,6 +80,8 @@ type Template = {
         displayedFields?: string[];
         prompts: ParseqPrompts;
         keyframes: ParseqKeyframes;
+        timeSeries?: TimeSeries[] | [];
+        keyframeLock?: "frames" | "seconds" | "beats";
     }
 }
 

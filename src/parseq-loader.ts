@@ -9,10 +9,10 @@ import { navigateToDocId, deleteQsParams } from "./utils/utils";
 
 const fillWithDefaults = (possiblyIncompleteContent: ParseqDocVersion, defaultTemplate: string): ParseqDocVersion => {
     if (!possiblyIncompleteContent.prompts) {
-        possiblyIncompleteContent.prompts = _.cloneDeep(templates[defaultTemplate].prompts);
+        possiblyIncompleteContent.prompts = _.cloneDeep(templates[defaultTemplate].template.prompts);
     }
     if (!possiblyIncompleteContent.keyframes) {
-        possiblyIncompleteContent.keyframes = _.cloneDeep(templates[defaultTemplate].keyframes);
+        possiblyIncompleteContent.keyframes = _.cloneDeep(templates[defaultTemplate].template.keyframes);
     }
     if (!possiblyIncompleteContent.managedFields || possiblyIncompleteContent.managedFields.length === 0) {
         console.log("Document does not specify managed fields. Assuming all fields are managed.");
@@ -38,9 +38,9 @@ const fillWithDefaults = (possiblyIncompleteContent: ParseqDocVersion, defaultTe
 const validateAndMassageContent = (loadedContent: ParseqDocVersion | undefined, defaultTemplate: string): ParseqDocVersion => {
     if (!loadedContent) {
         console.log("Falling back to default template:", defaultTemplate);
-        loadedContent = templates[defaultTemplate].template;
+        loadedContent = templates[defaultTemplate].template as ParseqDocVersion;
     }
-    const filledContent = fillWithDefaults(loadedContent as ParseqDocVersion, defaultTemplate);
+    const filledContent = fillWithDefaults(loadedContent, defaultTemplate);
     return filledContent
 };
 
@@ -77,7 +77,7 @@ export const parseqLoad = async (docId: DocId, defaultTemplate: string, keepQs :
         // Load from a template 
         try {
             if (templates[qsTemplate]) {
-                loadedDoc = validateAndMassageContent(templates[qsTemplate].template, defaultTemplate);
+                loadedDoc = validateAndMassageContent(templates[qsTemplate].template as ParseqDocVersion, defaultTemplate);
                 status = { severity: "info", message: `Started new document from template "${qsTemplate}".` };
             } else {
                 throw new Error(`Could not find template "${qsTemplate}"`);

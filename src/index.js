@@ -1,11 +1,9 @@
 import './wdyr';
 
-import React from 'react';
 import ReactDOM from 'react-dom/client';
 import {
-  BrowserRouter,
-  Route,
-  Routes
+  RouterProvider,
+  createBrowserRouter
 } from "react-router-dom";
 import App from './App';
 import './index.css';
@@ -30,23 +28,18 @@ Sentry.init({
 
 TimeAgo.addDefaultLocale(en)
 
-const router = <BrowserRouter>
-  <Routes>
-    <Route path="/" element={<Deforum />} />
-    <Route path="/deforum" element={<Deforum />} />
-    <Route path="/browser" element={<Browser />} />
-    <Route path="/legacy" element={<App />} />
-    <Route path="/analyser" element={<Analyser />} />
-    <Route path="/labs" element={<Labs />} />
-    <Route path="/raw" element={<Raw />} />
-  </Routes>
-</BrowserRouter>
+const myRouter = createBrowserRouter([
+  { path: '/', element: <Deforum /> },
+  { path: '/deforum', element: <Deforum /> },
+  { path: '/browser', element: <Browser /> },
+  { path: '/legacy', element: <App /> },
+  { path: '/analyser', element: <Analyser /> },
+  { path: '/labs', element: <Labs /> },
+  { path: '/raw', element: <Raw /> },
+]);
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
-  <>
-    {router}
-  </>
-);
+//@ts-ignore
+ReactDOM.createRoot(document.getElementById("root"))
+  .render(<RouterProvider router={myRouter} />);
 
 reportWebVitals(console.log);

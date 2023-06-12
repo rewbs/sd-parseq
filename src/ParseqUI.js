@@ -296,10 +296,42 @@ const ParseqUI = (props) => {
     
   }, []);
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Keyframe datamodel interactions
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
-//////
-//
-//////
+  // TODO: for historical reasons (aka bad decision early on),
+  // the "source of truth" for keyframe data is mixed between the grid's 
+  // row data object and this component's "keyframes" state object. 
+  // They sometimes, but not always, refer to the same concrete object.
+  // We sometimes need to sync them explicitly.
+  // Codepilot autocompletes this paragraph with: "This is not ideal."
+
+  // Must be called whenever the grid data is changed, so that the updates
+  // are reflected in other keyframe observers.
+  function refreshKeyframesFromGrid() {
+    _frameToRowId_cache.current = undefined;
+    let keyframes_local = [];
+
+    if (!gridRef || !gridRef.current || !gridRef.current.api) {
+      console.log("Could not refresh keyframes from grid: grid not ready.")
+      setKeyframes([]);
+    }
+    gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
+      keyframes_local.push(rowNode.data);
+    });
+    setKeyframes(keyframes_local);
+  }
+
+  function refreshGridFromKeyframes(keyframes) {
+    if (!gridRef || !gridRef.current || !gridRef.current.api) {
+      console.log("Could not refresh grid from keyframes: grid not ready.")
+      return;
+    }
+    setTimeout(() => {        
+      gridRef.current.api.setRowData(keyframes);
+    });
+  }
 
   const frameToRowId = useCallback((frame) => {
     if (_frameToRowId_cache.current === undefined) {
@@ -418,7 +450,6 @@ const ParseqUI = (props) => {
     });
   }, [gridRef]);
 
-
   const onCellKeyPress = useCallback((e) => {
     if (e.event) {
       var keyPressed = e.event.key;
@@ -432,36 +463,6 @@ const ParseqUI = (props) => {
 
     }
   }, [addRow, deleteRow]);
-
-  //////////////////////////////////////////
-  // Grid/Keyframe data sync utils
-  //////////////////////////////////////////
-
-  // Must be called whenever the grid data is changed, so that the updates
-  // are reflected in other keyframe observers.
-  function refreshKeyframesFromGrid() {
-    _frameToRowId_cache.current = undefined;
-    let keyframes_local = [];
-
-    if (!gridRef || !gridRef.current || !gridRef.current.api) {
-      console.log("Could not refresh keyframes from grid: grid not ready.")
-      setKeyframes([]);
-    }
-    gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
-      keyframes_local.push(rowNode.data);
-    });
-    setKeyframes(keyframes_local);
-  }
-
-  function refreshGridFromKeyframes(keyframes) {
-    if (!gridRef || !gridRef.current || !gridRef.current.api) {
-      console.log("Could not refresh grid from keyframes: grid not ready.")
-      return;
-    }
-    setTimeout(() => {        
-      gridRef.current.api.setRowData(keyframes);
-    });
-  }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Other component event callbacks  
@@ -510,6 +511,10 @@ const ParseqUI = (props) => {
 
   }, [options, keyframeLock, keyframes]);
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Dialogs
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
   const addRowDialog = useMemo(() => options && <AddKeyframesDialog
     keyframes={keyframes}
     initialFramesToAdd={[]}
@@ -1390,6 +1395,8 @@ const ParseqUI = (props) => {
               <MovementPreview
                 renderedData={renderedData.rendered_frames}
                 fps={options?.output_fps || 20}
+                height={512}
+                width={512}
               />
             }
            </>

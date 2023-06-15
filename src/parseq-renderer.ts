@@ -1,5 +1,5 @@
 import { calculateWeight } from './components/Prompts';
-import { defaultValues } from './data/defaultValues';
+import { defaultFields } from './data/fields';
 import { isValidNumber } from "./utils/maths";
 //@ts-ignore
 import { LTTB } from 'downsample';
@@ -17,8 +17,7 @@ export class ParseqRendererException {
 }
 
 function getDefaultValue(field: string) {
-    //@ts-ignore
-    const candidateDefaultValue: any = defaultValues[field];
+    const candidateDefaultValue = defaultFields.find((df) => df.name === field)?.defaultValue;
     if (candidateDefaultValue === undefined) {
         return 0;
     } else {

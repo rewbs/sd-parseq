@@ -47,7 +47,7 @@
     "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
     "lodash.range": "^3.2.0",
-    "mathjs": "^11.8.0",
+    "mathjs": "^11.8.1",
     "moo": "^0.5.2",
     "nearley": "^2.20.1",
     "noisejs": "^2.1.0",

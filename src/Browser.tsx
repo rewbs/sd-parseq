@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from "react-router-dom";
 import ReactTimeAgo from 'react-time-ago';
 import { useEffectOnce } from 'react-use';
-import { DocId, ParseqDoc, ParseqDocVersion, ParseqPrompts, VersionId } from './ParseqUI';
+import { AdvancedParseqPrompt, AdvancedParseqPromptsV2, DocId, ParseqDoc, ParseqDocVersion, VersionId } from './ParseqUI';
 import Header from './components/Header';
 import LinearProgressWithLabel from './components/LinearProgressWithLabel';
 import { SmallTextField } from './components/SmallTextField';
@@ -29,6 +29,7 @@ import { isStoragePersisted, showEstimatedQuota, persist } from './persistance';
 import { navigateToClone, smartTrim } from './utils/utils';
 import prettyBytes from 'pretty-bytes';
 import React from 'react';
+import { convertPrompts } from './components/Prompts';
 
 function VersionCount({ docId }: { docId: DocId }) {
     const [versionCount, setVersionCount] = useState(<Typography>loading...</Typography>);
@@ -38,6 +39,15 @@ function VersionCount({ docId }: { docId: DocId }) {
     return versionCount;
 }
 
+type VersionSummary = {
+    timestamp: number,
+    docId: DocId,
+    docName: string,
+    versionId: VersionId | undefined,    
+    prompts: AdvancedParseqPromptsV2 | undefined,
+    timeSeriesNames: string[] | undefined,
+    managedFields: string[] | undefined
+}
 
 export default function Browser() {
 
@@ -78,7 +88,7 @@ export default function Browser() {
         showEstimatedQuota().then((quota) => setStorageQuota(quota));
     }, []);
 
-
+    // Get latest version of all docs.
     useEffectOnce(() => {
         db.parseqDocs.count().then(count => setTotalDocs(count));
         const resultMap = new Map<DocId, any>();
@@ -86,11 +96,12 @@ export default function Browser() {
             docs.forEach((doc: ParseqDoc) => {
                 if (doc.latestVersionId) {
                     db.parseqVersions.get(doc.latestVersionId).then((version) => {
-                        const condensed = {
+                        const condensed : VersionSummary = {
                             timestamp: doc.timestamp,
                             docId: doc.docId,
                             docName: doc.name,
-                            prompts: version?.prompts,
+                            versionId: version?.versionId,
+                            prompts: version?.prompts ? convertPrompts(version?.prompts, 0) : undefined,
                             timeSeriesNames: version?.timeSeries?.map((ts: any) => ts.alias),
                             managedFields: version?.managedFields
                         };
@@ -108,6 +119,7 @@ export default function Browser() {
         });
     });
 
+    // Get version list for a document.
     const selectedDocVersions = useLiveQuery(
         async () => {
             if (selectedDoc) {
@@ -115,12 +127,12 @@ export default function Browser() {
                 setTotalVersions(await db.parseqVersions.where('docId').equals(selectedDoc).count());
                 await db.parseqVersions.where('docId').equals(selectedDoc).each(
                     (version: ParseqDocVersion) => {
-                        const condensed = {
+                        const condensed : VersionSummary = {
                             timestamp: version.timestamp,
                             versionId: version.versionId,
                             docId: version.docId,
-                            docName: version.meta.docName,
-                            prompts: version.prompts,
+                            docName: version.meta.docName || '',
+                            prompts: version?.prompts ? convertPrompts(version?.prompts, 0) : undefined,
                             timeSeriesNames: version.timeSeries.map((ts: any) => ts.alias),
                             managedFields: version.managedFields
                         };
@@ -298,7 +310,7 @@ export default function Browser() {
                                                 </TableHead>
                                                 <TableBody>
                                                     {
-                                                        selectedDocVersions.map((v: any) => {
+                                                        selectedDocVersions.map((v: VersionSummary) => {
                                                             return <tr>
                                                                 <TableCell>
                                                                     <ReactTimeAgo
@@ -308,16 +320,16 @@ export default function Browser() {
                                                                     <Typography fontSize={"0.75em"}>{new Date(v.timestamp).toLocaleString("en-GB", { dateStyle: 'full', timeStyle: 'medium' })}</Typography>
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    {Array.isArray(v.prompts) ? v.prompts.map((p: any, idx: number) => <>
-                                                                        <Typography fontSize={'0.75em'}><strong>Prompt {idx + 1}:</strong> {v.prompts[idx].from} - {v.prompts[idx].to}</Typography> 
-                                                                        {getPromptSummary(v.prompts, idx, false)}
-                                                                    </>)
-                                                                        : getPromptSummary(v.prompts, 0, false)
+                                                                    {
+                                                                        v.prompts?.promptList.map((p: any, idx: number) => <>
+                                                                            <Typography fontSize={'0.75em'}><strong>Prompt {idx + 1}:</strong> {p.from} - {p.to}</Typography> 
+                                                                            {getPromptSummary(p, false)}
+                                                                        </>)
                                                                     }
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     <Typography fontSize='0.75em'>{v.timeSeriesNames?.length}</Typography>
-                                                                    <Typography fontSize='0.75em'>{v.timeSeriesNames.join(',')}</Typography>
+                                                                    <Typography fontSize='0.75em'>{v.timeSeriesNames?.join(',')}</Typography>
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     <Tooltip title={v.managedFields?.join(',')}>
@@ -390,7 +402,7 @@ export default function Browser() {
                                 <TableBody>
                                     {
                                         mostRecentVersions ?
-                                            mostRecentVersions.map((v: any) => {
+                                            mostRecentVersions.map((v: VersionSummary) => {
                                                 return <TableRow>
                                                     <TableCell><a href={'/?docId=' + v.docId}>{v.docName}</a></TableCell>
                                                     <TableCell>
@@ -398,11 +410,11 @@ export default function Browser() {
                                                         <Typography fontSize={"0.75em"}>{new Date(v.timestamp).toLocaleString("en-GB", { dateStyle: 'full', timeStyle: 'medium' })}</Typography>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {Array.isArray(v.prompts) ? v.prompts.map((p: any, idx: number) => <>
-                                                            <Typography fontSize={'0.75em'}><strong>Prompt {idx + 1}:</strong> {v.prompts[idx].from} - {v.prompts[idx].to}</Typography> 
-                                                            {getPromptSummary(v.prompts, idx, false)}
-                                                        </>)
-                                                            : getPromptSummary(v.prompts, 0, false)
+                                                        {
+                                                            v.prompts?.promptList.map((p: any, idx: number) => <>
+                                                                <Typography fontSize={'0.75em'}><strong>Prompt {idx + 1}:</strong> {p.from} - {p.to}</Typography> 
+                                                                {getPromptSummary(p, false)}
+                                                            </>)
                                                         }
                                                     </TableCell>
                                                     <TableCell>{v.timeSeriesNames?.length}</TableCell>
@@ -636,34 +648,19 @@ export default function Browser() {
 
 }
 
-function getPromptSummary(prompts: ParseqPrompts, offset: number, trim: boolean): JSX.Element | undefined {
-    if (Array.isArray(prompts)) {
-        return <>
-            <Tooltip title={prompts[offset]?.positive}>
-                <Typography fontSize='0.75em' color='DarkGreen'>
-                    {smartTrim(prompts[offset]?.positive, trim ? 80 : Number.MAX_SAFE_INTEGER)}
-                </Typography>
-            </Tooltip>
-            <Tooltip title={prompts[offset]?.negative}>
-                <Typography fontSize='0.75em' color='Firebrick' >
-                    {smartTrim(prompts[offset]?.negative, trim ? 80 : Number.MAX_SAFE_INTEGER)}
-                </Typography>
-            </Tooltip>
-        </>
+function getPromptSummary(prompt: AdvancedParseqPrompt, trim: boolean): JSX.Element | undefined {
 
-    } else {
-        // Old style single prompt (backwards compat)
-        return <>
-            <Tooltip title={prompts.positive}>
-                <Typography fontSize='0.75em' color='DarkGreen'>
-                    {smartTrim(prompts.positive, trim ? 80 : Number.MAX_SAFE_INTEGER)}
-                </Typography>
-            </Tooltip>
-            <Tooltip title={prompts.negative}>
-                <Typography fontSize='0.75em' color='Firebrick' >
-                    {smartTrim(prompts.negative, trim ? 80 : Number.MAX_SAFE_INTEGER)}
-                </Typography>
-            </Tooltip>
-        </>
-    }
+    return <>
+        <Tooltip title={prompt.positive}>
+            <Typography fontSize='0.75em' color='DarkGreen'>
+                {smartTrim(prompt.positive, trim ? 80 : Number.MAX_SAFE_INTEGER)}
+            </Typography>
+        </Tooltip>
+        <Tooltip title={prompt.negative}>
+            <Typography fontSize='0.75em' color='Firebrick' >
+                {smartTrim(prompt.negative, trim ? 80 : Number.MAX_SAFE_INTEGER)}
+            </Typography>
+        </Tooltip>
+    </>
+
 }

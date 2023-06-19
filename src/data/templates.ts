@@ -1,3 +1,5 @@
+import { Template } from "../ParseqUI";
+
 /* eslint-disable no-template-curly-in-string */
 export const templates: {
     [key: string]: Template;
@@ -211,7 +213,8 @@ export const templates: {
                 }
               ],
               "options": {
-                "output_fps": "30",
+                "output_fps": 30,
+                "bpm": 140,
               },
               "managedFields": [
                 "prompt_weight_1",
@@ -274,7 +277,8 @@ export const templates: {
                 }
               ],
               "options": {
-                "output_fps": "30",
+                "output_fps": 30,
+                "bpm": 140,
               },
               "managedFields": [
                 "prompt_weight_1",

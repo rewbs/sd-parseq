@@ -1,3 +1,4 @@
+// @ts-nocheck 
 import { Alert, Button, Checkbox, Collapse, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
@@ -12,7 +13,7 @@ import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
-import { AgGridReact } from 'ag-grid-react';
+
 import equal from 'fast-deep-equal';
 import _ from 'lodash';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,12 +22,12 @@ import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
 import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
-import { Editable } from './Editable';
+import { ParseqGraph } from './components/ParseqGraph';
+import { ParseqGrid } from './components/ParseqGrid';
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { AudioWaveform } from './components/AudioWaveform';
 import { ExpandableSection } from './components/ExpandableSection';
 import { FieldSelector } from "./components/FieldSelector";
-import { GridTooltip } from './components/GridToolTip';
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { AddKeyframesDialog, BulkEditDialog, DeleteKeyframesDialog, MergeKeyframesDialog } from './components/KeyframeDialogs';
 import { MovementPreview } from "./components/MovementPreview";
@@ -43,6 +44,7 @@ import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
+
 
 import prettyBytes from 'pretty-bytes';
 
@@ -85,8 +87,9 @@ const ParseqUI = (props) => {
   const [uploadStatus, setUploadStatus] = useState(<></>);
   const [lastRenderTime, setLastRenderTime] = useState(0);
   const [gridCursorPos, setGridCursorPos] = useState(0);
-  const [audioCursorPos, setAudioCursorPos] = useState(0);
   const [rangeSelection, setRangeSelection] = useState({});
+  const [audioCursorPos, setAudioCursorPos] = useState(0);
+  
   const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
   const [sparklineData, setSparklineData] = useState([]);
@@ -165,7 +168,7 @@ const ParseqUI = (props) => {
        });
     }
 
-    if (gridRef.current.api) {
+    if (gridRef?.current?.api) {
       clearTimeout(runOnceTimeout.current);
       runOnce();
     } else {
@@ -293,151 +296,42 @@ const ParseqUI = (props) => {
     
   }, []);
 
-
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Grid config & utils - TODO move out into Grid component
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Keyframe datamodel interactions
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////  
 
-  const isInRangeSelection = useCallback((cell) => {
-    return rangeSelection.anchor && rangeSelection.tip && cell
-      && cell.rowIndex >= Math.min(rangeSelection.anchor.y, rangeSelection.tip.y)
-      && cell.rowIndex <= Math.max(rangeSelection.anchor.y, rangeSelection.tip.y)
-      && cell.column.instanceId >= Math.min(rangeSelection.anchor.x, rangeSelection.tip.x)
-      && cell.column.instanceId <= Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
-  }, [rangeSelection]);
+  // TODO: for historical reasons (aka bad decision early on),
+  // the "source of truth" for keyframe data is mixed between the grid's 
+  // row data object and this component's "keyframes" state object. 
+  // They sometimes, but not always, refer to the same concrete object.
+  // We sometimes need to sync them explicitly.
+  // Codepilot autocompletes this paragraph with: "This is not ideal."
 
-  const isSameCellPosition = (cell1, cell2) => {
-    return cell1 && cell2 && cell1.rowIndex === cell2.rowIndex
-      && cell1.column.instanceId === cell2.column.instanceId;
+  // Must be called whenever the grid data is changed, so that the updates
+  // are reflected in other keyframe observers.
+  function refreshKeyframesFromGrid() {
+    _frameToRowId_cache.current = undefined;
+    let keyframes_local = [];
+
+    if (!gridRef || !gridRef.current || !gridRef.current.api) {
+      console.log("Could not refresh keyframes from grid: grid not ready.")
+      setKeyframes([]);
+    }
+    gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
+      keyframes_local.push(rowNode.data);
+    });
+    setKeyframes(keyframes_local);
   }
 
-  const columnDefs = useMemo(() => {
-    return [
-      {
-        headerName: _.startCase(keyframeLock).slice(0, -1) + (keyframeLock !== 'frames' ? ` (frame)` : ''), // Frame / Second / Beat
-        field: 'frame',
-        comparator: (valueA, valueB, nodeA, nodeB, isDescending) => valueA - valueB,
-        sort: 'asc',
-        valueSetter: (params) => {
-          var newValue = parseFloat(params.newValue);
-          if (newValue && !isNaN(newValue)) {
-            const newFrame = Math.round(xAxisTypeToFrame(newValue, keyframeLock, options.output_fps, options.bpm));
-            params.data.frame = newFrame;
-          }
-        },
-        valueFormatter: (params) => {
-          return frameToXAxisType(params.value, keyframeLock, options?.output_fps, options?.bpm);
-        },
-        cellRenderer: (params) => {
-          return frameToXAxisType(params.value, keyframeLock, options?.output_fps, options?.bpm) + (keyframeLock !== 'frames' ? ` (${params.value})` : '');
-        },
-        pinned: 'left',
-        suppressMovable: true,
-        cellEditorParams: {
-          useFormatter: true,
-        },
-        cellStyle: params => ({
-          borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-        })
-      },
-      {
-        headerName: 'Info',
-        field: 'info',
-        valueSetter: (params) => {
-          params.data.info = params.newValue;
-        },
-        cellEditor: 'agLargeTextCellEditor',
-        cellEditorPopup: true,
-        cellEditorParams: {
-          maxLength: 1000,
-          rows: 2,
-          cols: 50
-        },
-        pinned: 'left',
-        suppressMovable: true,
-        cellStyle: params => {
-          if (isInRangeSelection(params)) {
-            return {
-              backgroundColor: 'lightgrey',
-              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-            }
-          } else {
-            return {
-              backgroundColor: 'white', 
-              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-            }
-          }
-        }        
-      },
-      ...(managedFields ? managedFields.flatMap(field => [
-        {
-          field: field,
-          valueSetter: (params) => {
-            params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
-          },
-          suppressMovable: true,
-          cellStyle: params => {
-            if (isInRangeSelection(params)) {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.4),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-              }
-            } else {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.1),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
-              }
-            }
-          }
-
-        },
-        {
-          headerName: '➟' + field,
-          field: field + '_i',
-          cellEditor: 'agLargeTextCellEditor',
-          cellEditorPopup: true,
-          cellEditorParams: {
-            maxLength: 1000,
-            rows: 2,
-            cols: 50
-          },
-          valueSetter: (params) => {
-            params.data[field + '_i'] = params.newValue;
-          },
-          suppressMovable: true,
-          cellStyle: params => {
-            if (isInRangeSelection(params)) {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.4),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
-              }
-            } else {
-              return {
-                backgroundColor: fieldNametoRGBa(field, 0.1),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
-              }
-            }
-          }
-        }
-      ]) : [])
-    ]
-
-  }, [managedFields, isInRangeSelection, keyframeLock, options]);
-
-  const defaultColDef = useMemo(() => ({
-    editable: true,
-    resizable: true,
-    tooltipField: 'frame',
-    tooltipComponent: GridTooltip,
-    tooltipComponentParams: { getBpm: _ => options?.bpm, getFps: _ => options?.output_fps },
-    suppressKeyboardEvent: (params) => {
-      return params.event.ctrlKey && (
-        params.event.key === 'a'
-        || params.event.key === 'd'
-        || params.event.key === 'r'
-      );
+  function refreshGridFromKeyframes(keyframes) {
+    if (!gridRef || !gridRef.current || !gridRef.current.api) {
+      console.log("Could not refresh grid from keyframes: grid not ready.")
+      return;
     }
-  }), [options]);
+    setTimeout(() => {        
+      gridRef.current.api.setRowData(keyframes);
+    });
+  }
 
   const frameToRowId = useCallback((frame) => {
     if (_frameToRowId_cache.current === undefined) {
@@ -556,36 +450,6 @@ const ParseqUI = (props) => {
     });
   }, [gridRef]);
 
-  const navigateToNextCell = useCallback((params) => {
-    const previousCell = params.previousCellPosition, nextCell = params.nextCellPosition;
-    if (!nextCell || nextCell.rowIndex < 0) {
-      return;
-    }
-
-    if (showCursors) {
-      const nextRow = params.api.getDisplayedRowAtIndex(nextCell.rowIndex);
-      if (nextRow && nextRow.data && !isNaN(nextRow.data.frame)) {
-        setGridCursorPos(nextRow.data.frame);
-      }
-    }
-    if (params.event.shiftKey) {
-      if (rangeSelection.anchor === undefined) {
-        setRangeSelection({
-          anchor: { x: previousCell.column.instanceId, y: previousCell.rowIndex },
-          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
-        })
-      } else {
-        setRangeSelection({
-          ...rangeSelection,
-          tip: { x: nextCell.column.instanceId, y: nextCell.rowIndex }
-        })
-      }
-    } else {
-      setRangeSelection({});
-    }
-    return nextCell;
-  }, [rangeSelection, showCursors]);
-
   const onCellKeyPress = useCallback((e) => {
     if (e.event) {
       var keyPressed = e.event.key;
@@ -599,36 +463,6 @@ const ParseqUI = (props) => {
 
     }
   }, [addRow, deleteRow]);
-
-  //////////////////////////////////////////
-  // Grid/Keyframe data sync utils
-  //////////////////////////////////////////
-
-  // Must be called whenever the grid data is changed, so that the updates
-  // are reflected in other keyframe observers.
-  function refreshKeyframesFromGrid() {
-    _frameToRowId_cache.current = undefined;
-    let keyframes_local = [];
-
-    if (!gridRef || !gridRef.current || !gridRef.current.api) {
-      console.log("Could not refresh keyframes from grid: grid not ready.")
-      setKeyframes([]);
-    }
-    gridRef.current.api.forEachNodeAfterFilterAndSort((rowNode, index) => {
-      keyframes_local.push(rowNode.data);
-    });
-    setKeyframes(keyframes_local);
-  }
-
-  function refreshGridFromKeyframes(keyframes) {
-    if (!gridRef || !gridRef.current || !gridRef.current.api) {
-      console.log("Could not refresh grid from keyframes: grid not ready.")
-      return;
-    }
-    setTimeout(() => {        
-      gridRef.current.api.setRowData(keyframes);
-    });
-  }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Other component event callbacks  
@@ -677,6 +511,10 @@ const ParseqUI = (props) => {
 
   }, [options, keyframeLock, keyframes]);
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Dialogs
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  
   const addRowDialog = useMemo(() => options && <AddKeyframesDialog
     keyframes={keyframes}
     initialFramesToAdd={[]}
@@ -839,71 +677,77 @@ const ParseqUI = (props) => {
   // Core options ------------------------
 
   const optionsUI = useMemo(() => options && <span>
-    <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={4}>
-      <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
-        <TextField
-          id={"options_bpm"}
-          label={"BPM"}
-          value={options['bpm']}
-          onChange={handleChangeOption}
-          onFocus={(e) => setTyping(true)}
-          onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>
-      <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
-        <TextField
-          id={"options_output_fps"}
-          label={"FPS"}
-          value={options['output_fps']}
-          onChange={handleChangeOption}
-          onFocus={(e) => setTyping(true)}
-          onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>
-      <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
-        <TextField
-          label={"Final frame"}
-          value={candidateLastFrame}
-          onChange={(e)=>setCandidateLastFrame(e.target.value)}
-          onFocus={(e) => setTyping(true)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setTimeout(() => e.target.blur());
-              e.preventDefault();
-            } else if (e.key === 'Escape') {
-              setTimeout(() => e.target.blur());
-              setCandidateLastFrame(lastFrame)
-              e.preventDefault();
-            }
-          }}
-          onBlur={(e) => {
-            setTyping(false);
-            let candidate = parseInt(e.target.value);
-            const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
-            if (!candidate || candidate < 0 || isNaN(candidate)) {
-              setCandidateLastFrame(lastFrame);
-            } else {
-              if (candidate <= penultimate) {
-                candidate = penultimate + 1;
-                setCandidateLastFrame(candidate);
+     
+    <Stack direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"} gap={2}>
+      <Stack direction='row'  gap={2}>
+        <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
+          <TextField
+            id={"options_bpm"}
+            label={"BPM"}
+            value={options['bpm']}
+            onChange={handleChangeOption}
+            onFocus={(e) => setTyping(true)}
+            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+        <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
+          <TextField
+            id={"options_output_fps"}
+            label={"FPS"}
+            value={options['output_fps']}
+            onChange={handleChangeOption}
+            onFocus={(e) => setTyping(true)}
+            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+        <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
+          <TextField
+            label={"Final frame"}
+            value={candidateLastFrame}
+            onChange={(e)=>setCandidateLastFrame(e.target.value)}
+            onFocus={(e) => setTyping(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setTimeout(() => e.target.blur());
+                e.preventDefault();
+              } else if (e.key === 'Escape') {
+                setTimeout(() => e.target.blur());
+                setCandidateLastFrame(lastFrame)
+                e.preventDefault();
               }
-              const local_keyframes = [...keyframes];
-              local_keyframes[local_keyframes.length - 1].frame = candidate;
-              setKeyframes(local_keyframes);
-              setTimeout(() => refreshGridFromKeyframes(local_keyframes));
-            }
-          }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>      
+            }}
+            onBlur={(e) => {
+              setTyping(false);
+              let candidate = parseInt(e.target.value);
+              const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
+              if (!candidate || candidate < 0 || isNaN(candidate)) {
+                setCandidateLastFrame(lastFrame);
+              } else {
+                if (candidate <= penultimate) {
+                  candidate = penultimate + 1;
+                  setCandidateLastFrame(candidate);
+                }
+                const local_keyframes = [...keyframes];
+                local_keyframes[local_keyframes.length - 1].frame = candidate;
+                setKeyframes(local_keyframes);
+                setTimeout(() => refreshGridFromKeyframes(local_keyframes));
+              }
+            }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+      </Stack>        
       <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
         <Typography fontSize={"0.75em"}>Lock&nbsp;keyframe&nbsp;position&nbsp;to:</Typography>
         <ToggleButtonGroup size="small"
@@ -977,65 +821,22 @@ const ParseqUI = (props) => {
 
   // Grid ------------------------
 
-  const grid = useMemo(() => <>
-    <div className="ag-theme-alpine" style={{ width: '100%', minHeight: '150px', maxHeight: '1150px', height: '150px' }}>
-      <AgGridReact
-        ref={gridRef}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        onCellValueChanged={onCellValueChanged}
-        onCellKeyPress={onCellKeyPress}
-        onGridReady={onGridReady}
-        onFirstDataRendered={onFirstDataRendered}
-        animateRows={true}
-        columnHoverHighlight={true}
-        enableCellChangeFlash={true}
-        tooltipShowDelay={0}
-        navigateToNextCell={navigateToNextCell}
-        suppressColumnVirtualisation={process.env?.NODE_ENV === "test"}
-        suppressRowVirtualisation={process.env?.NODE_ENV === "test"}
-        onCellKeyDown={(e) => {
-          if (e.event.keyCode === 46 || e.event.keyCode === 8) {
-            if (rangeSelection.anchor && rangeSelection.tip) {
-              const x1 = Math.min(rangeSelection.anchor.x, rangeSelection.tip.x);
-              const x2 = Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
-              const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
-              const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);
-              for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
-                const col = e.columnApi.getAllGridColumns().find(c => c.instanceId === colInstanceId);
-                if (col && col.visible && col.colId !== 'frame') {
-                  for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
-                    e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
-                  }
-                }
-              }
-            }
-          }
-        }}
-        onCellClicked={(e) => {
-          if (showCursors) {
-            setGridCursorPos(e.data.frame);
-          }
-          if (e.event.shiftKey) {
-            setRangeSelection({
-              anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
-              tip: { x: e.column.instanceId, y: e.rowIndex }
-            })
-          } else {
-            setRangeSelection({});
-          }
-        }}
-        onCellMouseOver={(e) => {
-          if (e.event.buttons === 1) {
-            setRangeSelection({
-              anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
-              tip: { x: e.column.instanceId, y: e.rowIndex }
-            })
-          }
-        }}
-      />
-    </div>
-  </>, [columnDefs, defaultColDef, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, navigateToNextCell, rangeSelection, showCursors]);
+  const grid = useMemo(() => <ParseqGrid
+    ref={gridRef}
+    onCellValueChanged={onCellValueChanged} 
+    onCellKeyPress={onCellKeyPress}
+    onGridReady={onGridReady}
+    onFirstDataRendered={onFirstDataRendered}
+    onSelectRange={(range) => setRangeSelection(range)}
+    onChangeGridCursorPosition={(frame) => setGridCursorPos(frame)}
+    rangeSelection={rangeSelection}    
+    keyframeLock={keyframeLock}
+    showCursors={showCursors}
+    managedFields={managedFields}
+    fps={options?.output_fps}
+    bpm={options?.bpm}
+    agGridStyle={{ width: '100%', minHeight: '150px', height: '150px', maxHeight: '1150px', }}
+  />, [rangeSelection, options, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
 
 
   const displayedFieldSelector = useMemo(() => displayedFields &&
@@ -1104,7 +905,7 @@ const ParseqUI = (props) => {
 
     <Grid container wrap='false'>
       <Grid xs={2}>
-        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
+        <Stack  direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"}   spacing={1}>
           <TextField
             select
             fullWidth={false}
@@ -1130,8 +931,8 @@ const ParseqUI = (props) => {
         </Stack>
       </Grid>
       <Grid xs={6}>
-        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
-          <Typography fontSize="0.75em">Markers:</Typography>
+        <Stack  direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: "flex-end", sm: "flex-end", md: 'center' }} justifyContent={"flex-end"}   spacing={1}>
+          <Typography fontSize="0.75em" fontWeight={'bold'}>Markers:</Typography>
           <FormControlLabel control={
             <Checkbox
               checked={showPromptMarkers}
@@ -1170,7 +971,7 @@ const ParseqUI = (props) => {
 
   </>, [graphAsPercentages, showPromptMarkers, showCursors, beatMarkerInterval, graphScales, xaxisType])
 
-  const editableGraph = useMemo(() => renderedData && renderedData.rendered_frames && <Editable
+  const editableGraph = useMemo(() => renderedData && renderedData.rendered_frames && <ParseqGraph
     renderedData={renderedData} // just used for keyframes?
     graphableData={graphableData}
     displayedFields={displayedFields}
@@ -1181,6 +982,7 @@ const ParseqUI = (props) => {
     gridCursorPos={showCursors ? gridCursorPos : -1}
     audioCursorPos={showCursors ? audioCursorPos : -1}
     beatMarkerInterval={beatMarkerInterval}
+    height={"400px"} // TODO - make this configurable
     updateKeyframe={(field, index, value) => {
       let rowId = frameToRowId(index)
       gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
@@ -1599,6 +1401,8 @@ const ParseqUI = (props) => {
               <MovementPreview
                 renderedData={renderedData.rendered_frames}
                 fps={options?.output_fps || 20}
+                height={512}
+                width={512}
               />
             }
            </>

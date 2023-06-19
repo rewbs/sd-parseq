@@ -3,18 +3,19 @@ import {
     CategoryScale, Chart as ChartJS, Legend, LegendItem, LinearScale, LineElement, PointElement, Title,
     Tooltip
 } from 'chart.js';
-import './components/chartjs-plugins/drag'
+import './chartjs-plugins/drag'
 //@ts-ignore
 import annotationPlugin from 'chartjs-plugin-annotation';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
-import { fieldNametoRGBa, } from './utils/utils';
-import { frameToBeats, frameToSeconds } from './utils/maths';
+import { fieldNametoRGBa, } from '../utils/utils';
+import { frameToBeats, frameToSeconds } from '../utils/maths';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { DECIMATION_THRESHOLD } from './utils/consts';
+import { DECIMATION_THRESHOLD } from '../utils/consts';
 import debounce from 'lodash.debounce';
 //@ts-ignore
 import range from 'lodash.range';
+import { RenderedData, GraphableData } from '../ParseqUI';
 
 
 const ChartJSAddPointPlugin = {
@@ -60,7 +61,7 @@ ChartJS.register(
 //@ts-ignore
 //Interaction.modes.interpolate = Interpolate
 
-export class Editable extends React.Component<{
+export class ParseqGraph extends React.Component<{
     renderedData: RenderedData,
     graphableData: GraphableData,
     displayedFields: string[],
@@ -76,6 +77,9 @@ export class Editable extends React.Component<{
     audioCursorPos : number;
     xscales: { xmin: number, xmax: number };
     xaxisType: string
+    height: number|string;
+    editingDisabled?: boolean;
+    hideLegend?: boolean;
 }> {
 
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
@@ -228,7 +232,8 @@ export class Editable extends React.Component<{
             parsing: false,
             normalised: true,
             spanGaps: true,
-            aspectRatio: 6,
+            //aspectRatio: 4,
+            maintainAspectRatio: false,
             responsive: true,
             animation: {
                 duration: 175,
@@ -264,7 +269,7 @@ export class Editable extends React.Component<{
                 },
             },
             onClick: (event: any, elements: any, chart: any) => {
-                if (!capturedThis.isDecimating() && elements[0] && event.native.shiftKey) {
+                if (!capturedThis.props.editingDisabled && !capturedThis.isDecimating() && elements[0] && event.native.shiftKey) {
                     const datasetIndex = elements[0].datasetIndex;
                     const field = chart.data.datasets[datasetIndex].label;
                     const index = Math.round(chart.scales.x.getValueForPixel(event.x));
@@ -274,6 +279,7 @@ export class Editable extends React.Component<{
             plugins: {
                 legend: {
                     position: 'top' as const,
+                    display: !this.props.hideLegend,
                     labels: {
                         usePointStyle: true,
                         sort: (a: LegendItem, b: LegendItem) => {
@@ -356,13 +362,13 @@ export class Editable extends React.Component<{
                     round: 4,
                     showTooltip: true,
                     onDragStart: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        return !this.isDecimating() && this.isKeyframe(point.x);
+                        return !this.props.editingDisabled && !this.isDecimating() && this.isKeyframe(point.x);
                     },
                     onDrag: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        return !this.isDecimating() && this.isKeyframe(point.x);
+                        return !this.props.editingDisabled && !this.isDecimating() && this.isKeyframe(point.x);
                     },
                     onDragEnd: (e: MouseEvent, datasetIndex: number, index: number, point: { x: number, y: number }) => {
-                        if (this.isDecimating() || !this.isKeyframe(point.x)) {
+                        if (this.props.editingDisabled || this.isDecimating() || !this.isKeyframe(point.x)) {
                             return false;
                         }
                         let field = this.props.displayedFields[datasetIndex];
@@ -416,8 +422,6 @@ export class Editable extends React.Component<{
             ]
         };
 
-        // console.log("Markers", this.props.markers);
-        // console.log("Annotations", annotations);
-        return <Line options={options} data={chartData} />;
+        return <div style={{height:this.props.height, width:'100%', position:"relative"}}><Line options={options} data={chartData} /></div>;
     }
 }

@@ -5,6 +5,7 @@ import { useMeasure } from "react-use";
 import { defaultFields } from '../data/fields';
 import { isDefinedField } from '../utils/utils';
 import StyledSwitch from './StyledSwitch';
+import { InterpolatableFieldDefinition, ParseqKeyframe } from '../ParseqUI';
 
 type FieldSelectorProps = {
     selectedFields: string[];
@@ -57,7 +58,7 @@ export function FieldSelector({selectedFields, customFields, keyframes, promptVa
     >
         {defaultFields.concat(customFields)
             .filter(field => field.name.toLowerCase().includes(filter.toLowerCase())
-                || field.labels.some(label => label.toLowerCase().includes(filter.toLowerCase())))
+                || field.labels.some((label : string) => label.toLowerCase().includes(filter.toLowerCase())))
             .filter(field => field.name !== 'frame').map((field, idx) =>
                 <ListItem dense sx={{ width: 'auto', maxWidth: itemWidth }} key={field.name}>
                     <ListItemButton

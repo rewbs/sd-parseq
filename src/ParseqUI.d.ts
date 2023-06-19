@@ -1,7 +1,7 @@
+import { DataPoint, Indexable } from "downsample";
 import { TimeSeries } from "./parseq-lang/parseq-timeseries";
 
 declare module 'uuid4';
-declare module 'lodash.debounce';
 declare module 'chartjs-plugin-crosshair';
 declare module 'react-copy-to-clipboard';
 
@@ -17,7 +17,7 @@ type DocId = string & { _docIdBrand: undefined };
 type VersionId = string & { _versionIdBrand: undefined };
 
 type ParseqDoc = {
-    docId: DocID,
+    docId: DocId,
     name: string,
     timestamp: number,
     latestVersionId?: VersionId,
@@ -53,7 +53,7 @@ type InterpolatableFieldDefinition = {
 
 type ParseqDocVersion = ParseqPersistableState & {
     versionId: VersionId,
-    docId: DocID;
+    docId: DocId;
     timestamp: number;
 }
 
@@ -80,6 +80,8 @@ type Template = {
         displayedFields?: string[];
         prompts: ParseqPrompts;
         keyframes: ParseqKeyframes;
+        timeSeries?: TimeSeries[] | [];
+        keyframeLock?: "frames" | "seconds" | "beats";
     }
 }
 
@@ -126,6 +128,7 @@ type ParseqKeyframes = ParseqKeyframe[] | [];
 type ParseqRenderedFrames = [{
     frame: number;
     // TODO: make this stricter
+    //@ts-ignore
     deforum_prompt: string;
     [key: string]: number;
 }] | [];
@@ -145,6 +148,7 @@ type Point = {x:number, y:number};
 type GraphableData = {
     [key: string]: Point[]
 };
+
 
 type SparklineData = Indexable<DataPoint>;
 

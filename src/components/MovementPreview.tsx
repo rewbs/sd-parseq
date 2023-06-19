@@ -16,6 +16,8 @@ type MySketchProps = SketchProps & {
     manualTranslation: number[],
     fps: number,
     cadence: number,
+    width: number,
+    height: number
 };
 
 const sketch = (p5: P5CanvasInstance) => {
@@ -29,6 +31,8 @@ const sketch = (p5: P5CanvasInstance) => {
     let cam : any = undefined;
     let fps = 20;
     let cadence = 10;
+    let height = 512;
+    let width = 512;
 
     p5.updateWithProps = (props: MySketchProps) => {
         if (props.renderedData) {
@@ -41,6 +45,8 @@ const sketch = (p5: P5CanvasInstance) => {
         manualTranslation = props.manualTranslation;
         fps = props.fps;
         cadence = props.cadence;
+        height = props.height;
+        width = props.height;
     };
 
     p5.preload = () => {
@@ -53,8 +59,9 @@ const sketch = (p5: P5CanvasInstance) => {
         //console.log("In setup", p5);
 
         if (!generationBuffer || !inputBuffer) {
-            //perspective(512) // TODO figure out how to convert deforum perspective
-            p5.createCanvas(512, 512, "webgl");
+            //perspective(height) // TODO figure out how to convert deforum perspective
+            console.log("Creating canvas", width, height);
+            p5.createCanvas(width, height, "webgl");
             p5.imageMode("center");
             p5.rectMode("center");
             p5.frameRate(10);
@@ -64,7 +71,7 @@ const sketch = (p5: P5CanvasInstance) => {
         }
 
         if (!generationBuffer) {
-            generationBuffer = p5.createGraphics(512, 512, "webgl");
+            generationBuffer = p5.createGraphics(width, height, "webgl");
             generationBuffer.imageMode("center");
             generationBuffer.rectMode("center");
             generationBuffer.strokeWeight(1)
@@ -72,7 +79,7 @@ const sketch = (p5: P5CanvasInstance) => {
         }
 
         if (!inputBuffer) {
-            inputBuffer = p5.createGraphics(512, 512, "webgl");
+            inputBuffer = p5.createGraphics(width, height, "webgl");
             inputBuffer.imageMode("center");
             inputBuffer.rectMode("center");
             inputBuffer.background(0);
@@ -203,9 +210,11 @@ const sketch = (p5: P5CanvasInstance) => {
 type MovementPreviewProps = {
     renderedData: ParseqRenderedFrames,
     fps: number,
+    width: number,
+    height: number
 };
 
-export const MovementPreview = ({renderedData, fps} : MovementPreviewProps ) => {
+export const MovementPreview = ({renderedData, fps, width, height} : MovementPreviewProps ) => {
 
     const [currentFrame, setCurrentFrame] = useState(0);
     const [manualTranslation, setManualTranslation] = useState([0, 0, 0]);
@@ -269,8 +278,10 @@ export const MovementPreview = ({renderedData, fps} : MovementPreviewProps ) => 
             manualRotation={manualRotation}
             fps={fps}
             cadence={parseInt(cadence)}
+            width={width}
+            height={height}
         />;
-    }, [renderedData, currentFrame, manualRotation, manualTranslation, cadence, fps]);
+    }, [renderedData, currentFrame, manualTranslation, manualRotation, fps, cadence, width, height]);
 
     return <Stack direction="column" spacing={2} alignItems={"center"}>
         <Alert severity="warning">
@@ -299,7 +310,6 @@ export const MovementPreview = ({renderedData, fps} : MovementPreviewProps ) => 
     </Stack>
 
 }
-
 
 export default MovementPreview;
 

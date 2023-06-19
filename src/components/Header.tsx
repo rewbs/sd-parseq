@@ -1,15 +1,14 @@
-import * as React from 'react';
+import { faDiscord, faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faBook, faBug, faFilm } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Box, Chip, Stack, Typography } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
-import { Chip, Typography, Box, Stack } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCoffee, faBook, faBug, faFilm } from '@fortawesome/free-solid-svg-icons'
-import { faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons'
-import { UserAuthContextProvider } from "../UserAuthContext";
-import Login from "../Login";
-import { auth, app} from '../firebase-config';
+import { getAnalytics, isSupported } from "firebase/analytics";
 import GitInfo from 'react-git-info/macro';
+import Login from "../Login";
+import { UserAuthContextProvider } from "../UserAuthContext";
+import { app, auth } from '../firebase-config';
 import '../robin.css';
-import {isSupported, getAnalytics} from "firebase/analytics";
 import { getVersionNumber } from '../utils/utils';
 
 var analytics: any;
@@ -31,7 +30,6 @@ type MyProps = {
     title: string
 };
 
-// TODO: separate React UI component from the service class.
 export default function Header({ title }: MyProps) {
 
     const displayDate = GIT_COMMIT_DATE;
@@ -63,7 +61,6 @@ export default function Header({ title }: MyProps) {
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon  size='2xs' icon={faBug} />} label="Bugs" />
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon  size='2xs' icon={faGithub} />} label="Code" />
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://discord.gg/deforum" clickable icon={<FontAwesomeIcon  size='2xs' icon={faDiscord} />} label="Chat" />
-                <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://www.buymeacoffee.com/rewbs" clickable icon={<FontAwesomeIcon  size='2xs' icon={faCoffee} />} label="Coffee" />
                 <UserAuthContextProvider>
                     <Login />
                 </UserAuthContextProvider>

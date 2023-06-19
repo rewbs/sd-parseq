@@ -24,6 +24,7 @@ import useDebouncedEffect from 'use-debounced-effect';
 import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
 import { ParseqGraph } from './components/ParseqGraph';
 import { ParseqGrid } from './components/ParseqGrid';
+import SupportParseq from './components/SupportParseq'
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { AudioWaveform } from './components/AudioWaveform';
 import { ExpandableSection } from './components/ExpandableSection';
@@ -1301,23 +1302,21 @@ const ParseqUI = (props) => {
     }}>
     <React.StrictMode>
       <CssBaseline />
-      <Stack direction={'row'} wrap='nowrap' width='100%'>
-        <Grid xs={'auto'} sx={{flexGrow: 1}} >
-          {docManager}
-        </Grid>
-        <Grid xs={'auto'}
-          sx={{
-            borderLeft: 'var(--Grid-borderWidth) solid',
-            borderRight: 'var(--Grid-borderWidth) solid',
-            borderBottom: 'var(--Grid-borderWidth) solid',
-            borderColor: 'divider',
-          }}>
-          <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'flex-end'}>
-            <Box width={"728px"} height="90px">
-            </Box>
-          </Stack>
-        </Grid>
-      </Stack>        
+      <Grid xs={8}  >
+        {docManager}
+      </Grid>
+      <Grid xs={4}
+        sx={{
+          borderLeft: 'var(--Grid-borderWidth) solid',
+          borderRight: 'var(--Grid-borderWidth) solid',
+          borderBottom: 'var(--Grid-borderWidth) solid',
+          borderColor: 'divider',
+        }}>
+        <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'right'}>
+          <SupportParseq />
+        </Stack>
+      </Grid>
+        
       <Grid xs={12}>
         <ExpandableSection title="Prompts">
           {promptsUI}

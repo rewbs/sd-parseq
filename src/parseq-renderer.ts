@@ -1,5 +1,5 @@
 import { calculateWeight } from './components/Prompts';
-import { defaultValues } from './data/defaultValues';
+import { defaultFields } from './data/fields';
 import { isValidNumber } from "./utils/maths";
 //@ts-ignore
 import { LTTB } from 'downsample';
@@ -17,8 +17,7 @@ export class ParseqRendererException {
 }
 
 function getDefaultValue(field: string) {
-    //@ts-ignore
-    const candidateDefaultValue: any = defaultValues[field];
+    const candidateDefaultValue = defaultFields.find((f) => f.name === field)?.defaultValue;
     if (candidateDefaultValue === undefined) {
         return 0;
     } else {
@@ -212,7 +211,7 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
 
                 //@ts-ignore
                 rendered_frames[frame] = {
-                    ...rendered_frames[frame] || {},
+                    ...rendered_frames[frame] || { frame },
                     deforum_prompt: negative_prompt ? `${positive_prompt} --neg ${negative_prompt}` : positive_prompt
                 }
             } catch (error) {

@@ -677,71 +677,77 @@ const ParseqUI = (props) => {
   // Core options ------------------------
 
   const optionsUI = useMemo(() => options && <span>
-    <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={4}>
-      <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
-        <TextField
-          id={"options_bpm"}
-          label={"BPM"}
-          value={options['bpm']}
-          onChange={handleChangeOption}
-          onFocus={(e) => setTyping(true)}
-          onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>
-      <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
-        <TextField
-          id={"options_output_fps"}
-          label={"FPS"}
-          value={options['output_fps']}
-          onChange={handleChangeOption}
-          onFocus={(e) => setTyping(true)}
-          onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>
-      <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
-        <TextField
-          label={"Final frame"}
-          value={candidateLastFrame}
-          onChange={(e)=>setCandidateLastFrame(e.target.value)}
-          onFocus={(e) => setTyping(true)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setTimeout(() => e.target.blur());
-              e.preventDefault();
-            } else if (e.key === 'Escape') {
-              setTimeout(() => e.target.blur());
-              setCandidateLastFrame(lastFrame)
-              e.preventDefault();
-            }
-          }}
-          onBlur={(e) => {
-            setTyping(false);
-            let candidate = parseInt(e.target.value);
-            const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
-            if (!candidate || candidate < 0 || isNaN(candidate)) {
-              setCandidateLastFrame(lastFrame);
-            } else {
-              if (candidate <= penultimate) {
-                candidate = penultimate + 1;
-                setCandidateLastFrame(candidate);
+     
+    <Stack direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"} gap={2}>
+      <Stack direction='row'  gap={2}>
+        <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
+          <TextField
+            id={"options_bpm"}
+            label={"BPM"}
+            value={options['bpm']}
+            onChange={handleChangeOption}
+            onFocus={(e) => setTyping(true)}
+            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+        <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
+          <TextField
+            id={"options_output_fps"}
+            label={"FPS"}
+            value={options['output_fps']}
+            onChange={handleChangeOption}
+            onFocus={(e) => setTyping(true)}
+            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+        <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
+          <TextField
+            label={"Final frame"}
+            value={candidateLastFrame}
+            onChange={(e)=>setCandidateLastFrame(e.target.value)}
+            onFocus={(e) => setTyping(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setTimeout(() => e.target.blur());
+                e.preventDefault();
+              } else if (e.key === 'Escape') {
+                setTimeout(() => e.target.blur());
+                setCandidateLastFrame(lastFrame)
+                e.preventDefault();
               }
-              const local_keyframes = [...keyframes];
-              local_keyframes[local_keyframes.length - 1].frame = candidate;
-              setKeyframes(local_keyframes);
-              setTimeout(() => refreshGridFromKeyframes(local_keyframes));
-            }
-          }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>      
+            }}
+            onBlur={(e) => {
+              setTyping(false);
+              let candidate = parseInt(e.target.value);
+              const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
+              if (!candidate || candidate < 0 || isNaN(candidate)) {
+                setCandidateLastFrame(lastFrame);
+              } else {
+                if (candidate <= penultimate) {
+                  candidate = penultimate + 1;
+                  setCandidateLastFrame(candidate);
+                }
+                const local_keyframes = [...keyframes];
+                local_keyframes[local_keyframes.length - 1].frame = candidate;
+                setKeyframes(local_keyframes);
+                setTimeout(() => refreshGridFromKeyframes(local_keyframes));
+              }
+            }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+      </Stack>        
       <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
         <Typography fontSize={"0.75em"}>Lock&nbsp;keyframe&nbsp;position&nbsp;to:</Typography>
         <ToggleButtonGroup size="small"
@@ -899,7 +905,7 @@ const ParseqUI = (props) => {
 
     <Grid container wrap='false'>
       <Grid xs={2}>
-        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
+        <Stack  direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"}   spacing={1}>
           <TextField
             select
             fullWidth={false}
@@ -925,8 +931,8 @@ const ParseqUI = (props) => {
         </Stack>
       </Grid>
       <Grid xs={6}>
-        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
-          <Typography fontSize="0.75em">Markers:</Typography>
+        <Stack  direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: "flex-end", sm: "flex-end", md: 'center' }} justifyContent={"flex-end"}   spacing={1}>
+          <Typography fontSize="0.75em" fontWeight={'bold'}>Markers:</Typography>
           <FormControlLabel control={
             <Checkbox
               checked={showPromptMarkers}

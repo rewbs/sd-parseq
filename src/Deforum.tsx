@@ -3,7 +3,7 @@ import ParseqUI from './ParseqUI';
 
 const Deforum = () => {
   return <>
-    <Header title="Parseq for Deforum" />
+    <Header title="Parseq" />
     { /* @ts-ignore */}
     <ParseqUI defaultTemplate='catduck' />
   </>;

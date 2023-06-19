@@ -1,3 +1,5 @@
+import { InterpolatableFieldDefinition } from "../ParseqUI";
+
 export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "seed",

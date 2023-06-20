@@ -90,6 +90,7 @@ const ParseqUI = (props) => {
   const [gridCursorPos, setGridCursorPos] = useState(0);
   const [rangeSelection, setRangeSelection] = useState({});
   const [audioCursorPos, setAudioCursorPos] = useState(0);
+  const [activeVersionId, setActiveVersionId] = useState();
   
   const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
@@ -158,6 +159,11 @@ const ParseqUI = (props) => {
         // Map loaded content to React state
         // Assum all required deep copying has been done by the load function.
         setPersistableState(loaded.loadedDoc);
+        
+        // If we've loaded a specific version, track that version number so we can included it in rendered output.
+        if (loaded.loadedDoc?.versionId) {
+          setActiveVersionId(loaded.loadedDoc.versionId);
+        }
 
       }).catch((e) => {
         setInitStatus({severity: "error", message: "Error loading document: " + e.toString()});
@@ -188,7 +194,12 @@ const ParseqUI = (props) => {
   // in quick succession.
   useDebouncedEffect(() => {
     if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields && timeSeries && keyframeLock) {
-      saveVersion(activeDocId, getPersistableState());
+      const savedStatus = saveVersion(activeDocId, getPersistableState());
+      savedStatus.then((versionIdIfSaved) => {      
+        if (versionIdIfSaved) {
+          setActiveVersionId(versionIdIfSaved);
+        }
+      });
       setLastSaved(Date.now());
     }
   }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock]);
@@ -267,6 +278,8 @@ const ParseqUI = (props) => {
         "generated_by": "sd_parseq",
         "version": getVersionNumber(),
         "generated_at": getUTCTimeStamp(),
+        "doc_id": activeDocId?.toString().startsWith("doc-") ? activeDocId : "unknown",
+        "version_id": activeVersionId?.toString().startsWith("version-") ? activeVersionId : "unknown",
       },
       prompts: prompts,
       options: options,
@@ -277,7 +290,7 @@ const ParseqUI = (props) => {
       keyframeLock: keyframeLock
     }
   }
-  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
+  , [prompts, activeDocId, options, managedFields, displayedFields, keyframes, timeSeries, keyframeLock, activeVersionId]);
 
 
   // Converts document object to React state.

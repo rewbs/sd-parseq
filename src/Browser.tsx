@@ -345,7 +345,7 @@ export default function Browser() {
                                                                                 }}
                                                                                 size='small' variant='outlined'><FontAwesomeIcon icon={faCopy} />&nbsp;Clone</Button>                                                                              
                                                                         </Tooltip>
-                                                                        <Typography fontSize={"0.5em"} fontStyle={'monospace'}>{v.versionId}</Typography>                                                                        
+                                                                        <Typography fontSize={"0.5em"} fontStyle={'monospace'}>{v.versionId}</Typography>
                                                                     </Stack>
                                                                 </TableCell>
                                                             </tr>
@@ -404,7 +404,10 @@ export default function Browser() {
                                         mostRecentVersions ?
                                             mostRecentVersions.map((v: VersionSummary) => {
                                                 return <TableRow>
-                                                    <TableCell><a href={'/?docId=' + v.docId}>{v.docName}</a></TableCell>
+                                                    <TableCell>
+                                                        <a href={'/?docId=' + v.docId}>{v.docName}</a>
+                                                        <Typography fontSize={"0.5em"} fontStyle={'monospace'}>{v.docId}</Typography>
+                                                    </TableCell>
                                                     <TableCell>
                                                         <ReactTimeAgo date={v.timestamp} locale="en-US" />
                                                         <Typography fontSize={"0.75em"}>{new Date(v.timestamp).toLocaleString("en-GB", { dateStyle: 'full', timeStyle: 'medium' })}</Typography>

@@ -212,9 +212,13 @@ type MovementPreviewProps = {
     fps: number,
     width: number,
     height: number
+    hideWarning?: boolean
+    hidePrompt?: boolean
+    hideCadence?: boolean
+    hideFrame?: boolean
 };
 
-export const MovementPreview = ({renderedData, fps, width, height} : MovementPreviewProps ) => {
+export const MovementPreview = ({renderedData, fps, width, height, hideWarning, hideCadence, hidePrompt, hideFrame} : MovementPreviewProps ) => {
 
     const [currentFrame, setCurrentFrame] = useState(0);
     const [manualTranslation, setManualTranslation] = useState([0, 0, 0]);
@@ -284,7 +288,7 @@ export const MovementPreview = ({renderedData, fps, width, height} : MovementPre
     }, [renderedData, currentFrame, manualTranslation, manualRotation, fps, cadence, width, height]);
 
     return <Stack direction="column" spacing={2} alignItems={"center"}>
-        <Alert severity="warning">
+        {hideWarning || <Alert severity="warning">
                 <p>This experimental feature gives you a rough idea of what your camera movements will look like.
                 Inspired by <a href="https://colab.research.google.com/github/pharmapsychotic/ai-notebooks/blob/main/pharmapsychotic_AnimationPreview.ipynb">AnimationPreview by @pharmapsychotic</a>.
                 </p>
@@ -296,8 +300,9 @@ export const MovementPreview = ({renderedData, fps, width, height} : MovementPre
                 </ul>
                 Feedback welcome on <a href="https://discord.gg/deforum">Discord</a> or <a href="https://github.com/rewbs/sd-parseq/issues">GitHub</a>.
             </Alert>
+        }
         {sketchElem}
-        <Tooltip title="In this preview, a higher cadence can make it easier to see the effect of your camera movements. However, whether you should use a high cadence during your actual generation depends on how often you want the Diffusion process to run.">
+        {hideCadence || <Tooltip title="In this preview, a higher cadence can make it easier to see the effect of your camera movements. However, whether you should use a high cadence during your actual generation depends on how often you want the Diffusion process to run.">
             <SmallTextField 
                 value={cadence}
                 label="Cadence"
@@ -305,8 +310,9 @@ export const MovementPreview = ({renderedData, fps, width, height} : MovementPre
                 onChange={(e) => setCadence(e.target.value)}
             />
         </Tooltip>
-        <Typography fontFamily={"monospace"}>Frame: <span id="frameCount">0</span></Typography>
-        <Typography fontSize={"0.75em"} fontFamily={"monospace"}><span id="prompt"></span></Typography>
+        }
+        {hideFrame || <Typography fontFamily={"monospace"}>Frame: <span id="frameCount">0</span></Typography> }
+        {hidePrompt || <Typography fontSize={"0.75em"} fontFamily={"monospace"}><span id="prompt"></span></Typography> }
     </Stack>
 
 }

@@ -11,6 +11,7 @@ const basicContext: InvocationContext = {
   BPM: 140,
   FPS: 30,
   allKeyframes: [],
+  computed_values: [],
   variableMap: new Map(),
   activeKeyframe: 0,
   frame: 0,

@@ -229,7 +229,6 @@ const ParseqUI = (props) => {
         gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
         gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
         gridRef.current.api.onSortChanged();
-        gridRef.current.api.sizeColumnsToFit();
     });
 
       if (displayedFields.length !== prevDisplayedFields?.length

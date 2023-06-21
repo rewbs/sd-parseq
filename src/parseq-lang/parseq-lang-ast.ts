@@ -22,6 +22,7 @@ export type InvocationContext = {
   activeNode?: ParseqAstNode;
   definedFrames: number[];
   definedValues: number[];
+  computed_values: (number|string)[];
   allKeyframes: { //TODO - should be using ParseqKeyframe type
     frame: number,
     info?: string
@@ -223,10 +224,12 @@ export class VariableReferenceAst extends ParseqAstNode {
         return ctx.frame;
       case 'b':
         return frameToBeat(ctx.frame, ctx.FPS, ctx.BPM);
+      case 'wb': // whole beat (beat without the fractional part)
+        return Math.floor(frameToBeat(ctx.frame, ctx.FPS, ctx.BPM));
       case 's':
         return frameToSec(ctx.frame, ctx.FPS);
       case 'k': // offset since last active keyframe
-        return ctx.frame - ctx.activeKeyframe;
+        return ctx.frame - ctx.activeKeyframe;      
       case 'prev_keyframe': // deprecated, use 'active_keyframe', which is a more accurate name.
       case 'active_keyframe':
         return ctx.activeKeyframe;

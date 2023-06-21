@@ -16,7 +16,7 @@ export class ParseqRendererException {
     }
 }
 
-function getDefaultValue(field: string) {
+export function getDefaultFieldValue(field: string) {
     const candidateDefaultValue = defaultFields.find((f) => f.name === field)?.defaultValue;
     if (candidateDefaultValue === undefined) {
         return 0;
@@ -64,13 +64,13 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
         if (!isValidNumber(firstKeyFrame[field])) {
             const firstKeyFrameWithValueForField = sortedKeyframes.find((kf) => isValidNumber(kf[field]));
 
-            const substituteValue = firstKeyFrameWithValueForField ? firstKeyFrameWithValueForField[field] : getDefaultValue(field);
+            const substituteValue = firstKeyFrameWithValueForField ? firstKeyFrameWithValueForField[field] : getDefaultFieldValue(field);
             //console.log(`No value found for ${field} on the first keyframe, using: ${substituteValue}`);
             bookendKeyFrames.first = { ...bookendKeyFrames.first, [field]: substituteValue };
         }
         if (!isValidNumber(lastKeyFrame[field])) {
             const lastKeyFrameWithValueForField = sortedKeyframes.findLast((kf) => isValidNumber(kf[field]));
-            const substituteValue = lastKeyFrameWithValueForField ? lastKeyFrameWithValueForField[field] : getDefaultValue(field);
+            const substituteValue = lastKeyFrameWithValueForField ? lastKeyFrameWithValueForField[field] : getDefaultFieldValue(field);
             //console.log(`No value found for ${field} on the final keyframe, using: ${substituteValue}`);
             bookendKeyFrames.last = { ...bookendKeyFrames.last, [field]: substituteValue };
         }
@@ -103,7 +103,7 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
 
         let parseResult: any;
         let activeKeyframe = 0;
-        let prev_computed_value: string | number = 0;
+        let prev_computed_values: string[] | number[] = [];
         all_frame_numbers.forEach((frame, i) => {
 
             //let declaredRow = gridRef.current.api.getRowNode(frameToRowId(frame));
@@ -145,7 +145,8 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
                     allKeyframes: keyframes,
                     FPS: options.output_fps,
                     BPM: options.bpm,
-                    variableMap: new Map([["prev_computed_value", prev_computed_value]]),
+                    computed_values: prev_computed_values,
+                    variableMap: new Map([["prev_computed_value", (frame>0) ? prev_computed_values[frame-1] : 0]]),
                     timeSeries: timeSeries
                 }
                 computed_value = interpolator.invoke(ctx);
@@ -160,7 +161,8 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
             }
             graphData[field].push({ x: frame, y: Number(computed_value) });
             lastInterpolator = interpolator;
-            prev_computed_value = computed_value;
+            //@ts-expect-error
+            prev_computed_values.push(computed_value);
         });
     });
     stats.mainEvalTime = Date.now() - mainEvalStart;
@@ -189,7 +191,8 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
                 BPM: options.bpm,
                 allKeyframes: keyframes,
                 variableMap: variableMap,
-                timeSeries: timeSeries
+                timeSeries: timeSeries,
+                computed_values: []
             };
 
             try {

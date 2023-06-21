@@ -30,8 +30,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       { description: "value", names: ["v"], type: "number", required: true, default: 0 },
     ],
     call: (ctx, args) => secToFrame(Number(args[0]), ctx.FPS)
-  },
-
+  }
 }
 
 export default functionLibrary;

@@ -450,6 +450,7 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
                             fieldName: fieldToUpdate,
                             timeSeries: timeSeries,
                             variableMap: new Map([['prev_computed_value', 0]]),
+                            computed_values: [],
                         }
                         parse(newValue).invoke(dummyContext);
                     } catch (e: any) {

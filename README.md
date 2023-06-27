@@ -41,7 +41,7 @@
 - [Working with large number of frames (performance tips)](#working-with-large-number-of-frames-performance-tips)
 - [Development & running locally](#development--running-locally)
  - [Deployment](#deployment)
-- [Credits](#credits)
+- [Credits and support](#credits)
 
 ## What is this?
 
@@ -88,17 +88,17 @@ The best way to get your head around Parseq's capabilities and core concepts is 
 |--- |--- |---
 | [<img width=400 src="https://i.ytimg.com/vi/MXRjTOE2v64/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&amp;rs=AOn4CLBBgRv91gM-WNI2mlJMZbWXmyyMZg">](https://www.youtube.com/watch?v=MXRjTOE2v64) | [<img width=400 src="https://i.ytimg.com/vi/PvWckT0Pik8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLD7_8Aw9Coj6G7_0RWrSLEqStvamA">](https://www.youtube.com/watch?v=PvWckT0Pik8)  | [<img width=400 src="https://i.ytimg.com/vi/M6Z-kD2HnDQ/hqdefault.jpg?sqp=-oaymwEcCNACELwBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDZX4Xf6a_FNCBZCkfaYLmHyS1q6A">](https://www.youtube.com/watch?v=M6Z-kD2HnDQ)	|
 
-### Usage overview
+## Usage
 
-In summary, your workflow with Parseq involves 2 main steps:
+In summary, there are 2 steps to perform:
 
-### Step 1: Create your parameter manifest
+#### Step 1: Create your parameter manifest
 
 * Go to https://sd-parseq.web.app/ (or run the UI yourself from this repo with `npm start`)
 * Edit the table at the top to specify your keyframes and parameter values at those keyframes. See below for more information about what you can do here.
 * Copy the contents of the "Output" textbox at the bottom. If you are signed in (via the button at the top right), you can choose to upload the output instead, and then copy the resulting URL. All subsequent changes will be pushed to the same URL, so you won't need to copy & paste again.
 
-### Step 2: Generate the video
+#### Step 2: Generate the video
 
 * Head to the SD web UI go to the Deforum tab and then the Init tab.
 * Paste the JSON or URL you copied in step 1 into the Parseq section at the bottom of the page.
@@ -674,14 +674,17 @@ firebase hosting:clone sd-parseq:staging sd-parseq:live
    
 ## Credits
 
-This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of inspiration:
+This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of support and inspiration:
 
-* Everyone behind Deforum: https://github.com/deforum-art/
+* Everyone supporting [Parseq on Patreon](https://www.patreon.com/rewbs), including: Adam Sinclair and MJ.
+* Everyone who has [bought me a coffee](https://www.buymeacoffee.com/rewbs)!
+* Everyone who has contributed to the [A1111 web UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
+* Everyone who has contributed to [Deforum](https://github.com/deforum-art/)
 * Everyone trying out Parseq and giving me feedback on Discrod (e.g. ronnykhalil, Michael L, Moistlicks, Kingpin, hithere, kabachuha, AndyXR, Akumetsu971, koshi...)
-* Everyone who has [bought me a coffee](https://www.buymeacoffee.com/rewbs)! :)
 * Everyone behind [Aubio](https://aubio.org/), [AubioJS](https://github.com/qiuxiang/aubiojs), [Wavesurfer](https://wavesurfer-js.org/),  [react-timeline-editor](https://github.com/xzdarcy/react-timeline-editor), [ag-grid](https://www.ag-grid.com/) (community edition), p5, chart.js and recharts.
-* Filarus for their vid2vid script: https://github.com/Filarius/stable-diffusion-webui/blob/master/scripts/vid2vid.py .  
-* Animator-Anon for their animation script: https://github.com/Animator-Anon/Animator/blob/main/animation.py . I picked up some good ideas from this.
-* Yownas for their seed travelling script: https://github.com/yownas/seed_travel.
-* feffy380 for the prompt-morph script https://github.com/feffy380/prompt-morph
-* eborboihuc for the clear implementation of 3d rotations using `cv2.warpPerspective()`:  https://github.com/eborboihuc/rotate_3d/blob/master/image_transformer.py
+* The following scripts and their authors from whom I picked up some good ideas when I was starting out:
+   * Filarus for their [vid2vid script](https://github.com/Filarius/stable-diffusion-webui/blob/master/scripts/vid2vid.py).  
+   * Animator-Anon for their [animation script](https://github.com/Animator-Anon/Animator/blob/main/animation.py). 
+   * Yownas for their [seed travelling script](https://github.com/yownas/seed_travel)
+   * feffy380 for the [prompt-morph script](https://github.com/feffy380/prompt-morph)
+   * eborboihuc for the [clear implementation of 3d rotations using `cv2.warpPerspective()`](https://github.com/eborboihuc/rotate_3d/blob/master/image_transformer.py)

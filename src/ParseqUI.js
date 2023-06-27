@@ -1325,7 +1325,7 @@ const ParseqUI = (props) => {
           borderBottom: 'var(--Grid-borderWidth) solid',
           borderColor: 'divider',
         }}>
-        <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'right'}>
+        <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' fullWidth flexGrow={4} alignItems={'flex-start'}>
           <SupportParseq />
         </Stack>
       </Grid>

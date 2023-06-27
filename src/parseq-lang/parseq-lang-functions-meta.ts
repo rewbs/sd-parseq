@@ -44,7 +44,53 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       const wholeBeat = Math.floor(frameToBeat(Number(args[0]), ctx.FPS, ctx.BPM));
       return rounding(beatToFrame(wholeBeat, ctx.FPS, ctx.BPM));
     }
-  }
+  },
+  "recompute_if": {
+    description: "If the supplied condition is true, return the second param, else return the value of the second param when condition was last true. If condition is false and has never been true, return -1 or overridden default.",
+    argDefs: [
+      { description: "condition", names: ["if"], type: "number", required: true, default: 0},
+      { description: "compute", names: ["compute", "c"], type: "number", required: true, default: 0},
+      { description: "default", names: ["default", "d"], type: "number", required: false, default: -1},
+      // Need to think about this one some more – it won't be auto-recomputed if referenced directly.
+      //{ description: "varname", names: ["varname", "v"], type: "string", required: false, default: 'r' },
+    ],
+    call: (ctx, args) => {
+      const condition = Number(args[0]);
+      const newValue = Number(args[1]);
+      const def = Number(args[2]);
+      const stored = ctx.activeNode?.getOrComputeState('stored_var', () => ({ stored_var: newValue })) as { stored_var: number };
+      let retval;
+      if (condition > 0) {
+         ctx.activeNode?.setState('stored_var', { stored_var: newValue });
+         retval = newValue;
+      } else if (stored?.stored_var !== undefined) {
+        retval = stored.stored_var;
+      } else {
+        retval = def;
+      }
+      return retval;
+    }
+  },
+  "dangerous": {
+    description: "Get value of a field at a given frame. Beware of cycles (there's no protection from them)",
+    argDefs: [
+      { description: "field name", names: ["name", "n"], type: "string", required: true, default: 0},
+      { description: "frame", names: ["frame", "f"], type: "number", required: false, default: (ctx) => ctx.frame},
+    ],
+    call: (ctx, args) => {
+
+      console.log(ctx.rendered_frames![Number(args[1])]);
+
+      if (ctx.rendered_frames
+        && ctx.rendered_frames[Number(args[1])]
+        && ctx.rendered_frames[Number(args[1])][args[0]]) {
+          return ctx.rendered_frames[Number(args[1])][args[0]];
+      } else {
+        return -1;
+      }
+      
+    }
+  }  
 }
 
 export default functionLibrary;

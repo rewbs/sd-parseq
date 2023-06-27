@@ -6,6 +6,7 @@ import { frameToBeat, frameToSec } from '../utils/maths';
 import { InterpolationType, TimeSeries } from './parseq-timeseries';
 //@ts-ignore
 import functionLibrary, { ParseqFunction } from './parseq-lang-functions';
+import { ParseqRenderedFrames } from '../ParseqUI';
 
 type InputLocation = {
   line: number | undefined;
@@ -36,6 +37,7 @@ export type InvocationContext = {
     ts: TimeSeries;
   }] | [],
   promptType?: boolean;
+  rendered_frames?: ParseqRenderedFrames;
 }
 
 export function getNextKeyframe(ctx: InvocationContext): number {
@@ -116,9 +118,8 @@ export abstract class ParseqAstNode {
     return this.value;
   }
 
-  public getOrComputeState(key: string, compute: () => object): object {
+  public getOrComputeState(key: string, compute: () => object): object | undefined {
     if (this.nodeState.has(key)) {
-      //@ts-ignore - we know this is an object
       return this.nodeState.get(key);
     } else {
       const value = compute();

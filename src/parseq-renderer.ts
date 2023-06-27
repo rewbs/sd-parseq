@@ -82,6 +82,7 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
     const graphData: GraphableData = {};
     managedFields.forEach((field) => {
+        console.log(field);
 
         graphData[field] = [];
 
@@ -147,7 +148,8 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
                     BPM: options.bpm,
                     computed_values: prev_computed_values,
                     variableMap: new Map([["prev_computed_value", (frame>0) ? prev_computed_values[frame-1] : 0]]),
-                    timeSeries: timeSeries
+                    timeSeries: timeSeries,
+                    rendered_frames
                 }
                 computed_value = interpolator.invoke(ctx);
                 stats.invokeEvents++;

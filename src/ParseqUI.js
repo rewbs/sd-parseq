@@ -229,7 +229,6 @@ const ParseqUI = (props) => {
         gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
         gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
         gridRef.current.api.onSortChanged();
-        gridRef.current.api.sizeColumnsToFit();
     });
 
       if (displayedFields.length !== prevDisplayedFields?.length
@@ -1363,12 +1362,16 @@ const ParseqUI = (props) => {
           {optionsUI}
           {displayedFieldSelector}
           {grid}
-          <span id='gridControls'>
-            {addRowDialog}
-            {bulkEditDialog}
-            {mergeKeyframesDialog}
-            {deleteRowDialog}
-          </span>
+          <Stack direction='row' justifyContent={'space-between'} fullWidth>
+            <Stack direction='row' gap={1} id='gridControls' fullWidth>
+              {addRowDialog}
+              {bulkEditDialog}
+              {mergeKeyframesDialog}
+              {deleteRowDialog}
+            </Stack>
+            <Button href='/functionDocs' target='_blank' color='success' size="small" variant="outlined">📈 Function docs</Button>
+          </Stack>          
+          
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>

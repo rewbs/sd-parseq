@@ -27,7 +27,7 @@ const info_match_prev : ParseqFunction = {
 
 const functionLibrary: { [key: string]: ParseqFunction } = {
   "info_match": {
-    description: "Returns 1 if the info label of the current active keyframe matches the supplied regex, 0 otherwise.",
+    description: "Returns 1 if the info label of the current keyframe matches the supplied regex, 0 otherwise.",
     argDefs: [
       { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
     ],
@@ -66,7 +66,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
   },
 
   "info_match_gap": {
-    description: "Returns the number of frames between the previous and next match (equivalent to info_match_next()-info_match_prev()), or -1 if not between matches.",
+    description: "Returns the number of frames between the previous and next match (equivalent to `info_match_next()-info_match_prev()`), or `-1` if not between matches.",
     argDefs: [
       { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
     ],
@@ -79,7 +79,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
   },
 
   "info_match_progress": {
-    description: "Returns a number between 0 and 1 reprenting how far the current frame is along the gap between (equivalent to (f-info_match_prev()/info_match_gap()), or -1 if not between matches.",
+    description: "Returns a number between 0 and 1 reprenting how far the current frame is along the gap between (equivalent to `(f-info_match_prev()/info_match_gap())`, or `-1` if not between matches.",
     argDefs: [
       { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
     ],

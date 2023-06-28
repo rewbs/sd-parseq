@@ -10,5 +10,10 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+  background: rgb(235, 235, 235);
+  word-wrap: break-word;
+  box-decoration-break: clone;
+  padding: .1rem .1rem .1rem;
+  border-radius: .2rem;
 }
 

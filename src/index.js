@@ -17,6 +17,7 @@ import Browser from './Browser';
 import Deforum from './Deforum';
 import Labs from './Labs';
 import Raw from './Raw';
+import FunctionDoc from './FunctionDoc';
 import reportWebVitals from './reportWebVitals';
 
 Sentry.init({
@@ -36,6 +37,7 @@ const myRouter = createBrowserRouter([
   { path: '/analyser', element: <Analyser /> },
   { path: '/labs', element: <Labs /> },
   { path: '/raw', element: <Raw /> },
+  { path: '/functionDocs', element: <FunctionDoc /> },
 ]);
 
 //@ts-ignore

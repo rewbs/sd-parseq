@@ -14,6 +14,7 @@ export type ArgDef = {
     type: string;
     required: boolean;
     default: number | string | ((ctx: InvocationContext) => number | string);
+    defaultDescription?: string
 }
 
 export type ParseqFunction = {

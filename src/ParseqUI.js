@@ -1362,12 +1362,16 @@ const ParseqUI = (props) => {
           {optionsUI}
           {displayedFieldSelector}
           {grid}
-          <span id='gridControls'>
-            {addRowDialog}
-            {bulkEditDialog}
-            {mergeKeyframesDialog}
-            {deleteRowDialog}
-          </span>
+          <Stack direction='row' justifyContent={'space-between'} fullWidth>
+            <Stack direction='row' gap={1} id='gridControls' fullWidth>
+              {addRowDialog}
+              {bulkEditDialog}
+              {mergeKeyframesDialog}
+              {deleteRowDialog}
+            </Stack>
+            <Button href='/functionDocs' target='_blank' color='success' size="small" variant="outlined">📈 Function docs</Button>
+          </Stack>          
+          
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>

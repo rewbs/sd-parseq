@@ -142,7 +142,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     argDefs: [
       { description: "min", names: ["min", "n"], type: "number", required: false, default: 0 },
       { description: "max", names: ["max", "x"], type: "number", required: false, default: 1 },
-      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now() },
+      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now(), defaultDescription: "current time in nanoseconds"},
       { description: "hold", names: ["hold", "h"], type: "number", required: false, default: 1 },
     ],
     call: (ctx, args, node) => {
@@ -167,7 +167,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       { description: "smoothing factor (1 for ragged, 100 for smooth)", names: ["smooth", "sm"], type: "number", required: false, default: 10 },
       { description: "min", names: ["min", "n"], type: "number", required: false, default: 0 },
       { description: "max", names: ["max", "x"], type: "number", required: false, default: 1 },
-      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now() },
+      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now(), defaultDescription: "current time in nanoseconds" },
       { description: "y (2d component of noise function)", names: ["y"], type: "number", required: false, default: 0 },
     ],
     call: (ctx, args, node) => {
@@ -183,7 +183,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       { description: "smoothing factor (1 for ragged, 100 for smooth)", names: ["smooth", "sm"], type: "number", required: false, default: 10 },
       { description: "min", names: ["min", "n"], type: "number", required: false, default: 0 },
       { description: "max", names: ["max", "x"], type: "number", required: false, default: 1 },
-      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now() },
+      { description: "seed", names: ["seed", "s"], type: "number", required: false, default: () => window.performance.now(), defaultDescription: "current time in nanoseconds" },
       { description: "y (2d component of noise function)", names: ["y"], type: "number", required: false, default: 0 },
     ],
     call: (ctx, args, node) => {
@@ -257,10 +257,10 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       { description: "control point y2", names: ["y2"], type: "number", required: false, default: 1 },
       { description: "starting y position", names: ["from", "start", "s"], type: "number", required: false, default: (ctx) => getActiveKeyframeValue(ctx) },
       { description: "ending y position", names: ["to", "end", "t"], type: "number", required: false, default: (ctx) => getNextKeyframeValue(ctx) },
-      { description: "ending y position as a delta of starting position", names: ["d", "delta"], type: "number", required: false, default: 0 },
       { description: "duration of the bezier curve in frames", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe },
       { description: "offset", names: ["offset","os"], type: "number", required: false, default: 2 },
       { description: "curve type (overriddes x1, y1, x2, y2 with preset values)", names: ["curve","c"], type: "string", required: false, default: "" },
+      { description: "ending y position as a delta of starting position (overrides `to` if present)", names: ["d", "delta"], type: "number", required: false, default: 0 },      
     ],
 
     call: (ctx, args) => {
@@ -278,9 +278,9 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
   "slide": {
     description: "returns position on a linear slide with configurable starting and ending points.",
     argDefs: [
-      { description: "start y", names: ["from", "start", "s"], type: "number", required: false, default: (ctx) => getActiveKeyframeValue(ctx) },
-      { description: "end y", names: ["to", "end", "t"], type: "number", required: false, default: (ctx) => getNextKeyframeValue(ctx) },
-      { description: "duration in frames (span)", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe },
+      { description: "start y", names: ["from", "start", "s"], type: "number", required: false, default: (ctx) => getActiveKeyframeValue(ctx), defaultDescription: "current keyframe value" },
+      { description: "end y", names: ["to", "end", "t"], type: "number", required: false, default: (ctx) => getNextKeyframeValue(ctx), defaultDescription: "next keyframe value" },
+      { description: "duration in frames (span)", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe, defaultDescription: "distance between current and next keyframe" },
       { description: "offset", names: ["offset","os"], type: "number", required: false, default: 2 },
     ],
     call: (ctx, args) => slide(Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]), ctx)

@@ -39,7 +39,7 @@ const miniParseqDefaults: {
 
 //TODO move to utils
 const argToMarkdown = (argDef: ArgDef): string => {
-    return `${argDef.names.map(n => '`'+n+'`').join("/")} ${argDef.required?'**required**':''}: ${argDef.description} (default: ${argDef.required ? 'none' : argDef.default.toString()}, type: ${argDef.type})`;
+    return `${argDef.names.map(n => '`' + n + '`').join("/")} ${argDef.required ? '**required**' : ''}: ${argDef.description} (default: ${argDef.required ? 'none' : (argDef.defaultDescription || argDef.default.toString())}, type: ${argDef.type})`;
 }
 
 
@@ -156,7 +156,7 @@ const MiniParseq = ({ keyframes, fields }: MiniParseqProps) => {
                 onChange={(e) => setVisualise(e.target.checked)}
                 checked={visualise}
             />}
-            label={<small>&nbsp;Visualise</small>} />        
+            label={<small>&nbsp;Visualise</small>} />
         <Stack direction={"row"}>
             <Box width="auto" minWidth={"33%"} flexGrow={2}>
                 {grid}
@@ -248,7 +248,7 @@ const FunctionDoc = () => {
                 keyframeOverrides: [
                     { frame: 0, translation_z_i: 'f', },
                     { frame: 50, translation_z_i: 'f%10', },
-                    { frame: 99,},
+                    { frame: 99, },
                 ]
             }]
         },
@@ -320,6 +320,25 @@ const FunctionDoc = () => {
             }],
         },
         {
+            category: "Context variables",
+            name: "**prev_computed_value**: Value computed at the previous frame.",
+            description: "Allows you to express the value of the current frame relative to the previous frame. Value on frame 0 is the default value for this field. Equivalent to `computed_at(f-1)`",
+            examples: [
+                {
+                    description: "Increment by 1 on every frame",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'prev_computed_value + 1' },
+                    ]
+                },
+                {
+                    description: "Increment by an oscillating amount on every frame",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'prev_computed_value + sin(p=4b, c=1)' },
+                    ]
+                }                
+            ],
+        },
+        {
             category: "Oscillators",
             name: "**sin()**: sinusoidal oscillator",
             function_ref: functionLibrary.sin,
@@ -335,7 +354,7 @@ const FunctionDoc = () => {
                     frame: 0,
                     translation_z_i: 'sin(p=8b, ps=2b, a=100)',
                 }]
-            },{
+            }, {
                 description: "Raising a sine wave to a power to create sharper dips/bumps.",
                 keyframeOverrides: [
                     { frame: 0, translation_z_i: '(sin(p=4b, a=1)^7)*100', }
@@ -362,8 +381,8 @@ const FunctionDoc = () => {
                 { frame: 15, translation_z: 100, },
                 { frame: 30, translation_z: 800, },
                 { frame: 80, translation_z: 400, },
-                { frame: 99, translation_z: 100,  },
-            ]
+                { frame: 99, translation_z: 100, },
+                ]
             }]
         },
         {
@@ -387,7 +406,7 @@ const FunctionDoc = () => {
                     { frame: 0, translation_z_i: 'saw(p=4b, a=100)', }
                 ]
             }]
-        }, 
+        },
         {
             category: "Oscillators",
             name: "**pulse()**: pulse oscillator",
@@ -428,17 +447,17 @@ const FunctionDoc = () => {
                 { frame: 15, translation_z: 100, },
                 { frame: 30, translation_z: 800, },
                 { frame: 80, translation_z: 400, },
-                { frame: 99, translation_z: 100,},
-            ]
+                { frame: 99, translation_z: 100, },
+                ]
             },
             {
                 description: "Changing the shape of the bezier curve. Supported values are: `easeIn`, `easeOut`, `easeInOut`, `easeIn1`, `easeOut1`, `easeInOut1 easeIn2`, `easeOut2`, `easeInOut2`, `easeIn3`, `easeOut3`, `easeInOut3`, `easeIn4`, `easeOut4`, `easeInOut4`, `easeIn5`, `easeOut5`, `easeInOut5`, `easeIn6`, `easeOut6`, `easeInOut6`, `easeInCirc`, `easeOutCirc`, `easeInOutCirc`, `easeInBack`, `easeOutBack`, `easeInOutBack`",
                 keyframeOverrides: [
-                    {frame: 0, translation_z: 20, translation_z_i: 'bez(curve="easeIn6")', },
+                    { frame: 0, translation_z: 20, translation_z_i: 'bez(curve="easeIn6")', },
                     { frame: 15, translation_z: 100, },
-                    { frame: 30, translation_z: 800, translation_z_i: 'bez(curve="easeOutBack")',  },
+                    { frame: 30, translation_z: 800, translation_z_i: 'bez(curve="easeOutBack")', },
                     { frame: 80, translation_z: 400, },
-                    { frame: 99, translation_z: 100,},
+                    { frame: 99, translation_z: 100, },
                 ]
             },
             {
@@ -463,8 +482,8 @@ const FunctionDoc = () => {
                 { frame: 15, translation_z: 100, },
                 { frame: 30, translation_z: 800, },
                 { frame: 80, translation_z: 400, },
-                { frame: 99, translation_z: 100,},
-            ]
+                { frame: 99, translation_z: 100, },
+                ]
             },
             {
                 description: "Restarting a slide on every beat by setting the offset to `b%1`, which is the fractional part of the current beat position. Change the targer position of the slide to the current frame number.",
@@ -486,11 +505,11 @@ const FunctionDoc = () => {
                 {
                     description: "Make the min and max value of the random number generator depend on the value field. Use a fixed seed to guarantee repeatable values.",
                     keyframeOverrides: [
-                        { frame: 0,  translation_z: 50,  translation_z_i: 'rand(min=-S, max=S, seed=1)' },
+                        { frame: 0, translation_z: 50, translation_z_i: 'rand(min=-S, max=S, seed=1)' },
                         { frame: 25, translation_z: 100, },
                         { frame: 50, translation_z: 200, },
                         { frame: 75, translation_z: 100, },
-                        { frame: 99, translation_z: 50,},
+                        { frame: 99, translation_z: 50, },
                     ]
                 },
                 {
@@ -500,7 +519,7 @@ const FunctionDoc = () => {
                 {
                     description: "Bezier curve from 0 to a random value on every beat.",
                     keyframeOverrides: [{ frame: 0, translation_z_i: 'bez(from=0, to=rand(n=-100, x=100, h=1b, s=1), os=b%1, c="easeOut6")' }]
-                },                
+                },
             ]
         },
         {
@@ -515,8 +534,8 @@ const FunctionDoc = () => {
                 {
                     description: "Increasingly simplex smooth noise with a fixed seed.",
                     keyframeOverrides: [{ frame: 0, translation_z_i: 'smrand(sm=1+f/10, s=1)' }]
-                },                
-               
+                },
+
             ]
         },
         {
@@ -531,8 +550,8 @@ const FunctionDoc = () => {
                 {
                     description: "Increasingly smooth perlin noise with a fixed seed.",
                     keyframeOverrides: [{ frame: 0, translation_z_i: 'perlin(sm=1+f/10, s=1)' }]
-                },   
-               
+                },
+
             ]
         },
         {
@@ -597,7 +616,7 @@ const FunctionDoc = () => {
                 {
                     description: "Round a sine oscillator to a single decimal place.",
                     keyframeOverrides: [{ frame: 0, translation_z_i: 'round(sin(p=100f),1)' }]
-                }                
+                }
             ]
         },
         {
@@ -631,7 +650,7 @@ const FunctionDoc = () => {
                         { frame: 75, },
                         { frame: 90, info: "bassdrum 4", },
                         { frame: 99, },
-                        
+
                     ]
                 }
             ]
@@ -652,7 +671,7 @@ const FunctionDoc = () => {
                         { frame: 75, },
                         { frame: 90, info: "bassdrum 4", },
                         { frame: 99, },
-                        
+
                     ]
                 }
             ]
@@ -673,7 +692,7 @@ const FunctionDoc = () => {
                         { frame: 75, },
                         { frame: 90, info: "bassdrum 4", },
                         { frame: 99, },
-                        
+
                     ]
                 }
             ]
@@ -693,7 +712,7 @@ const FunctionDoc = () => {
                         { frame: 60, info: "bassdrum 3", },
                         { frame: 75, },
                         { frame: 90, info: "bassdrum 4", },
-                        { frame: 99, },  
+                        { frame: 99, },
                     ]
                 },
                 {
@@ -702,11 +721,11 @@ const FunctionDoc = () => {
                         { frame: 0, info: "bassdrum 1", translation_z_i: 'bez(from=20*info_match_count("bassdrum"), to=20*(info_match_count("bassdrum")+1), curve="easeOut6")' },
                         { frame: 15, },
                         { frame: 30, },
-                        { frame: 45, translation_z: 0,  info: "bassdrum 2", },
+                        { frame: 45, translation_z: 0, info: "bassdrum 2", },
                         { frame: 60, translation_z: 0, info: "bassdrum 3", },
                         { frame: 75, },
                         { frame: 90, translation_z: 0, info: "bassdrum 4", },
-                        { frame: 99, },  
+                        { frame: 99, },
                     ]
                 }
             ]
@@ -725,7 +744,7 @@ const FunctionDoc = () => {
                         { frame: 60, info: "bassdrum 3", },
                         { frame: 75, },
                         { frame: 90, info: "bassdrum 4", },
-                        { frame: 99, },  
+                        { frame: 99, },
                     ]
                 }
             ]
@@ -744,7 +763,7 @@ const FunctionDoc = () => {
                         { frame: 60, info: "bassdrum 3", },
                         { frame: 75, },
                         { frame: 90, info: "bassdrum 4", },
-                        { frame: 99, },  
+                        { frame: 99, },
                     ]
                 },
                 {
@@ -761,8 +780,89 @@ const FunctionDoc = () => {
                     ]
                 }
             ]
+        },
+        {
+            category: "Beats and seconds",
+            name: "**Units**: ",
+            description: "Parseq's default time unit is the frame, but you can use `s` and `b` suffixes on constants to refer to seconds or beats.",
+            examples: [
+                {
+                    description: "By default constants refer to frames. Here we specify a sine wave with a period of 20 frames",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'sin(p=20)' },
+                    ]
+                },
+                {
+                    description: "A sine wave with a period of 1.5 seconds",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'sin(p=1.5s)' },
+                    ]
+                },
+                {
+                    description: "A sine wave with a period of 4 beats",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'sin(p=4b)' },
+                    ]
+                }
+            ]
+        },
+        {
+            category: "Beats and seconds",
+            name: "**Units conversions**: ",
+            description: "If you can't use suffixes on constants, various functions are available to convert between units.",
+            examples: [
+                {
+                    description: "Beats to frames",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'b2f(10)' },
+                    ]
+                },
+                {
+                    description: "Frames to beats",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'f2b(10)' },
+                    ]
+                },
+                {
+                    description: "Seconds to frames",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 's2f(10)' },
+                    ]
+                },
+                {
+                    description: "Frames to seconds",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'f2s(10)' },
+                    ]
+                },
+            ]
+        },
+        {
+            category: "Beats and seconds",
+            name: "**start_of_beat()**: return the frame number of the start of the beat.",
+            function_ref: functionLibrary.start_of_beat,
+            examples: [
+                {
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'start_of_beat()' },
+                    ]
+                }
+            ]
+        },
+        {
+            category: "Meta",
+            name: "**computed_at()**: return the frame number of the start of the beat.",
+            function_ref: functionLibrary.computed_at,
+            examples: [
+                {
+                    description: "Repeat the same random pattern every beat. This pattern will change if you reload the page.",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'if (b<1) rand() else computed_at(f-start_of_beat()) ' },
+                    ]
+                }
+            ]
         }
-          
+
 
 
     ]
@@ -772,43 +872,42 @@ const FunctionDoc = () => {
         return _.chain(docEntries)
             .groupBy('category')
             .map((category) => <>
-                <Box width={'100%'} sx={{background: 'lightblue', paddingLeft: '0.5rem', borderRadius: '.3rem'}}>
+                <Box width={'100%'} sx={{ background: 'lightblue', paddingLeft: '0.5rem', borderRadius: '.3rem' }}>
                     <Typography variant="h4">{category[0].category}</Typography>
                 </Box>
                 {
                     category.map((entry) => <>
-                        <Typography variant="h5"><ReactMarkdown children={entry.name||""} /></Typography>
+                        <Typography variant="h5"><ReactMarkdown children={entry.name || ""} /></Typography>
                         <Box marginBottom={'1em'} marginLeft={'1em'}>
-                        {entry.description && <Typography variant="body1"><ReactMarkdown children={entry.description||""} /></Typography> }
-                        {entry.function_ref && <>
-                            <Typography variant="body1"><ReactMarkdown children={entry.function_ref.description||""} /></Typography>
-                            { entry.function_ref.argDefs.length > 0 && <>
-                            <Typography variant="body1">Arguments:</Typography>
-                            <ul style={{marginTop:0}}>
-                                {
-                                    entry.function_ref.argDefs
-                                        .map((argDef) => <li><Typography fontSize={"0.9em"}><ReactMarkdown>{argToMarkdown(argDef)}</ReactMarkdown></Typography></li>)
-                                }
-                            </ul> 
+                            {entry.description && <Typography variant="body1"><ReactMarkdown children={entry.description || ""} /></Typography>}
+                            {entry.function_ref && <>
+                                <Typography variant="body1"><ReactMarkdown children={entry.function_ref.description || ""} /></Typography>
+                                {entry.function_ref.argDefs.length > 0 && <>
+                                    <Typography variant="body1">Arguments:</Typography>
+                                    <ul style={{ marginTop: 0 }}>
+                                        {
+                                            entry.function_ref.argDefs
+                                                .map((argDef) => <li><Typography fontSize={"0.9em"}><ReactMarkdown>{argToMarkdown(argDef)}</ReactMarkdown></Typography></li>)
+                                        }
+                                    </ul>
+                                </>}
                             </>}
-                        </>}
-                        <Typography fontWeight={'bold'}>{entry.examples.length>1?'Examples':'Example'}</Typography>
-                        <Box marginLeft={'2em'}>
-                            {
-                                entry.examples.map((example) => {
-                                    const miniParseqConfig = _.cloneDeep(miniParseqDefaults);
-                                    miniParseqConfig.keyframes = _.defaultsDeep(example.keyframeOverrides, miniParseqDefaults.keyframes);
-                                    console.log(miniParseqConfig);
-                                    return <>
-                                        <Typography><ReactMarkdown children={example.description||""} /></Typography>
-                                        <MiniParseq {...miniParseqConfig} />
+                            <Typography fontWeight={'bold'}>{entry.examples.length > 1 ? 'Examples' : 'Example'}</Typography>
+                            <Box marginLeft={'2em'}>
+                                {
+                                    entry.examples.map((example) => {
+                                        const miniParseqConfig = _.cloneDeep(miniParseqDefaults);
+                                        miniParseqConfig.keyframes = _.defaultsDeep(example.keyframeOverrides, miniParseqDefaults.keyframes);
+                                        return <>
+                                            <Typography><ReactMarkdown children={example.description || ""} /></Typography>
+                                            <MiniParseq {...miniParseqConfig} />
                                         </>;
-                                })
-                            }
-                        </Box>
+                                    })
+                                }
+                            </Box>
                         </Box>
                     </>
-                )}
+                    )}
             </>)
             .value();
     }

@@ -6,8 +6,8 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
   "computed_at": {
     description: "Get the value computed for this field at a given frame.",
     argDefs: [
-      { description: "frame", names: ["f"], type: "number", required: false, default: (ctx) => ctx.activeKeyframe },
-      { description: "default value if requested frame is <0", names: ["d"], type: "number", required: false, default: (ctx) => getDefaultFieldValue(ctx.fieldName) },
+      { description: "frame", names: ["f"], type: "number", required: false, default: (ctx) => ctx.activeKeyframe, defaultDescription: "frame number of the active keyframe" },
+      { description: "default value if requested frame is <0", names: ["d"], type: "number", required: false, default: (ctx) => getDefaultFieldValue(ctx.fieldName), defaultDescription: "the default value for this field" },
     ],
     call: (ctx, args) => {
       const prior_frame = Number(args[0]);
@@ -23,8 +23,8 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
   "start_of_beat": {
     description: "Get the frame number of the start of the beat at the given frame.",
     argDefs: [
-      { description: "frame", names: ["f"], type: "number", required: false, default: (ctx) => ctx.frame },
-      { description: "rounding mode", names: ["round", "r"], type: "string", required: false, default: 'r' },
+      { description: "frame", names: ["f"], type: "number", required: false, default: (ctx) => ctx.frame, defaultDescription: "the current frame"},
+      { description: "rounding mode: `d`=down, `u`=up, `r`=round", names: ["round", "r"], type: "string", required: false, default: 'r' },
     ],
     call: (ctx, args) => {
       let rounding: (x: number) => number;

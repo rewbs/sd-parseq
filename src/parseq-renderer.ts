@@ -82,7 +82,6 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
     var all_frame_numbers = Array.from(Array(lastKeyFrame.frame - firstKeyFrame.frame + 1).keys()).map((i) => i + firstKeyFrame.frame);
     const graphData: GraphableData = {};
     managedFields.forEach((field) => {
-        console.log(field);
 
         graphData[field] = [];
 

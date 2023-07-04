@@ -72,15 +72,12 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     }
   },
   "dangerous": {
-    description: "Get value of a field at a given frame. Beware of cycles (there's no protection from them)",
+    description: "Get value of a field at a given frame, IF it has already been calculated, else -1. WARNING: there's no guarantee of field computation ordering, and there's no protection from of cyclical references.",
     argDefs: [
       { description: "field name", names: ["name", "n"], type: "string", required: true, default: 0},
       { description: "frame", names: ["frame", "f"], type: "number", required: false, default: (ctx) => ctx.frame},
     ],
     call: (ctx, args) => {
-
-      console.log(ctx.rendered_frames![Number(args[1])]);
-
       if (ctx.rendered_frames
         && ctx.rendered_frames[Number(args[1])]
         && ctx.rendered_frames[Number(args[1])][args[0]]) {

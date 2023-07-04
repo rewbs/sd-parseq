@@ -260,11 +260,11 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       { description: "duration of the bezier curve in frames", names: ["span", "in", "s"], type: "number", required: false, default: (ctx) => getNextKeyframe(ctx) - ctx.activeKeyframe },
       { description: "offset", names: ["offset","os"], type: "number", required: false, default: 2 },
       { description: "curve type (overriddes x1, y1, x2, y2 with preset values)", names: ["curve","c"], type: "string", required: false, default: "" },
-      { description: "ending y position as a delta of starting position (overrides `to` if present)", names: ["d", "delta"], type: "number", required: false, default: 0 },      
+      { description: "ending y position as a delta of starting position (overrides `to` if present)", names: ["d", "delta"], type: "number", required: false, default: 0 },
     ],
 
     call: (ctx, args) => {
-      let [x1, y1, x2, y2, from, to, delta, span, offset, curve] = [Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]), Number(args[4]), Number(args[5]), Number(args[6]), Number(args[7]), Number(args[8]), String(args[9])];
+      let [x1, y1, x2, y2, from, to, span, offset, curve, delta] = [Number(args[0]), Number(args[1]), Number(args[2]), Number(args[3]), Number(args[4]), Number(args[5]), Number(args[6]), Number(args[7]), String(args[8]), Number(args[9])];
       if (curve) {
         [x1, y1, x2, y2] = curveNameToControlPoints(curve);
       }

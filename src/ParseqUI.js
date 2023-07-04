@@ -24,6 +24,7 @@ import useDebouncedEffect from 'use-debounced-effect';
 import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
 import { ParseqGraph } from './components/ParseqGraph';
 import { ParseqGrid } from './components/ParseqGrid';
+import SupportParseq from './components/SupportParseq'
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { AudioWaveform } from './components/AudioWaveform';
 import { ExpandableSection } from './components/ExpandableSection';
@@ -89,6 +90,7 @@ const ParseqUI = (props) => {
   const [gridCursorPos, setGridCursorPos] = useState(0);
   const [rangeSelection, setRangeSelection] = useState({});
   const [audioCursorPos, setAudioCursorPos] = useState(0);
+  const [activeVersionId, setActiveVersionId] = useState();
   
   const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
@@ -157,6 +159,11 @@ const ParseqUI = (props) => {
         // Map loaded content to React state
         // Assum all required deep copying has been done by the load function.
         setPersistableState(loaded.loadedDoc);
+        
+        // If we've loaded a specific version, track that version number so we can included it in rendered output.
+        if (loaded.loadedDoc?.versionId) {
+          setActiveVersionId(loaded.loadedDoc.versionId);
+        }
 
       }).catch((e) => {
         setInitStatus({severity: "error", message: "Error loading document: " + e.toString()});
@@ -187,7 +194,12 @@ const ParseqUI = (props) => {
   // in quick succession.
   useDebouncedEffect(() => {
     if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields && timeSeries && keyframeLock) {
-      saveVersion(activeDocId, getPersistableState());
+      const savedStatus = saveVersion(activeDocId, getPersistableState());
+      savedStatus.then((versionIdIfSaved) => {      
+        if (versionIdIfSaved) {
+          setActiveVersionId(versionIdIfSaved);
+        }
+      });
       setLastSaved(Date.now());
     }
   }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock]);
@@ -217,7 +229,6 @@ const ParseqUI = (props) => {
         gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
         gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
         gridRef.current.api.onSortChanged();
-        gridRef.current.api.sizeColumnsToFit();
     });
 
       if (displayedFields.length !== prevDisplayedFields?.length
@@ -266,6 +277,8 @@ const ParseqUI = (props) => {
         "generated_by": "sd_parseq",
         "version": getVersionNumber(),
         "generated_at": getUTCTimeStamp(),
+        "doc_id": activeDocId?.toString().startsWith("doc-") ? activeDocId : "unknown",
+        "version_id": activeVersionId?.toString().startsWith("version-") ? activeVersionId : "unknown",
       },
       prompts: prompts,
       options: options,
@@ -276,7 +289,7 @@ const ParseqUI = (props) => {
       keyframeLock: keyframeLock
     }
   }
-  , [prompts, options, displayedFields, keyframes, managedFields, timeSeries, keyframeLock]);
+  , [prompts, activeDocId, options, managedFields, displayedFields, keyframes, timeSeries, keyframeLock, activeVersionId]);
 
 
   // Converts document object to React state.
@@ -677,71 +690,77 @@ const ParseqUI = (props) => {
   // Core options ------------------------
 
   const optionsUI = useMemo(() => options && <span>
-    <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={4}>
-      <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
-        <TextField
-          id={"options_bpm"}
-          label={"BPM"}
-          value={options['bpm']}
-          onChange={handleChangeOption}
-          onFocus={(e) => setTyping(true)}
-          onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>
-      <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
-        <TextField
-          id={"options_output_fps"}
-          label={"FPS"}
-          value={options['output_fps']}
-          onChange={handleChangeOption}
-          onFocus={(e) => setTyping(true)}
-          onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>
-      <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
-        <TextField
-          label={"Final frame"}
-          value={candidateLastFrame}
-          onChange={(e)=>setCandidateLastFrame(e.target.value)}
-          onFocus={(e) => setTyping(true)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setTimeout(() => e.target.blur());
-              e.preventDefault();
-            } else if (e.key === 'Escape') {
-              setTimeout(() => e.target.blur());
-              setCandidateLastFrame(lastFrame)
-              e.preventDefault();
-            }
-          }}
-          onBlur={(e) => {
-            setTyping(false);
-            let candidate = parseInt(e.target.value);
-            const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
-            if (!candidate || candidate < 0 || isNaN(candidate)) {
-              setCandidateLastFrame(lastFrame);
-            } else {
-              if (candidate <= penultimate) {
-                candidate = penultimate + 1;
-                setCandidateLastFrame(candidate);
+     
+    <Stack direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"} gap={2}>
+      <Stack direction='row'  gap={2}>
+        <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
+          <TextField
+            id={"options_bpm"}
+            label={"BPM"}
+            value={options['bpm']}
+            onChange={handleChangeOption}
+            onFocus={(e) => setTyping(true)}
+            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+        <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
+          <TextField
+            id={"options_output_fps"}
+            label={"FPS"}
+            value={options['output_fps']}
+            onChange={handleChangeOption}
+            onFocus={(e) => setTyping(true)}
+            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+        <Tooltip2 title="Shortcut to change the position of the final frame. This just edits the frame number of the final keyframe, which you can do in the grid too. You cannot make it less than the penultimate frame.">
+          <TextField
+            label={"Final frame"}
+            value={candidateLastFrame}
+            onChange={(e)=>setCandidateLastFrame(e.target.value)}
+            onFocus={(e) => setTyping(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setTimeout(() => e.target.blur());
+                e.preventDefault();
+              } else if (e.key === 'Escape') {
+                setTimeout(() => e.target.blur());
+                setCandidateLastFrame(lastFrame)
+                e.preventDefault();
               }
-              const local_keyframes = [...keyframes];
-              local_keyframes[local_keyframes.length - 1].frame = candidate;
-              setKeyframes(local_keyframes);
-              setTimeout(() => refreshGridFromKeyframes(local_keyframes));
-            }
-          }}
-          InputLabelProps={{ shrink: true, }}
-          InputProps={{ style: { fontSize: '0.75em' } }}
-          size="small"
-          variant="outlined" />
-      </Tooltip2>      
+            }}
+            onBlur={(e) => {
+              setTyping(false);
+              let candidate = parseInt(e.target.value);
+              const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
+              if (!candidate || candidate < 0 || isNaN(candidate)) {
+                setCandidateLastFrame(lastFrame);
+              } else {
+                if (candidate <= penultimate) {
+                  candidate = penultimate + 1;
+                  setCandidateLastFrame(candidate);
+                }
+                const local_keyframes = [...keyframes];
+                local_keyframes[local_keyframes.length - 1].frame = candidate;
+                setKeyframes(local_keyframes);
+                setTimeout(() => refreshGridFromKeyframes(local_keyframes));
+              }
+            }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{ style: { fontSize: '0.75em' } }}
+            sx={{ minWidth: 60 }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>
+      </Stack>        
       <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
         <Typography fontSize={"0.75em"}>Lock&nbsp;keyframe&nbsp;position&nbsp;to:</Typography>
         <ToggleButtonGroup size="small"
@@ -899,7 +918,7 @@ const ParseqUI = (props) => {
 
     <Grid container wrap='false'>
       <Grid xs={2}>
-        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
+        <Stack  direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"}   spacing={1}>
           <TextField
             select
             fullWidth={false}
@@ -925,8 +944,8 @@ const ParseqUI = (props) => {
         </Stack>
       </Grid>
       <Grid xs={6}>
-        <Stack direction="row" alignItems="center" justifyContent="left" spacing={1}>
-          <Typography fontSize="0.75em">Markers:</Typography>
+        <Stack  direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: "flex-end", sm: "flex-end", md: 'center' }} justifyContent={"flex-end"}   spacing={1}>
+          <Typography fontSize="0.75em" fontWeight={'bold'}>Markers:</Typography>
           <FormControlLabel control={
             <Checkbox
               checked={showPromptMarkers}
@@ -1295,23 +1314,21 @@ const ParseqUI = (props) => {
     }}>
     <React.StrictMode>
       <CssBaseline />
-      <Stack direction={'row'} wrap='nowrap' width='100%'>
-        <Grid xs={'auto'} sx={{flexGrow: 1}} >
-          {docManager}
-        </Grid>
-        <Grid xs={'auto'}
-          sx={{
-            borderLeft: 'var(--Grid-borderWidth) solid',
-            borderRight: 'var(--Grid-borderWidth) solid',
-            borderBottom: 'var(--Grid-borderWidth) solid',
-            borderColor: 'divider',
-          }}>
-          <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'flex-end'}>
-            <Box width={"728px"} height="90px">
-            </Box>
-          </Stack>
-        </Grid>
-      </Stack>        
+      <Grid xs={8}  >
+        {docManager}
+      </Grid>
+      <Grid xs={4}
+        sx={{
+          borderLeft: 'var(--Grid-borderWidth) solid',
+          borderRight: 'var(--Grid-borderWidth) solid',
+          borderBottom: 'var(--Grid-borderWidth) solid',
+          borderColor: 'divider',
+        }}>
+        <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' fullWidth flexGrow={4} alignItems={'flex-start'}>
+          <SupportParseq />
+        </Stack>
+      </Grid>
+        
       <Grid xs={12}>
         <ExpandableSection title="Prompts">
           {promptsUI}
@@ -1345,12 +1362,16 @@ const ParseqUI = (props) => {
           {optionsUI}
           {displayedFieldSelector}
           {grid}
-          <span id='gridControls'>
-            {addRowDialog}
-            {bulkEditDialog}
-            {mergeKeyframesDialog}
-            {deleteRowDialog}
-          </span>
+          <Stack direction='row' justifyContent={'space-between'} fullWidth>
+            <Stack direction='row' gap={1} id='gridControls' fullWidth>
+              {addRowDialog}
+              {bulkEditDialog}
+              {mergeKeyframesDialog}
+              {deleteRowDialog}
+            </Stack>
+            <Button href='/functionDocs' target='_blank' color='success' size="small" variant="outlined">📈 Function docs</Button>
+          </Stack>          
+          
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>

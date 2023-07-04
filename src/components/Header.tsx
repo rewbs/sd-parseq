@@ -1,15 +1,14 @@
-import * as React from 'react';
+import { faDiscord, faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faBook, faBug, faFilm } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Box, Chip, Stack, Typography } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
-import { Chip, Typography, Box } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCoffee, faBook, faBug, faFilm } from '@fortawesome/free-solid-svg-icons'
-import { faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons'
-import { UserAuthContextProvider } from "../UserAuthContext";
-import Login from "../Login";
-import { auth, app} from '../firebase-config';
+import { getAnalytics, isSupported } from "firebase/analytics";
 import GitInfo from 'react-git-info/macro';
+import Login from "../Login";
+import { UserAuthContextProvider } from "../UserAuthContext";
+import { app, auth } from '../firebase-config';
 import '../robin.css';
-import {isSupported, getAnalytics} from "firebase/analytics";
 import { getVersionNumber } from '../utils/utils';
 
 var analytics: any;
@@ -31,7 +30,6 @@ type MyProps = {
     title: string
 };
 
-// TODO: separate React UI component from the service class.
 export default function Header({ title }: MyProps) {
 
     const displayDate = GIT_COMMIT_DATE;
@@ -40,9 +38,9 @@ export default function Header({ title }: MyProps) {
     const changeLogLink = <a href={"https://github.com/rewbs/sd-parseq/commits/" + (GIT_BRANCH ?? '')}>all changes</a>
 
     return (
-        <Grid container paddingLeft={5} paddingRight={5}>
+        <Grid container paddingLeft={5} paddingRight={5} paddingBottom={1}>
             <Grid xs={6}>
-                <h2>
+                <h2> 
                     {title} <small>v{getVersionNumber()}</small>
                     <Typography fontSize='0.4em'>
                         [{process.env.NODE_ENV}] {displayBranch} Built {displayDate} ({commitLink} - {changeLogLink})
@@ -56,16 +54,17 @@ export default function Header({ title }: MyProps) {
                     </Typography>
                 </Box>
             </Grid>
-            <Grid xs={6} display='flex' justifyContent="right" gap={1} alignItems='center'>
-                <Chip variant="outlined" component="a" href="https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8" clickable icon={<FontAwesomeIcon icon={faFilm} />} label="Tutorial" />
-                <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon icon={faBook} />} label="Docs" />
-                <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon icon={faBug} />} label="Bugs" />
-                <Chip variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon icon={faGithub} />} label="Code" />
-                <Chip variant="outlined" component="a" href="https://discord.gg/deforum" clickable icon={<FontAwesomeIcon icon={faDiscord} />} label="Chat" />
-                <Chip variant="outlined" component="a" href="https://www.buymeacoffee.com/rewbs" clickable icon={<FontAwesomeIcon icon={faCoffee} />} label="Coffee" />
+            <Grid xs={6} display='flex' justifyContent="right">
+                <Stack  justifyContent="right" gap={1} alignItems={{ sm: 'stretch', md: 'center' }}  direction={{  xs: 'column-reverse', sm: 'column-reverse', md: 'row' }}>
+                <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8" clickable icon={<FontAwesomeIcon  size='2xs' icon={faFilm} />} label="Tutorial" />
+                <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon size='2xs' icon={faBook} />} label="Docs" />
+                <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon  size='2xs' icon={faBug} />} label="Bugs" />
+                <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon  size='2xs' icon={faGithub} />} label="Code" />
+                <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://discord.gg/deforum" clickable icon={<FontAwesomeIcon  size='2xs' icon={faDiscord} />} label="Chat" />
                 <UserAuthContextProvider>
                     <Login />
                 </UserAuthContextProvider>
+                </Stack>
             </Grid>
         </Grid>
     );

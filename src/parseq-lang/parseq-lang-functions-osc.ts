@@ -4,12 +4,12 @@ import { ParseqFunction } from "./parseq-lang-functions";
 type oscillatorType = 'sin' | 'tri' | 'saw' | 'sq' | 'pulse';
 
 const commonArgs = [
-  { description: "period", names: ["period", "p"], type: "number", required: true, default: 0 },
-  { description: "phase shift", names: ["phase", "ps"], type: "number", required: false, default: 0 },
-  { description: "amplitude", names: ["amp", "a"], type: "number", required: false, default: 1 },
-  { description: "centre", names: ["centre", "c"], type: "number", required: false, default: 0 },
-  { description: "limit: number of periods to repeat", names: ["limit", "li"], type: "number", required: false, default: 0 },
-  { description: "pulse width", names: ["pulse", "pw"], type: "number", required: false, default: 5 },
+  { description: "The period of the oscillation, i.e. how long each repetition of the oscillation lasts. By default the unit is frames, but you can specify seconds or beats by appending the appropriate suffix (e.g. `sin(p=4b)` or `sin(p=5s)`).", names: ["period", "p"], type: "number", required: true, default: 0 },
+  { description: "The phase shift or x-axis offset of the oscillation, i.e. how much to subtract from the frame number to get the frame's oscillation x position. A useful value is `-active_keyframe`, which will make the period start from the keyframe position.", names: ["phase", "ps"], type: "number", required: false, default: 0 },
+  { description: "The amplitude of the oscillation. `sin(p=4b, a=2)` is equivalent to `sin(p=4b)*2`.", names: ["amp", "a"], type: "number", required: false, default: 1 },
+  { description: "The centre or y-axis offset of the oscillation. `sin(p=4b, c=2)` is equivalent to `sin(p=4b)+2`", names: ["centre", "c"], type: "number", required: false, default: 0 },
+  { description: "If `>0`, limits the number of periods repeated. Values 0 and below do nothing.", names: ["limit", "li"], type: "number", required: false, default: 0 },
+  { description: "*pulse() function only, ignored for other oscillators.* The pulse width", names: ["pulse", "pw"], type: "number", required: false, default: 5 },
 ]
 
 function oscillator(osc: oscillatorType, period: number, phase: number,

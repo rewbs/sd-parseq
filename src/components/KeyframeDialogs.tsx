@@ -206,7 +206,7 @@ export const AddKeyframesDialog: FC<AddKeyframesDialogProps> = ({
 
             </DialogActions>
         </Dialog>
-        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenAddKeyframesDialog(true)}>➕ Add</Button>
+        <Button size="small" variant="outlined" onClick={() => setOpenAddKeyframesDialog(true)}>➕ Add</Button>
 
 
     </>
@@ -382,7 +382,7 @@ export const DeleteKeyframesDialog: FC<DeleteKeyframesDialogProps> = ({
                 </Button>
             </DialogActions>
         </Dialog>
-        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenDeleteRowDialog(true)}>❌ Delete</Button>
+        <Button size="small" variant="outlined" onClick={() => setOpenDeleteRowDialog(true)}>❌ Delete</Button>
     </>
 };
 
@@ -450,6 +450,7 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
                             fieldName: fieldToUpdate,
                             timeSeries: timeSeries,
                             variableMap: new Map([['prev_computed_value', 0]]),
+                            computed_values: [],
                         }
                         parse(newValue).invoke(dummyContext);
                     } catch (e: any) {
@@ -588,7 +589,7 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
                 </Button>
             </DialogActions>
         </Dialog>
-        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenDialog(true)}>🖌️ Bulk edit</Button>
+        <Button size="small" variant="outlined" onClick={() => setOpenDialog(true)}>🖌️ Bulk edit</Button>
     </>
 }
 
@@ -684,6 +685,6 @@ export const MergeKeyframesDialog: FC<MergeKeyframesDialogProps> = ({
                 <Button disabled={!mergeEnabled} size="small" variant="contained" id="merge" onClick={handleCloseDialog}>🌪️ Merge</Button>
             </DialogActions>
         </Dialog>
-        <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenDialog(true)}>🌪️ Merge</Button>
+        <Button size="small" variant="outlined" onClick={() => setOpenDialog(true)}>🌪️ Merge</Button>
     </>
 }

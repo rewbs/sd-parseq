@@ -161,7 +161,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
               }
             }
           },
-          flex: 2,
+          //flex: 2,
         },
         {
           headerName: '➟' + field,
@@ -190,7 +190,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
               }
             }
           },
-          flex: 3,
+          //flex: 3,
 
         }
       ]) : [])

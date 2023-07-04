@@ -44,7 +44,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "prompt_weight_1",
         type: "number",
-        defaultValue: 0,
+        defaultValue: 1,
         description: "",
         color: [229, 115, 115],
         labels: []
@@ -100,7 +100,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "prompt_weight_8",
         type: "number",
-        defaultValue: 0,
+        defaultValue: 1,
         description: "",
         color: [77, 208, 225],
         labels: []
@@ -119,6 +119,22 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         defaultValue: 1,
         description: "",
         color: [136, 14, 79],
+        labels: ['2D']
+    },
+    {
+        name: "transform_center_x",
+        type: "number",
+        defaultValue: 0.5,
+        description: "X center axis for 2D angle/zoom",
+        color: [0, 79, 0],
+        labels: ['2D']
+    },
+    {
+        name: "transform_center_y",
+        type: "number",
+        defaultValue: 0.5,
+        description: "Y center axis for 2D angle/zoom",
+        color: [79, 40, 10],
         labels: ['2D']
     },
     {

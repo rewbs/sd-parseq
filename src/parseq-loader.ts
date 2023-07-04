@@ -14,7 +14,7 @@ const fillWithDefaults = (possiblyIncompleteContent: ParseqDocVersion, defaultTe
     if (!possiblyIncompleteContent.keyframes) {
         possiblyIncompleteContent.keyframes = _.cloneDeep(templates[defaultTemplate].template.keyframes);
     }
-    if (!possiblyIncompleteContent.managedFields || possiblyIncompleteContent.managedFields.length === 0) {
+    if (!possiblyIncompleteContent.managedFields) {
         console.log("Document does not specify managed fields. Assuming all fields are managed.");
         possiblyIncompleteContent.managedFields = defaultFields.map(f => f.name);
     }

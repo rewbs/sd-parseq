@@ -11,7 +11,6 @@ type MyProps = {
     }
 };
 
-// TODO: separate React UI component from the service class.
 export function InitialisationStatus({ status }: MyProps) {
     const [open, setOpen] = useState(true);
     return (

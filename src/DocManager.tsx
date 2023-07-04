@@ -514,7 +514,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
         {loadDialog}
         {shareDialog}
         {newDialog}
-        <Stack width={'100%'} direction="row" spacing={1} flex={'flex-grow'} alignItems={'flex-start'}>
+        <Stack width={'100%'} direction={{  xs: 'column', sm: 'column', md: 'row' }} spacing={1} flex={'flex-grow'} alignItems={'flex-start'}>
             <Stack direction="column" flex={'flex-grow'} flexGrow={8} flexBasis={'100%'}>
                 <TextField
                     id="doc-name"
@@ -548,11 +548,11 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                 />
                 <Typography fontSize={'0.5em'}>Last saved: {Math.max(lastModified, activeDoc.timestamp) ? <ReactTimeAgo tooltip={true} date={Math.max(lastModified, activeDoc.timestamp)} locale="en-GB" /> : "never"} </Typography>
             </Stack>
-            <Stack direction="row" spacing={1} flex={'flex-grow'} flexGrow={1}>
+            <Stack  direction='row' spacing={1} flex={'flex-grow'} flexGrow={1}>
                 <Button size="small" variant="outlined" onClick={handleClickOpenRevertDialog}>↩️&nbsp;Revert...</Button>
                 <Button size="small" variant="outlined" onClick={handleClickOpenShareDialog} >🔗&nbsp;Share...</Button>
             </Stack>
-            <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'flex-end'}>
+            <Stack width={'100%'} direction='row' spacing={1} flex='flex-grow' flexGrow={4} alignItems={'flex-start'} justifyContent={'flex-end'}>
                 <Stack direction="row" spacing={1}>
                     <Button size="small" variant="outlined" onClick={handleClickOpenLoadDialog} >⬇️&nbsp;Load...</Button>
                     <Button size="small" variant="outlined" onClick={handleClickOpenNewDialog} >🆕&nbsp;New...</Button>

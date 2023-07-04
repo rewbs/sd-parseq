@@ -6,6 +6,7 @@ import infoFunctions from './parseq-lang-functions-info'
 import curveFunctions from './parseq-lang-functions-curve'
 import oscFunctions from './parseq-lang-functions-osc'
 import conversionFunctions from './parseq-lang-functions-conversion'
+import metaFunctions from './parseq-lang-functions-meta'
 
 export type ArgDef = {
     names: string[];
@@ -13,6 +14,7 @@ export type ArgDef = {
     type: string;
     required: boolean;
     default: number | string | ((ctx: InvocationContext) => number | string);
+    defaultDescription?: string
 }
 
 export type ParseqFunction = {
@@ -50,6 +52,7 @@ const functionLibrary : { [key: string]: ParseqFunction } = {
     ...promptFunctions,
     ...infoFunctions,
     ...conversionFunctions,
+    ...metaFunctions
 }
 
 export default functionLibrary;

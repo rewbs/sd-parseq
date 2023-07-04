@@ -1,25 +1,48 @@
 import { faPatreon } from '@fortawesome/free-brands-svg-icons';
 import { faCoffee } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Chip, Stack, Typography } from '@mui/material';
-import { Fade } from 'react-slideshow-image';
-import 'react-slideshow-image/dist/styles.css'
+import { Chip, Fade, Stack, Typography } from '@mui/material';
+
 import { supporterList } from '../data/supporterList';
+import { useEffect, useState } from 'react';
 import _ from 'lodash';
 
+const SUPPORTER_DISPLAY_SECONDS = 10;
+const DEFAULT_SUPPORTER = { name: '(Your name here? Click to find out more. :) )', link: 'https://www.patreon.com/rewbs' };
 
 const Supporters = () => {
-    return (
-        <div className="slide-container" style={{paddingBottom:'0.25em' }}>
-          <Fade  duration={10000} arrows={false} >
-           { _.shuffle(supporterList).map((supporter, index)=> (
-              <div key={index}>
-                <Typography fontWeight={'bold'} fontSize='0.75em'> { supporter.link ? <a target='_blank' rel="noreferrer" href={supporter.link}>{supporter.name}</a> : supporter.name } </Typography>
-              </div>
-            ))} 
-          </Fade>
-        </div>
-      )
+    const [supporter, setSupporter] = useState<{name:string, link:string}>(DEFAULT_SUPPORTER);
+    const [shuffledSupporterList, setShuffledSupporterList] = useState(_.shuffle(supporterList));
+    const [fadeIn, setFadeIn] = useState(true);
+
+    const fadeSupporterTo = (supporter : {name:string, link:string}) => {
+        setFadeIn(false);
+        setTimeout(() => {
+            setFadeIn(true);
+            setSupporter(supporter);
+        }, 200);
+    }
+
+    useEffect(() => {
+        const timeout = setInterval(() => {
+            const newSupporter = shuffledSupporterList.pop();
+            if (newSupporter) {
+                fadeSupporterTo(newSupporter);
+            } else {
+                fadeSupporterTo(DEFAULT_SUPPORTER);
+                setShuffledSupporterList(_.shuffle(supporterList));
+            }
+        }, SUPPORTER_DISPLAY_SECONDS * 1000);
+        return () => clearInterval(timeout);
+    }, [shuffledSupporterList])
+
+    return <Fade in={fadeIn} appear={false} style={{paddingBottom:'0.5em'}}>
+            <Typography fontWeight={'bold'} fontSize='0.75em'> {
+                supporter.link
+                    ? <a target='_blank' rel="noreferrer" href={supporter.link}>{supporter.name}</a>
+                    :  supporter.name }
+            </Typography>
+        </Fade>
 }
 
 

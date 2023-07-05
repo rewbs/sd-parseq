@@ -5,5 +5,5 @@ export const supporterList = [
     { name: 'King Kush', link: 'https://www.youtube.com/channel/UCisSpJBDQdIax6DTTMS0eDg' },
     { name: 'Ben Del Vacchio', link: 'https://www.youtube.com/channel/UCisSpJBDQdIax6DTTMS0eDg'},
     { name: 'Zirteq', link: 'https://youtube.com/@ZirTeq/videos' },
-    { name: 'Kewk', link: 'twitter.com/kewkd' },
+    { name: 'Kewk', link: 'https://twitter.com/kewkd' },
 ] 

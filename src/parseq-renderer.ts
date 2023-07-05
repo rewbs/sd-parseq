@@ -349,6 +349,16 @@ function evaluateParseqExpressions(str: string, ctx: InvocationContext): string 
 }
 
 function getPromptsWithWeights(prompts: AdvancedParseqPromptsV2, frame: number, lastFrame: number): UnevaluatedPromptsAndWeights {
+
+    const promptPrefix = {
+        positive: (prompts.commonPromptPos === 'prepend' && prompts.commonPrompt.positive ? `${prompts.commonPrompt.positive} ` : ''),
+        negative: (prompts.commonPromptPos === 'prepend' && prompts.commonPrompt.negative ? `${prompts.commonPrompt.negative} ` : '')
+    }
+    const promptSuffix = {
+        positive: (prompts.commonPromptPos === 'append' && prompts.commonPrompt.positive ? ` ${prompts.commonPrompt.positive}` : ''),
+        negative: (prompts.commonPromptPos === 'append' && prompts.commonPrompt.negative ? ` ${prompts.commonPrompt.negative}` : '')
+    }
+
     return prompts.promptList
         .map((p, idx) => ({
             ...p,
@@ -356,8 +366,8 @@ function getPromptsWithWeights(prompts: AdvancedParseqPromptsV2, frame: number, 
         }))
         .filter(p => p.allFrames || (frame >= p.from && frame <= p.to))
         .map(p => ({
-            positive: p.positive + (prompts.commonPrompt.positive ? ` ${prompts.commonPrompt.positive}` : ''),
-            negative: p.negative + (prompts.commonPrompt.negative ? ` ${prompts.commonPrompt.negative}` : ''),
+            positive: promptPrefix.positive + p.positive + promptSuffix.positive,
+            negative: promptPrefix.negative + p.negative + promptSuffix.negative,
             weight: calculateWeight(p, frame, lastFrame)
         }));
 }

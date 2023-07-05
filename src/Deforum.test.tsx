@@ -26,10 +26,6 @@ TimeAgo.addDefaultLocale(en);
 jest.mock('react-chartjs-2', () => ({
   Line: () => null
 }));
-// jest.mock('chartjs-plugin-crosshair', () => ({
-//   CrosshairPlugin: () => null
-// }));
-// jest.mock('chartjs-plugin-dragdata', () => null);
 jest.mock('chartjs-plugin-annotation', () => ({
   annotationPlugin: () => null
 }));
@@ -9054,6 +9050,144 @@ test('info_match_gap, info_match_progress and bez offset', async () => {
     "timeSeries": [],
     "keyframeLock": "frames",
   };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});
+
+
+test('common_prompt_append', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+        "name": "Common",
+        "positive": "common.pos",
+        "negative": "common.neg",
+        "allFrames": true,
+        "from": 0,
+        "to": 119,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 0,
+          "type": "none",
+          "custom": "prompt_weight_1"
+        }
+      },
+      "commonPromptPos": "append",
+      "promptList": [
+        {
+          "name": "Prompt 1",
+          "positive": "my prompt1",
+          "negative": "my negprompt1",
+          "allFrames": false,
+          "from": 0,
+          "to": 6,
+          "overlap": {
+            "inFrames": 0,
+            "outFrames": 2,
+            "type": "linear",
+            "custom": "prompt_weight_1"
+          }
+        },
+        {
+          "positive": "my prompt2",
+          "negative": "my negprompt2",
+          "from": 5,
+          "to": 10,
+          "allFrames": false,
+          "name": "Prompt 2",
+          "overlap": {
+            "inFrames": 2,
+            "outFrames": 0,
+            "type": "linear",
+            "custom": "prompt_weight_2"
+          }
+        }
+      ]
+    },
+    "managedFields": [],
+    "displayedFields": [],
+    "keyframes": [
+      {
+        "frame": 0,
+      },
+      {
+        "frame": 10,
+      }
+    ],
+    "timeSeries": [],
+    "keyframeLock": "frames",
+  }
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});
+
+
+test('common_prompt_prepend', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+        "name": "Common",
+        "positive": "common.pos",
+        "negative": "common.neg",
+        "allFrames": true,
+        "from": 0,
+        "to": 119,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 0,
+          "type": "none",
+          "custom": "prompt_weight_1"
+        }
+      },
+      "commonPromptPos": "prepend",
+      "promptList": [
+        {
+          "name": "Prompt 1",
+          "positive": "my prompt1",
+          "negative": "my negprompt1",
+          "allFrames": false,
+          "from": 0,
+          "to": 6,
+          "overlap": {
+            "inFrames": 0,
+            "outFrames": 2,
+            "type": "linear",
+            "custom": "prompt_weight_1"
+          }
+        },
+        {
+          "positive": "my prompt2",
+          "negative": "my negprompt2",
+          "from": 5,
+          "to": 10,
+          "allFrames": false,
+          "name": "Prompt 2",
+          "overlap": {
+            "inFrames": 2,
+            "outFrames": 0,
+            "type": "linear",
+            "custom": "prompt_weight_2"
+          }
+        }
+      ]
+    },
+    "managedFields": [],
+    "displayedFields": [],
+    "keyframes": [
+      {
+        "frame": 0,
+      },
+      {
+        "frame": 10,
+      }
+    ],
+    "timeSeries": [],
+    "keyframeLock": "frames",
+  }
   await loadAndRender(fixture);
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });

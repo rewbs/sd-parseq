@@ -112,6 +112,7 @@ type AdvancedParseqPromptsV2 = {
     enabled: boolean;
     promptList: AdvancedParseqPrompt[] | [];
     commonPrompt: AdvancedParseqPrompt;
+    commonPromptPos: "append" | "prepend"
 }
 
 type ParseqPrompts = SimpleParseqPrompts | AdvancedParseqPrompts | AdvancedParseqPromptsV2;

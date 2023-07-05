@@ -19,7 +19,12 @@ interface PromptsProps {
 export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): AdvancedParseqPromptsV2 {
     //@ts-ignore
     if (oldPrompts.format === 'v2') {
-        return oldPrompts as AdvancedParseqPromptsV2;
+        const v2Prompt = (oldPrompts as AdvancedParseqPromptsV2);
+        if (v2Prompt.commonPromptPos === undefined) {
+            v2Prompt.commonPromptPos = 'append';
+        }
+
+        return v2Prompt;
     }
 
     const defaultPrompts: AdvancedParseqPromptsV2 = {
@@ -39,7 +44,7 @@ export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): Ad
                 custom: "prompt_weight_1",
             }
         },
-
+        commonPromptPos: 'append',
         promptList: [{
             name: 'Prompt 1',
             positive: "",
@@ -504,9 +509,28 @@ export function Prompts(props: PromptsProps) {
                 <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
                     <Grid container xs={12} style={{ margin: 0, padding: 0 }}>
                         <Grid xs={12} style={{ margin: 0, padding: 0 }}>
-                            <h5>Common prompt (appended to all prompts)</h5>
+                            <h5>Common prompt</h5>
                         </Grid>
-
+                        <Grid xs={12} style={{ marginBottom: '1em' }}>
+                            <TextField
+                                select
+                                fullWidth={false}
+                                size="small"
+                                style={{ width: '6em'}}
+                                label={"Position: "}
+                                InputLabelProps={{ shrink: true, }}
+                                InputProps={{ style: { fontSize: '0.75em' } }}
+                                value={advancedPrompts.commonPromptPos}
+                                onChange={(e: any) => {
+                                    advancedPrompts.commonPromptPos = (e.target.value as "append"|"prepend");
+                                    commitChanges({ ...unsavedPrompts });
+                                }}
+                            >
+                                <MenuItem value={"append"}>Append</MenuItem>
+                                <MenuItem value={"prepend"}>Prepend</MenuItem>
+                            </TextField>
+                            <small>&nbsp; to all prompts.</small>
+                    </Grid>
                         <Grid xs={6} style={{ margin: 0, padding: 0 }}>
                             {promptInput(-1, true)}
                         </Grid>

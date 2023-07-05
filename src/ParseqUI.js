@@ -1178,7 +1178,10 @@ const ParseqUI = (props) => {
     } else {
       console.timeEnd("PerceivedRender");
       statusMessage = <Alert severity="success">
-        Output is up-to-date.
+        Output is up-to-date. 
+        {
+          managedFields.some(f => f.startsWith('cn_')) ? ' For ControlNet field support, make sure you are using the latest version of the Deforum extension.' : ''
+        }
         <p><small>{message}</small></p>
       </Alert>;
     }
@@ -1186,7 +1189,7 @@ const ParseqUI = (props) => {
       {errorMessage}
       {statusMessage}
     </div>
-  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender]);
+  }, [needsRender, renderedData, renderedErrorMessage, enqueuedRender, managedFields]);
 
   const renderButton = useMemo(() =>
     <Stack>

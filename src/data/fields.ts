@@ -188,7 +188,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "translation_z",
         type: "number",
-        defaultValue: 0,
+        defaultValue: 10,
         description: "",
         color: [255, 80, 80],
         labels: ['3D']

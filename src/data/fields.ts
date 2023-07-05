@@ -313,4 +313,157 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         color: [200, 200, 250],
         labels: ['hybrid_video']
     },
+    {
+        name: "cn_1_weight",
+        type: "number",
+        defaultValue: 1,
+        description: "",
+        color: [100, 100, 150],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_1_guidance_start",
+        type: "number",
+        defaultValue: 0,
+        description: "",
+        color: [150, 150, 200],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_1_guidance_end",
+        type: "number",
+        defaultValue: 100,
+        description: "",
+        color: [200, 200, 250],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_2_weight",
+        type: "number",
+        defaultValue: 1,
+        description: "",
+        color: [100, 100, 50],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_2_guidance_start",
+        type: "number",
+        defaultValue: 0,
+        description: "",
+        color: [150, 150, 100],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_2_guidance_end",
+        type: "number",
+        defaultValue: 100,
+        description: "",
+        color: [200, 200, 150],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_3_weight",
+        type: "number",
+        defaultValue: 1,
+        description: "",
+        color: [150, 50, 50],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_3_guidance_start",
+        type: "number",
+        defaultValue: 0,
+        description: "",
+        color: [200, 100, 100],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_3_guidance_end",
+        type: "number",
+        defaultValue: 100,
+        description: "",
+        color: [250, 150, 150],
+        labels: ['control_net']
+    },    
+    {
+        name: "cn_4_weight",
+        type: "number",
+        defaultValue: 1,
+        description: "",
+        color: [100, 50, 150],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_4_guidance_start",
+        type: "number",
+        defaultValue: 0,
+        description: "",
+        color: [150, 100, 200],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_4_guidance_end",
+        type: "number",
+        defaultValue: 100,
+        description: "",
+        color: [200, 150, 250],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_5_weight",
+        type: "number",
+        defaultValue: 1,
+        description: "",
+        color: [50, 100, 150],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_5_guidance_start",
+        type: "number",
+        defaultValue: 0,
+        description: "",
+        color: [100, 150, 200],
+        labels: ['control_net']
+    },
+    {
+        name: "cn_5_guidance_end",
+        type: "number",
+        defaultValue: 100,
+        description: "",
+        color: [150, 200, 250],
+        labels: ['control_net']
+    },
+    // {
+    //     name: "guided_blendFactorMax",
+    //     type: "number",
+    //     defaultValue: 0.35,
+    //     description: "",
+    //     color: [0, 50, 0],
+    //     labels: ['guided_images']
+    // },
+    // {
+    //     name: "guided_blendFactorSlope",
+    //     type: "number",
+    //     defaultValue: 0.25,
+    //     description: "",
+    //     color: [0, 100, 0],
+    //     labels: ['guided_images']
+    // },
+    // {
+    //     name: "guided_tweening_frames",
+    //     type: "number",
+    //     defaultValue: 20,
+    //     description: "",
+    //     color: [0, 150, 0],
+    //     labels: ['guided_images']
+    // },
+    // {
+    //     name: "guidedcolor_correction_factor",
+    //     type: "number",
+    //     defaultValue: 0.075,
+    //     description: "",
+    //     color: [0, 200, 0],
+    //     labels: ['guided_images']
+    // },
+     
 ]

@@ -77,6 +77,7 @@ const MiniParseq = ({ keyframes, fields }: MiniParseqProps) => {
                 enabled: false,
                 promptList: [],
                 format: "v2",
+                commonPromptPos: 'append',
                 commonPrompt: {
                     name: 'Common',
                     positive: "",
@@ -187,6 +188,7 @@ type DocEntry = {
     function_ref?: ParseqFunction
     examples: {
         description?: string,
+        fields?: string[],
         keyframeOverrides: ParseqKeyframes,
     }[]
 };
@@ -898,20 +900,18 @@ const FunctionDoc = () => {
         {
             category: "Meta",
             name: "**dangerous()**: access values of other fields",
-            function_ref: functionLibrary.recompute_if,
+            description: "**This is an experimental function with no guarantees.** If you use it, be prepared for errors and backwards compatibility issues.",
+            function_ref: functionLibrary.dangerous,
             examples: [
                 {
-                    description: "Repeat the same random pattern every beat. This pattern will change if you reload the page.",
+                    description: "Make x translation depend on y rotation.",
+                    fields: ["rotation_3d_y", "translation_x"],
                     keyframeOverrides: [
-                        { frame: 0, translation_z_i: 'if (b<1) rand() else computed_at(f-start_of_beat()) ' },
-                        
+                        { frame: 0, rotation_3d_y_i: 'sin(p=50, a=10)', translation_x_i: '-dangerous("rotation_3d_y")*512/90'},
                     ]
                 }
             ]
         }
-
-
-
     ]
 
     const renderDocEntries = () => {
@@ -945,6 +945,9 @@ const FunctionDoc = () => {
                                     entry.examples.map((example) => {
                                         const miniParseqConfig = _.cloneDeep(miniParseqDefaults);
                                         miniParseqConfig.keyframes = _.defaultsDeep(example.keyframeOverrides, miniParseqDefaults.keyframes);
+                                        if (example.fields) {
+                                            miniParseqConfig.fields = example.fields;
+                                        }
                                         return <>
                                             <Typography><ReactMarkdown children={example.description || ""} /></Typography>
                                             <MiniParseq {...miniParseqConfig} />

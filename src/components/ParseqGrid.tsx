@@ -150,7 +150,8 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         {
           field: field,
           valueSetter: (params: { data: { [x: string]: string | number; }; newValue: string; }) => {
-            params.data[field] = mathjs.evaluate(params.newValue);
+            console.log(params.newValue);
+            params.data[field] = !params.newValue ? '' : mathjs.evaluate(''+params.newValue);
           },
           suppressMovable: true,
           cellStyle: (params: any) => {

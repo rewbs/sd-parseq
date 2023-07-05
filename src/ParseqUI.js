@@ -798,38 +798,10 @@ const ParseqUI = (props) => {
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
-      <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
-        <Typography fontSize={"0.75em"}>Grid&nbsp;size:</Typography>
-        <ToggleButtonGroup size="small"
-          color="primary"
-          value={gridHeight===0 ? "auto" : "compact"}
-          exclusive
-          onChange={(e, newLock) => {
-            if (!newLock || newLock === "auto") {
-              setGridHeight(0);
-            } else {
-              setGridHeight(240);
-            }
-          }}
-        >
-          <ToggleButton value="auto" key="auto">
-            <Tooltip2 title="Automatically grow/shrink the grid viewport in function of the number of keyframes.">
-              <Typography fontSize={"1em"}>
-                🪄&nbsp;Auto
-              </Typography>
-            </Tooltip2>
-          </ToggleButton>
-          <ToggleButton value="compact" key="compact">
-            <Tooltip2 title='Fix the grid viewport to about 10 rows.'>
-              <Typography fontSize={"1em"}>
-                🤏&nbsp;Compact
-              </Typography>
-            </Tooltip2>
-          </ToggleButton>
-          </ToggleButtonGroup>          
-      </Stack>
     </Stack>
-  </span>, [options, gridHeight, handleChangeOption, keyframeLock, candidateLastFrame, keyframes, lastFrame])
+  </span>, [options, handleChangeOption, keyframeLock, candidateLastFrame, keyframes, lastFrame])
+
+
 
 
   // Grid ------------------------
@@ -851,6 +823,37 @@ const ParseqUI = (props) => {
     agGridStyle={{ width: '100%', minHeight: '150px', height: '150px', maxHeight: '1150px', }}
   />, [rangeSelection, options, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
 
+
+  const gridHeightToggle = useMemo(() =>  <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
+  <Typography fontSize={"0.75em"}>Grid&nbsp;size:</Typography>
+  <ToggleButtonGroup size="small"
+    color="primary"
+    value={gridHeight===0 ? "auto" : "compact"}
+    exclusive
+    onChange={(e, newLock) => {
+      if (!newLock || newLock === "auto") {
+        setGridHeight(0);
+      } else {
+        setGridHeight(240);
+      }
+    }}
+  >
+    <ToggleButton value="auto" key="auto">
+      <Tooltip2 title="Automatically grow/shrink the grid viewport in function of the number of keyframes.">
+        <Typography fontSize={"1em"}>
+          🪄&nbsp;Auto
+        </Typography>
+      </Tooltip2>
+    </ToggleButton>
+    <ToggleButton value="compact" key="compact">
+      <Tooltip2 title='Fix the grid viewport to about 10 rows.'>
+        <Typography fontSize={"1em"}>
+          🤏&nbsp;Compact
+        </Typography>
+      </Tooltip2>
+    </ToggleButton>
+    </ToggleButtonGroup>          
+</Stack>, [gridHeight, setGridHeight]);
 
   const displayedFieldSelector = useMemo(() => displayedFields &&
     <Stack direction="row" alignItems={"center"} justifyContent={"flex-start"} gap={1} paddingTop={"0.5em"} >
@@ -917,13 +920,13 @@ const ParseqUI = (props) => {
     }
 
     <Grid container wrap='false'>
-      <Grid xs={2}>
+      <Grid xs={6}>
         <Stack  direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"}   spacing={1}>
           <TextField
             select
             fullWidth={false}
             size="small"
-            style={{ width: '7em', marginLeft: '5px' }}
+            style={{ width: '8em', marginLeft: '5px' }}
             label={"Show time as: "}
             InputLabelProps={{ shrink: true, }}
             InputProps={{ style: { fontSize: '0.75em' } }}
@@ -1331,7 +1334,11 @@ const ParseqUI = (props) => {
           <SupportParseq />
         </Stack>
       </Grid>
-        
+      <Grid xs={12}>
+        <ExpandableSection title="Options">
+          {optionsUI}
+        </ExpandableSection>
+      </Grid>        
       <Grid xs={12}>
         <ExpandableSection title="Prompts">
           {promptsUI}
@@ -1361,9 +1368,11 @@ const ParseqUI = (props) => {
         <ExpandableSection
           // TODO: we always have to render the grid currently, else we lose keyframes because they reference grid data.
           renderChildrenWhenCollapsed={true}
-          title="Keyframes grid for field value flow">
-          {optionsUI}
-          {displayedFieldSelector}
+          title="Keyframe grid">
+          <Stack direction='row' justifyContent={'space-between'} fullWidth>
+            {displayedFieldSelector}
+            {gridHeightToggle}
+          </Stack>
           {grid}
           <Stack direction='row' justifyContent={'space-between'} fullWidth>
             <Stack direction='row' gap={1} id='gridControls' fullWidth>
@@ -1378,7 +1387,7 @@ const ParseqUI = (props) => {
         </ExpandableSection>
       </Grid>
       <Grid xs={12}>
-        <ExpandableSection title="Visualised field value flow">
+        <ExpandableSection title="Field graph">
           <span id='graphHeader'>
             {editableGraphHeader}
           </span>

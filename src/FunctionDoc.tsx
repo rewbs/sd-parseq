@@ -861,6 +861,53 @@ const FunctionDoc = () => {
                     ]
                 }
             ]
+        },
+        {
+            category: "Meta",
+            name: "**recompute_if()**: compute a value only if a condition is true, else re-use precomputed value.",
+            function_ref: functionLibrary.recompute_if,
+            examples: [
+                {
+                    description: "Use a new random value on every 'snare' keyframe.",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'recompute_if(f==info_match_prev("snare"), rand(0, 100))' },
+                        { frame: 15, info: "snare 0", },
+                        { frame: 30, },
+                        { frame: 45, info: "snare 1", },
+                        { frame: 60, info: "snare 2", },
+                        { frame: 75, },
+                        { frame: 90, info: "snare 3", },
+                        { frame: 99, info: "snare 4", },
+                    ]
+                },
+                {
+                    description: "Bezier to a new random value on every 'snare' keyframe.",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'bez(start=computed_at(info_match_prev("snare")-1,0), delta=recompute_if(f==info_match_prev("snare"), rand(-20,20)), os=info_match_progress("snare"), curve="easeOut3")' },
+                        { frame: 15, info: "snare 0", },
+                        { frame: 30, },
+                        { frame: 45, info: "snare 1", },
+                        { frame: 60, info: "snare 2", },
+                        { frame: 75, },
+                        { frame: 90, info: "snare 3", },
+                        { frame: 99, info: "snare 4", },
+                    ]
+                }
+            ]                
+        },
+        {
+            category: "Meta",
+            name: "**dangerous()**: access values of other fields",
+            function_ref: functionLibrary.recompute_if,
+            examples: [
+                {
+                    description: "Repeat the same random pattern every beat. This pattern will change if you reload the page.",
+                    keyframeOverrides: [
+                        { frame: 0, translation_z_i: 'if (b<1) rand() else computed_at(f-start_of_beat()) ' },
+                        
+                    ]
+                }
+            ]
         }
 
 

@@ -1,5 +1,5 @@
 import { faDiscord, faGithub } from '@fortawesome/free-brands-svg-icons';
-import { faBook, faBug, faFilm } from '@fortawesome/free-solid-svg-icons';
+import { faBook, faBug, faFilm, faWaveSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Chip, Stack, Typography } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
@@ -58,6 +58,7 @@ export default function Header({ title }: MyProps) {
                 <Stack  justifyContent="right" gap={1} alignItems={{ sm: 'stretch', md: 'center' }}  direction={{  xs: 'column-reverse', sm: 'column-reverse', md: 'row' }}>
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8" clickable icon={<FontAwesomeIcon  size='2xs' icon={faFilm} />} label="Tutorial" />
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon size='2xs' icon={faBook} />} label="Docs" />
+                <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="/functionDocs" clickable icon={<FontAwesomeIcon size='2xs' icon={faWaveSquare} />} label="Reference" />
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq/issues" clickable icon={<FontAwesomeIcon  size='2xs' icon={faBug} />} label="Bugs" />
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq" clickable icon={<FontAwesomeIcon  size='2xs' icon={faGithub} />} label="Code" />
                 <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://discord.gg/deforum" clickable icon={<FontAwesomeIcon  size='2xs' icon={faDiscord} />} label="Chat" />

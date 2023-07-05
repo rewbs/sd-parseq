@@ -58,7 +58,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       const condition = Number(args[0]);
       const newValue = Number(args[1]);
       const def = Number(args[2]);
-      const stored = ctx.activeNode?.getOrComputeState('stored_var', () => ({ stored_var: newValue })) as { stored_var: number };
+      const stored = ctx.activeNode?.getState('stored_var');
       let retval;
       if (condition > 0) {
          ctx.activeNode?.setState('stored_var', { stored_var: newValue });

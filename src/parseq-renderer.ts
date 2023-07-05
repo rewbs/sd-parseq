@@ -17,7 +17,7 @@ export class ParseqRendererException {
 }
 
 export function getDefaultFieldValue(field: string) {
-    const candidateDefaultValue = defaultFields.find((f) => f.name === field)?.defaultValue;
+    const candidateDefaultValue = defaultFields.find((df) => df.name === field)?.defaultValue;
     if (candidateDefaultValue === undefined) {
         return 0;
     } else {

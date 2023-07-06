@@ -64,3 +64,9 @@ export function secToFrame(sec: number, fps: number): number {
 export function beatToFrame(beat: number, fps: number, bpm: number): number {
     return beat * ((fps * 60) / bpm);
 }
+
+export function remapFrameCount(frame:number, keyframeLock: "frames" | "seconds" | "beats", oldFps:number, oldBpm:number, newFps:number, newBpm:number) {
+    const lockedPosition = Number(frameToXAxisType(frame, keyframeLock, oldFps, oldBpm));
+    const newFramePosition = xAxisTypeToFrame(lockedPosition, keyframeLock, newFps, newBpm);
+    return newFramePosition;
+  }

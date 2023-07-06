@@ -37,6 +37,7 @@ type ParseqPersistableState = {
     prompts: ParseqPrompts;
     keyframes: ParseqKeyframes;
     keyframeLock: "frames" | "seconds" | "beats";
+    reverseRender?: boolean;
 }
 
 
@@ -82,6 +83,7 @@ type Template = {
         keyframes: ParseqKeyframes;
         timeSeries?: TimeSeries[] | [];
         keyframeLock?: "frames" | "seconds" | "beats";
+        reverseRender?: boolean;
     }
 }
 

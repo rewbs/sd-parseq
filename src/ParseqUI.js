@@ -41,7 +41,7 @@ import { Viewport } from './components/Viewport';
 import runDbTasks from './dbTasks';
 import { parseqLoad } from "./parseq-loader";
 import { parseqRender } from './parseq-renderer';
-import { DECIMATION_THRESHOLD, DEFAULT_OPTIONS } from './utils/consts';
+import { DECIMATION_THRESHOLD } from './utils/consts';
 import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionNumber, queryStringGetOrCreate } from './utils/utils';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
@@ -54,7 +54,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
 import { defaultFields } from './data/fields';
-import { frameToXAxisType, xAxisTypeToFrame } from './utils/maths';
+import { remapFrameCount } from './utils/maths';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
@@ -75,10 +75,12 @@ const ParseqUI = (props) => {
   const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
   const [managedFields, setManagedFields] = useState();   // The fields that the user has chosen to be managed by Parseq.
+  const [reverseRender, setReverseRender] = useState(false);
   const [timeSeries, setTimeSeries] = useState([]);   // The fields that the user has chosen to be managed by Parseq.
   const [displayedFields, setDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
   const [prevDisplayedFields, setPrevDisplayedFields] = useState(); // The fields that the user has chosen to display – subset of managed fields.
   const [options, setOptions] = useState()
+
   const [prompts, setPrompts] = useState();
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [enqueuedRender, setEnqueuedRender] = useState(false);
@@ -92,12 +94,14 @@ const ParseqUI = (props) => {
   const [audioCursorPos, setAudioCursorPos] = useState(0);
   const [activeVersionId, setActiveVersionId] = useState();
   
-  const [typing, setTyping] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
+  const [isDocDirty, setIsDocDirty] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
   const [sparklineData, setSparklineData] = useState([]);
   const [graphScales, setGraphScales] = useState();
   const [lastFrame, setLastFrame] = useState(0);
   const [candidateLastFrame, setCandidateLastFrame] = useState();
+  const [candidateBPM, setCandidateBPM] = useState()
+  const [candidateFPS, setCandidateFPS] = useState()
   const [xaxisType, setXaxisType] = useState("frames");
   const [keyframeLock, setKeyframeLock] = useState("frames");
   const [gridHeight, setGridHeight] = useState(0);
@@ -202,10 +206,10 @@ const ParseqUI = (props) => {
       });
       setLastSaved(Date.now());
     }
-  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock]);
+  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock, reverseRender]);
 
   // TODO - can this be moved out of an effect to reduce re-renders?
-  // Render if there is an enqueued render, but delay if typing.
+  // Render if there is an enqueued render.
   // Deboucing to avoid repeated consecutive renders
   useDebouncedEffect(() => {
     if (enqueuedRender) {
@@ -214,7 +218,7 @@ const ParseqUI = (props) => {
         render();
       }
     }
-  }, typing ? 1000 : 200, [enqueuedRender, prompts, options, displayedFields, keyframes]);
+  }, 200, [enqueuedRender, prompts, options, displayedFields, keyframes]);
 
 
   // TODO - can this be moved out of an effect to reduce re-renders?
@@ -247,14 +251,15 @@ const ParseqUI = (props) => {
       || !equal(lastRenderedState.prompts, prompts)
       || !equal(lastRenderedState.managedFields, managedFields)
       || !equal(lastRenderedState.timeSeries, timeSeries)
-      || typing
-  }, [lastRenderedState, keyframes, options, prompts, managedFields, timeSeries, typing]);
+      || !equal(lastRenderedState.reverseRender, reverseRender)
+      || isDocDirty
+  }, [lastRenderedState, keyframes, options, prompts, managedFields, timeSeries, isDocDirty, reverseRender]);
 
   useEffect(() => {
     if (needsRender && autoRender) {
       setEnqueuedRender(true);
     }
-  }, [needsRender, autoRender, typing]);
+  }, [needsRender, autoRender, isDocDirty]);
 
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -286,10 +291,11 @@ const ParseqUI = (props) => {
       displayedFields: displayedFields,
       keyframes: keyframes,
       timeSeries: timeSeries,
-      keyframeLock: keyframeLock
+      keyframeLock: keyframeLock,
+      reverseRender: reverseRender
     }
   }
-  , [prompts, activeDocId, options, managedFields, displayedFields, keyframes, timeSeries, keyframeLock, activeVersionId]);
+  , [prompts, activeDocId, options, managedFields, displayedFields, keyframes, timeSeries, keyframeLock, activeVersionId, reverseRender]);
 
 
   // Converts document object to React state.
@@ -303,6 +309,9 @@ const ParseqUI = (props) => {
       setKeyframes(doc.keyframes);
       setTimeSeries(doc.timeSeries);
       setKeyframeLock(doc.keyframeLock);
+      setCandidateBPM(doc.options.bpm);
+      setCandidateFPS(doc.options.output_fps);
+      setReverseRender(doc.reverseRender);
 
       refreshGridFromKeyframes(doc.keyframes);
     }
@@ -486,43 +495,41 @@ const ParseqUI = (props) => {
     setDisplayedFields(selectedToShow);
   }, []);
 
-  const handleChangeOption = useCallback((e) => {
-    const id = e.target.id;
-    // eslint-disable-next-line no-unused-vars
-    let [_, optionId] = id.split(/options_/);
 
-    const value = (optionId === 'cc_use_input') ? e.target.checked : e.target.value;
-    const oldBpm = options.bpm;
-    const oldFps = options.output_fps;
+  // Change keyframes and prompts to maintain the same time positions
+  const remapFrames = useCallback((oldFps, oldBpm, newFps, newBpm) => {
+    if (keyframeLock === 'frames') {
+      // Nothing to do.
+      return;
+    }
 
-    setOptions({ ...options, [optionId]: value });
+    // Update keyframes
+    let newKeyframes = keyframes.map((keyframe) => {
+      const newFramePosition = remapFrameCount(keyframe.frame, keyframeLock, oldFps, oldBpm, newFps, newBpm);
+      //console.log("oldFrame", keyframe.frame, "newFrame", newFramePosition);
 
-    if (Number(value) === 0 || isNaN(Number(value))) {
-      if (optionId === 'output_fps' || 'bpm') {
-        return;
+      return {
+        ...keyframe,
+        frame: Math.round(newFramePosition)
       }
-    }
+      
+    });
+    setKeyframes(newKeyframes);
+    refreshGridFromKeyframes(newKeyframes);      
 
-    // Change keyframe positions to maintain the same time position
-    if (keyframeLock !== 'frames') {
-      let newKeyframes = keyframes.map((keyframe) => {
-        const lockedPosition = Number(frameToXAxisType(keyframe.frame, keyframeLock, oldFps, oldBpm));
-        const newFps = (optionId === 'output_fps') ? value : options.output_fps;
-        const newBpm = (optionId === 'bpm') ? value : options.bpm;
-        const newFramePosition = xAxisTypeToFrame(lockedPosition, keyframeLock, newFps, newBpm);
+    // Update prompts
+    const newPrompts = _.cloneDeep(prompts);
+    newPrompts.promptList.forEach((prompt) => {
+      prompt.from = Math.round(remapFrameCount(prompt.from, keyframeLock, oldFps, oldBpm, newFps, newBpm));
+      prompt.to = Math.round(remapFrameCount(prompt.to, keyframeLock, oldFps, oldBpm, newFps, newBpm));
+      prompt.overlap.inFrames = Math.round(remapFrameCount(prompt.overlap.inFrames, keyframeLock, oldFps, oldBpm, newFps, newBpm));
+      prompt.overlap.outFrames = Math.round(remapFrameCount(prompt.overlap.outFrames, keyframeLock, oldFps, oldBpm, newFps, newBpm));
+    });
+    delete newPrompts.sentinel; // Ensures UI picks up modified prompts.
+    console.log("prompts", prompts, "newPrompts", newPrompts);
+    setPrompts(newPrompts);
 
-        //console.log("lockedPosition", lockedPosition, "oldFrame", keyframe.frame, "newFrame", newFramePosition);
-
-        return {
-          ...keyframe,
-          frame: Math.round(newFramePosition)
-        }
-      });
-      setKeyframes(newKeyframes);
-      refreshGridFromKeyframes(newKeyframes);
-    }
-
-  }, [options, keyframeLock, keyframes]);
+  }, [keyframeLock, keyframes, prompts]);
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Dialogs
@@ -602,7 +609,8 @@ const ParseqUI = (props) => {
         prompts: _.cloneDeep(prompts),
         options: _.cloneDeep(options),
         managedFields: _.cloneDeep(managedFields),
-        timeSeries: _.cloneDeep(timeSeries)
+        timeSeries: _.cloneDeep(timeSeries),
+        reverseRender: reverseRender
       });
       setLastRenderTime(Date.now());
     } catch (e) {
@@ -642,12 +650,15 @@ const ParseqUI = (props) => {
 
   // Prompts ------------------------
 
-  const promptsUI = useMemo(() => prompts ? <Prompts
+  const promptsUI = useMemo(() => (prompts && options) ? <Prompts
     initialPrompts={prompts}
     lastFrame={lastFrame}
-    markDirty={(b) => setTyping(b)}
+    keyframeLock={keyframeLock}
+    fps={options?.output_fps}
+    bpm={options?.bpm}    
+    markDirty={(b) => setIsDocDirty(b)}
     commitChange={_.debounce((p) => setPrompts(p), 200)}
-  /> : <></>, [prompts, lastFrame]);
+  /> : <></>, [prompts, lastFrame, keyframeLock, options]);
 
   // Managed field selection ------------------------
 
@@ -691,33 +702,79 @@ const ParseqUI = (props) => {
 
   const optionsUI = useMemo(() => options && <span>
      
-    <Stack direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={"flex-start"} gap={2}>
-      <Stack direction='row'  gap={2}>
+    <Stack direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={'space-between'} >
+      <Stack direction='row' gap={2}>
         <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
           <TextField
-            id={"options_bpm"}
             label={"BPM"}
-            value={options['bpm']}
-            onChange={handleChangeOption}
-            onFocus={(e) => setTyping(true)}
-            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, bpm: DEFAULT_OPTIONS['bpm'] }) } }}
+            value={candidateBPM}
+            onChange={(e) => setCandidateBPM(e.target.value)}
+            onKeyDown={(e) => {
+              setIsDocDirty(true);
+              if (e.key === 'Enter') {
+                setTimeout(() => e.target.blur());
+                e.preventDefault();
+              } else if (e.key === 'Escape') {
+                setTimeout(() => e.target.blur());
+                setCandidateBPM(options.bpm)
+                e.preventDefault();
+              }
+            }}
+            onBlur={(e) => {
+              setIsDocDirty(false);
+              let candidate = parseInt(e.target.value);
+              let fallBack = options.bpm;
+              if (!candidate || candidate <= 0 || isNaN(candidate)) {
+                setCandidateBPM(fallBack);
+              } else {
+                remapFrames(options.output_fps, options.bpm, options.output_fps, candidate);
+                setOptions({ ...options, bpm: candidate })
+              }
+            }}
             InputLabelProps={{ shrink: true, }}
-            InputProps={{ style: { fontSize: '0.75em' } }}
-            sx={{ minWidth: 60 }}
+            InputProps={{
+              style: { fontSize: '0.75em' },
+              sx: { background: (Number(candidateBPM) !== Number(options.bpm))? 'ivory' : '', },
+              endAdornment: (Number(candidateBPM) !== Number(options.bpm)) ? '🖊️' : ''
+            }}
+            sx={{ minWidth: 70, maxWidth: 100, }}
             size="small"
             variant="outlined" />
         </Tooltip2>
         <Tooltip2 title="Output Frames per Second: generate video at this frame rate. You can specify interpolators based on seconds, e.g. sin(p=1s). Parseq will use your Output FPS to convert to the correct number of frames when you render.">
           <TextField
-            id={"options_output_fps"}
             label={"FPS"}
-            value={options['output_fps']}
-            onChange={handleChangeOption}
-            onFocus={(e) => setTyping(true)}
-            onBlur={(e) => { setTyping(false); if (!e.target.value) { setOptions({ ...options, output_fps: DEFAULT_OPTIONS['output_fps'] }) } }}
+            value={candidateFPS}
+            onChange={(e) => setCandidateFPS(e.target.value)}
+            onKeyDown={(e) => {
+              setIsDocDirty(true);
+              if (e.key === 'Enter') {
+                setTimeout(() => e.target.blur());
+                e.preventDefault();
+              } else if (e.key === 'Escape') {
+                setTimeout(() => e.target.blur());
+                setCandidateFPS(options.output_fps)
+                e.preventDefault();
+              }
+            }}            
+            onBlur={(e) => {
+              setIsDocDirty(false);
+              let candidate = parseInt(e.target.value);
+              let fallBack = options.output_fps;
+              if (!candidate || candidate <= 0 || isNaN(candidate)) {
+                setCandidateFPS(fallBack);
+              } else {
+                remapFrames(options.output_fps, options.bpm, candidate, options.bpm);
+                setOptions({ ...options, output_fps: candidate })
+              }
+            }}
             InputLabelProps={{ shrink: true, }}
-            InputProps={{ style: { fontSize: '0.75em' } }}
-            sx={{ minWidth: 60 }}
+            InputProps={{
+              style: { fontSize: '0.75em' },
+              sx: { background: (Number(candidateFPS) !== Number(options.output_fps)) ? 'ivory' : '', },
+              endAdornment: (Number(candidateFPS) !== Number(options.output_fps)) ? '🖊️' : ''
+            }}
+            sx={{ minWidth: 70, maxWidth: 100, }}
             size="small"
             variant="outlined" />
         </Tooltip2>
@@ -726,8 +783,8 @@ const ParseqUI = (props) => {
             label={"Final frame"}
             value={candidateLastFrame}
             onChange={(e)=>setCandidateLastFrame(e.target.value)}
-            onFocus={(e) => setTyping(true)}
             onKeyDown={(e) => {
+              setIsDocDirty(true);
               if (e.key === 'Enter') {
                 setTimeout(() => e.target.blur());
                 e.preventDefault();
@@ -738,7 +795,7 @@ const ParseqUI = (props) => {
               }
             }}
             onBlur={(e) => {
-              setTyping(false);
+              setIsDocDirty(false);
               let candidate = parseInt(e.target.value);
               const penultimate = keyframes.length > 1 ? keyframes[keyframes.length - 2].frame : 0;
               if (!candidate || candidate < 0 || isNaN(candidate)) {
@@ -755,16 +812,25 @@ const ParseqUI = (props) => {
               }
             }}
             InputLabelProps={{ shrink: true, }}
-            InputProps={{ style: { fontSize: '0.75em' } }}
-            sx={{ minWidth: 60 }}
+            InputProps={{
+              style: { fontSize: '0.75em' },
+              sx: { background: Number(candidateLastFrame) !== Number(lastFrame) ? 'ivory' : '', },
+              endAdornment: Number(candidateLastFrame) !== Number(lastFrame) ? '🖊️' : ''
+            }}
+            sx={{ minWidth: 70, maxWidth: 100, }}
             size="small"
             variant="outlined" />
         </Tooltip2>
       </Stack>        
-      <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
-        <Typography fontSize={"0.75em"}>Lock&nbsp;keyframe&nbsp;position&nbsp;to:</Typography>
+      <Stack
+        direction="column"
+        alignItems={'center'}
+        justifyContent={"start"}
+        style={{transform:'translate(0px, -9px)'}}> {/* aligns with textbox label */}
+        <Typography fontSize={"0.75em"}>Lock keyframe & prompt position to:</Typography>
         <ToggleButtonGroup size="small"
           color="primary"
+          style={{lineHeight: 0}}
           value={keyframeLock}
           exclusive
           onChange={(e, newLock) => {
@@ -777,29 +843,37 @@ const ParseqUI = (props) => {
         >
           <ToggleButton value="frames" key="frames">
             <Tooltip2 title="When you change FPS or BPM, keyframes will maintain their frame position, so will not stay at the same position relative to time or beats.">
-              <Typography fontSize={"1em"}>
+              <Typography fontSize={"0.9em"} >
                 ⛌&nbsp;Frames
               </Typography>
             </Tooltip2>
           </ToggleButton>
-          <ToggleButton value="seconds" key="seconds">
+          <ToggleButton value="seconds" key="seconds"> 
             <Tooltip2 title='When you change FPS or BPM, keyframes will maintain their position in time (so will change frame position).For example, a keyframe positioned at 1s will always stay as close as possible to 1s regardless of the FPS.'>
-              <Typography fontSize={"1em"}>
+              <Typography fontSize={"0.9em"}>
                 🕑&nbsp;Seconds
               </Typography>
             </Tooltip2>
           </ToggleButton>
           <ToggleButton value="beats" key="beats">
             <Tooltip2 title="When you change FPS or BPM, keyframes will maintain their beat position (so will change frame position). For example, a keyframe positioned at beat 2 will always stay as close as possible to beat 2 regardless of the FPS or BPM.">
-              <Typography fontSize={"1em"}>
+              <Typography fontSize={"0.9em"} >
                 🥁&nbsp;Beats
               </Typography>
             </Tooltip2>
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
+      <Tooltip2 title="Reverse the rendered frames so that the video is generated in reverse. You can then reverse the final video. This is useful if you want to end on your init image, or use outpainting with a zoom-in effect.">           
+        <FormControlLabel control={
+          <Checkbox
+            checked={reverseRender}
+            onChange={(e) => setReverseRender(e.target.checked)}
+          />}
+          label={<Typography fontSize={"0.75em"}>Generate in reverse</Typography>} />
+      </Tooltip2>
     </Stack>
-  </span>, [options, handleChangeOption, keyframeLock, candidateLastFrame, keyframes, lastFrame])
+  </span>, [options, candidateBPM, candidateFPS, candidateLastFrame, lastFrame, keyframeLock, reverseRender, remapFrames, keyframes])
 
 
 
@@ -1133,7 +1207,32 @@ const ParseqUI = (props) => {
 
   // Raw output ------------------------
 
-  const renderedDataJsonString = useMemo(() => renderedData && JSON.stringify(renderedData, null, 4), [renderedData]);
+  const renderedDataJsonString = useMemo(() => {
+    if (renderedData) {
+      // Apply any post-processing that should *only* be reflected in uploaded and copied output (not in graph etc...)
+      // NOTE: This kind of logic would really be better suited in the a1111 extension, but this is easier to change
+      // without being dependent on a PR merge. :)
+      if (reverseRender && renderedData.rendered_frames) {
+        const postProcessed = _.cloneDeep(renderedData);
+        postProcessed.rendered_frames = postProcessed.rendered_frames.reverse();
+        postProcessed.rendered_frames.forEach((frame, idx) => {
+          frame.frame = idx;
+          Object.keys(frame).forEach((key) => {
+            if (key.endsWith('_delta')) {
+              if (key === 'zoom_delta') {
+                frame[key] = 1 / frame[key];
+              } else {
+                frame[key] = -frame[key];
+              }
+            }
+          });
+        });
+        return JSON.stringify(postProcessed, null, 4);
+      } else {
+        return JSON.stringify(renderedData, null, 4);
+      }
+    }
+  }, [renderedData, reverseRender]);
 
   const renderedOutput = useMemo(() =>
     renderedDataJsonString && <>
@@ -1358,8 +1457,8 @@ const ParseqUI = (props) => {
             onChange={(allTimeSeries) =>
               setTimeSeries([...allTimeSeries])
             }
-            afterFocus={(e) => setTyping(true)}
-            afterBlur={(e) => setTyping(false)}
+            afterFocus={(e) => setIsDocDirty(true)}
+            afterBlur={(e) => setIsDocDirty(false)}
           />
           }
         </ExpandableSection>

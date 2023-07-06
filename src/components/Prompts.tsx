@@ -8,10 +8,14 @@ import _ from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdvancedParseqPrompt, AdvancedParseqPromptsV2, OverlapType, ParseqPrompts, SimpleParseqPrompts } from "../ParseqUI";
 import StyledSwitch from './StyledSwitch';
+import { frameToBeat, frameToSec } from "../utils/maths";
 
 interface PromptsProps {
     initialPrompts: AdvancedParseqPromptsV2,
     lastFrame: number,
+    keyframeLock: 'frames' | 'beats' | 'seconds',
+    bpm: number,
+    fps: number,
     markDirty: (active: boolean) => void,
     commitChange: (event: any) => void
 }
@@ -23,7 +27,6 @@ export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): Ad
         if (v2Prompt.commonPromptPos === undefined) {
             v2Prompt.commonPromptPos = 'append';
         }
-
         return v2Prompt;
     }
 
@@ -760,7 +763,7 @@ export function Prompts(props: PromptsProps) {
                             InputLabelProps={{ shrink: true }}
                             InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em', background: 'whitesmoke' } }}
                             value={quickPreview}
-                            label={`Quick preview [frame ${quickPreviewPosition}]`}
+                            label={`Quick preview [frame ${quickPreviewPosition} / beat ${frameToBeat(quickPreviewPosition, props.fps, props.bpm).toFixed(2)} / ${frameToSec(quickPreviewPosition, props.fps).toFixed(2)}s]`}
                             variant="outlined"
                         />
                     </Stack>

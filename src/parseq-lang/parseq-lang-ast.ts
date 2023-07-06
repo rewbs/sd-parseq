@@ -6,6 +6,7 @@ import { frameToBeat, frameToSec } from '../utils/maths';
 import { InterpolationType, TimeSeries } from './parseq-timeseries';
 //@ts-ignore
 import functionLibrary, { ParseqFunction } from './parseq-lang-functions';
+import _ from 'lodash';
 
 type InputLocation = {
   line: number | undefined;
@@ -222,6 +223,8 @@ export class VariableReferenceAst extends ParseqAstNode {
         return cubicSplineInterpolation(ctx.definedFrames, ctx.definedValues, ctx.frame);
       case 'f':
         return ctx.frame;
+      case 'last_frame':
+        return _.maxBy(ctx.allKeyframes, 'frame')?.frame ?? 0;
       case 'b':
         return frameToBeat(ctx.frame, ctx.FPS, ctx.BPM);
       case 'wb': // whole beat (beat without the fractional part)

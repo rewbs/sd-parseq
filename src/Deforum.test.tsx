@@ -9192,3 +9192,142 @@ test('common_prompt_prepend', async () => {
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
 
+test('reverse_render_standard', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+          "name": "Common",
+          "positive": "",
+          "negative": "",
+          "allFrames": true,
+          "from": 0,
+          "to": 119,
+          "overlap": {
+              "inFrames": 0,
+              "outFrames": 0,
+              "type": "none",
+              "custom": "prompt_weight_1"
+          }
+      },
+      "commonPromptPos": "append",
+      "promptList": [
+          {
+              "name": "Prompt 1",
+              "positive": "Test ${prompt_weight_1}",
+              "negative": "",
+              "allFrames": false,
+              "from": 0,
+              "to": 10,
+              "overlap": {
+                  "inFrames": 0,
+                  "outFrames": 0,
+                  "type": "none",
+                  "custom": "prompt_weight_1"
+              }
+          }
+      ]
+    },
+    "managedFields": [
+        "zoom",
+        "angle",
+        "prompt_weight_1"
+    ],
+    "keyframes": [
+        {
+            "frame": 0,
+            "zoom": 1,
+            "seed": -1,
+            "prompt_weight_1": 0,
+            "angle": 0
+        },
+        {
+            "frame": 5,
+            "zoom": 0.5,
+            "angle": 5
+        },
+        {
+            "frame": 10,
+            "zoom": 1.5,
+            "prompt_weight_1": 1,
+            "angle": -5
+        }
+    ],
+    "timeSeries": [],
+    "keyframeLock": "frames",
+    "reverseRender": false,
+  }
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});
+
+test('reverse_render_reversed', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+          "name": "Common",
+          "positive": "",
+          "negative": "",
+          "allFrames": true,
+          "from": 0,
+          "to": 119,
+          "overlap": {
+              "inFrames": 0,
+              "outFrames": 0,
+              "type": "none",
+              "custom": "prompt_weight_1"
+          }
+      },
+      "commonPromptPos": "append",
+      "promptList": [
+          {
+              "name": "Prompt 1",
+              "positive": "Test ${prompt_weight_1}",
+              "negative": "",
+              "allFrames": false,
+              "from": 0,
+              "to": 10,
+              "overlap": {
+                  "inFrames": 0,
+                  "outFrames": 0,
+                  "type": "none",
+                  "custom": "prompt_weight_1"
+              }
+          }
+      ]
+  },
+  "managedFields": [
+      "zoom",
+      "angle",
+      "prompt_weight_1"
+  ],
+  "keyframes": [
+      {
+          "frame": 0,
+          "zoom": 1,
+          "seed": -1,
+          "prompt_weight_1": 0,
+          "angle": 0
+      },
+      {
+          "frame": 5,
+          "zoom": 0.5,
+          "angle": 5
+      },
+      {
+          "frame": 10,
+          "zoom": 1.5,
+          "prompt_weight_1": 1,
+          "angle": -5
+      }
+  ],
+  "timeSeries": [],
+  "keyframeLock": "frames",
+  "reverseRender": true,
+  }
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});

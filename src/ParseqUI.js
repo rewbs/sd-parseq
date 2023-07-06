@@ -626,7 +626,7 @@ const ParseqUI = (props) => {
       console.timeEnd('Render');
     }
 
-  }, [keyframes, prompts, options, managedFields, timeSeries, getPersistableState]);
+  }, [getPersistableState, keyframes, prompts, options, managedFields, timeSeries, reverseRender]);
 
 
   ////////////////////////////////////////////////////////////////////////////////

@@ -185,6 +185,7 @@ Your expression runs in a context that provides access to a number of useful var
 | `active_keyframe_value`  	| The value set at the currently active keyframe for this field. Equivalent to `S` (step interpolation). 	| <img width="360" src="https://www.evernote.com/l/APZv89DKzZpPna9s8O1w-5bYeCobsYl9GiEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 | `next_keyframe_value`  	| The value set at the next keyframe for this field 	| <img width="360" src="https://www.evernote.com/l/APakRylM_mdLcK-MZcKm4wmEL7AEJfuzddoB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
 | `prev_computed_value`  	| The value calculated at the previous frame for this field, or 0 for the first frame. 	| <img src="https://www.evernote.com/l/APaAsSyhbg5AZofq4JLUNFHLvY0N7NjwjEEB/image.png" alt="Parseq%20-%20parameter%20sequencer%20for%20Stable%20Diffusion" />  |
+| `last_frame`  	| The value set in the "Final frame" input field. Similar to the "max_f" variable in deforum. 	|   |
 
 #### Constants
 
@@ -509,7 +510,7 @@ Here are the parameters that Parseq can control. You can select which ones are c
 Stable diffusion generation parameters:
 
 * seed
-* scale
+* scale (CFG)
 * noise: additional noise to add during generation, can help
 * strength: how much the last generated image should influence the current generation
 

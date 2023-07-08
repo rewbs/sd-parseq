@@ -29,6 +29,9 @@ const fillWithDefaults = (possiblyIncompleteContent: ParseqDocVersion, defaultTe
     if (!possiblyIncompleteContent.keyframeLock) {
         possiblyIncompleteContent.keyframeLock = "frames";
     }
+    if (possiblyIncompleteContent.reverseRender === undefined) {
+        possiblyIncompleteContent.reverseRender = false;
+    }    
 
     // For options we want to merge the defaults with the existing options.
     possiblyIncompleteContent.options = { ...DEFAULT_OPTIONS, ...(possiblyIncompleteContent.options || {}) };

@@ -16,12 +16,13 @@ function frameOfNextMatch(ctx: InvocationContext, pattern: string) {
 const info_match_prev : ParseqFunction = {
   description: "Returns the frame number of the last keyframe that matched the regex, or -1 if none.",
   argDefs: [
-    { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
+    { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
+    { description: "default if no previous match", names: ["default", "d"], type: "string", required: false, default: -1 }
   ],
   call: (ctx, args) => {
     const pattern = String(args[0]);
     const prevMatch = frameOfPrevMatch(ctx, pattern);
-    return prevMatch ? prevMatch.frame : -1;
+    return prevMatch ? prevMatch.frame : Number(args[1]);
   }
 };
 
@@ -56,38 +57,41 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
   "info_match_next": {
     description: "Returns the frame number of the next keyframe that matched the regex, or -1 if none.",
     argDefs: [
-      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
+      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
+      { description: "default if no next match", names: ["default", "d"], type: "string", required: false, default: -1 }
     ],
     call: (ctx, args) => {
       const pattern = String(args[0]);
       const nextMatch = frameOfNextMatch(ctx, pattern)
-      return nextMatch ? nextMatch.frame : -1;
+      return nextMatch ? nextMatch.frame : Number(args[1]);
     }
   },
 
   "info_match_gap": {
     description: "Returns the number of frames between the previous and next match (equivalent to `info_match_next()-info_match_prev()`), or `-1` if not between matches.",
     argDefs: [
-      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
+      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
+      { description: "default if not between matches", names: ["default", "d"], type: "string", required: false, default: -1 }
     ],
     call: (ctx, args) => {
       const pattern = String(args[0]);
       const prevMatch = frameOfPrevMatch(ctx, pattern);
       const nextMatch = frameOfNextMatch(ctx, pattern)
-      return (nextMatch && prevMatch) ? (nextMatch.frame - prevMatch.frame) : -1;
+      return (nextMatch && prevMatch) ? (nextMatch.frame - prevMatch.frame) : Number(args[1]);
     }
   },
 
   "info_match_progress": {
     description: "Returns a number between 0 and 1 reprenting how far the current frame is along the gap between (equivalent to `(f-info_match_prev()/info_match_gap())`, or `-1` if not between matches.",
     argDefs: [
-      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" }
+      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
+      { description: "default if not between matches", names: ["default", "d"], type: "string", required: false, default: -1 }
     ],
     call: (ctx, args) => {
       const pattern = String(args[0]);
       const prevMatch = frameOfPrevMatch(ctx, pattern);
       const nextMatch = frameOfNextMatch(ctx, pattern)
-      return (nextMatch && prevMatch) ? (ctx.frame - prevMatch.frame) / (nextMatch.frame - prevMatch.frame) : -1;
+      return (nextMatch && prevMatch) ? (ctx.frame - prevMatch.frame) / (nextMatch.frame - prevMatch.frame) : Number(args[1]);
     }
   }
 

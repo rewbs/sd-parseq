@@ -1,9 +1,14 @@
 import { AgGridReact } from 'ag-grid-react';
-import { GridTooltip } from './GridToolTip';
-import { forwardRef, useCallback, useMemo } from 'react';
 import _ from 'lodash';
+import { all, create } from 'mathjs';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { frameToXAxisType, xAxisTypeToFrame } from '../utils/maths';
 import { fieldNametoRGBa } from '../utils/utils';
+import { GridTooltip } from './GridToolTip';
+
+const config = {}
+const mathjs = create(all, config)
+
 
 type RangeSelection = {
   anchor?: { x: number; y: number; };
@@ -145,7 +150,8 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         {
           field: field,
           valueSetter: (params: { data: { [x: string]: string | number; }; newValue: string; }) => {
-            params.data[field] = isNaN(parseFloat(params.newValue)) ? "" : parseFloat(params.newValue);
+            console.log(params.newValue);
+            params.data[field] = !params.newValue ? '' : mathjs.evaluate(''+params.newValue);
           },
           suppressMovable: true,
           cellStyle: (params: any) => {

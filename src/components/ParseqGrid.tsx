@@ -5,6 +5,7 @@ import { forwardRef, useCallback, useMemo } from 'react';
 import { frameToXAxisType, xAxisTypeToFrame } from '../utils/maths';
 import { fieldNametoRGBa } from '../utils/utils';
 import { GridTooltip } from './GridToolTip';
+import { ValueParserParams, ValueSetterParams } from 'ag-grid-community';
 
 const config = {}
 const mathjs = create(all, config)
@@ -92,11 +93,12 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         field: 'frame',
         comparator: (valueA: number, valueB: number, nodeA: any, nodeB: any, isDescending: any) => valueA - valueB,
         sort: 'asc',
-        valueSetter: (params: { newValue: string; data: { frame: number; }; }) => {
+        valueSetter: (params: ValueParserParams) => {
           var newValue = parseFloat(params.newValue);
           if (newValue && !isNaN(newValue)) {
             const newFrame = Math.round(xAxisTypeToFrame(newValue, keyframeLock, fps, bpm));
             params.data.frame = newFrame;
+            return true;
           }
         },
         valueFormatter: (params: { value: any; }) => {
@@ -119,8 +121,9 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       {
         headerName: 'Info',
         field: 'info',
-        valueSetter: (params: { data: { info: any; }; newValue: any; }) => {
+        valueSetter: (params: ValueParserParams) => {
           params.data.info = params.newValue;
+          return true;
         },
         cellEditor: 'agLargeTextCellEditor',
         cellEditorPopup: true,
@@ -149,9 +152,14 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       ...(managedFields ? managedFields.flatMap((field: string) => [
         {
           field: field,
-          valueSetter: (params: { data: { [x: string]: string | number; }; newValue: string; }) => {
-            console.log(params.newValue);
-            params.data[field] = !params.newValue ? '' : mathjs.evaluate(''+params.newValue);
+          valueSetter: (params: ValueSetterParams) => {
+            try {
+              params.data[field] = !params.newValue ? '' : mathjs.evaluate(''+params.newValue);
+              return true;
+            } catch (e:any) {
+              console.log(`Value eval error when parsing ${params.newValue}: ${e.message}`);
+              return false;
+            }
           },
           suppressMovable: true,
           cellStyle: (params: any) => {
@@ -181,6 +189,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
           },
           valueSetter: (params: { data: { [x: string]: any; }; newValue: any; }) => {
             params.data[field + '_i'] = params.newValue;
+            return true;
           },
           suppressMovable: true,
           cellStyle: (params: any) => {

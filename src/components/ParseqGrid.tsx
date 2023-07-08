@@ -153,10 +153,19 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         {
           field: field,
           valueSetter: (params: ValueSetterParams) => {
-            try {
-              params.data[field] = !params.newValue ? '' : mathjs.evaluate(''+params.newValue);
+            if (!params.newValue) {
+              params.data[field] = '';
               return true;
-            } catch (e:any) {
+            }
+            try {
+              const mathsResult = mathjs.evaluate(''+params.newValue)
+              if (!mathjs.isNumber(mathsResult)) {
+                console.log(`Value eval did not parse to a number ${params.newValue}: ${mathsResult}`);
+                return false;
+              } 
+              params.data[field] = mathsResult;
+              return true;
+             } catch (e:any) {
               console.log(`Value eval error when parsing ${params.newValue}: ${e.message}`);
               return false;
             }

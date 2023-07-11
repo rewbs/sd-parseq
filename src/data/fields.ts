@@ -314,6 +314,14 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         labels: ['hybrid_video']
     },
     {
+        name: "hybrid_flow_factor",
+        type: "number",
+        defaultValue: 1,
+        description: "",
+        color: [200, 250, 250],
+        labels: ['hybrid_video']
+    },
+    {
         name: "cn_1_weight",
         type: "number",
         defaultValue: 1,

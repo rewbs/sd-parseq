@@ -9,7 +9,7 @@ import annotationPlugin from 'chartjs-plugin-annotation';
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import { fieldNametoRGBa, } from '../utils/utils';
-import { frameToBeats, frameToSeconds } from '../utils/maths';
+import { frameToBeat, frameToSec } from '../utils/maths';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { DECIMATION_THRESHOLD } from '../utils/consts';
 import debounce from 'lodash.debounce';
@@ -184,7 +184,7 @@ export class ParseqGraph extends React.Component<{
                     borderWidth: 0.5,
                     label: {
                         display: true,
-                        content: 'Beat ' + Math.round(x*frameToBeats(1, this.props.renderedData.options.output_fps, this.props.renderedData.options.bpm)),
+                        content: 'Beat ' + Math.round(x*frameToBeat(1, this.props.renderedData.options.output_fps, this.props.renderedData.options.bpm)),
                         position: 'start',
                         yAdjust: 5,
                         font: { size: '8' },
@@ -254,8 +254,8 @@ export class ParseqGraph extends React.Component<{
                         callback: function (value, index, ticks) {
                             switch (capturedThis.props.xaxisType) {
                                 case 'frames': return Number(value).toFixed(0);
-                                case 'seconds': return frameToSeconds(Number(value), capturedThis.props.renderedData.options.output_fps).toFixed(3);
-                                case 'beats': return frameToBeats(Number(value), capturedThis.props.renderedData.options.output_fps, capturedThis.props.renderedData.options.bpm).toFixed(2);
+                                case 'seconds': return frameToSec(Number(value), capturedThis.props.renderedData.options.output_fps).toFixed(3);
+                                case 'beats': return frameToBeat(Number(value), capturedThis.props.renderedData.options.output_fps, capturedThis.props.renderedData.options.bpm).toFixed(2);
                             }
                         }
                     }
@@ -352,7 +352,7 @@ export class ParseqGraph extends React.Component<{
                             const frame = items[0].parsed.x;
                             const fps = capturedThis.props.renderedData.options.output_fps;
                             const bpm = capturedThis.props.renderedData.options.bpm;
-                            return `Frame ${frame.toString()} [beat ${frameToBeats(frame, fps, bpm).toFixed(2)}; ${frameToSeconds(frame, fps).toFixed(2)}s]`
+                            return `Frame ${frame.toString()} [beat ${frameToBeat(frame, fps, bpm).toFixed(2)}; ${frameToSec(frame, fps).toFixed(2)}s]`
                         }
                     }
 

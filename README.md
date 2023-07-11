@@ -677,11 +677,11 @@ firebase hosting:clone sd-parseq:staging sd-parseq:live
 
 This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of support and inspiration:
 
-* Everyone supporting [Parseq on Patreon](https://www.patreon.com/rewbs), including: Adam Sinclair and MJ.
+* Everyone supporting [Parseq on Patreon](https://www.patreon.com/rewbs), including: Adam Sinclair, MJ, AndyXT, King Kush, Ben Del Vacchio, Zirteq, Kewk, BinaryLady at TheTechMargin, Chris Erickson, Sasha Agafonoff, Brandon Glasgow.
 * Everyone who has [bought me a coffee](https://www.buymeacoffee.com/rewbs)!
 * Everyone who has contributed to the [A1111 web UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 * Everyone who has contributed to [Deforum](https://github.com/deforum-art/)
-* Everyone trying out Parseq and giving me feedback on Discrod (e.g. ronnykhalil, Michael L, Moistlicks, Kingpin, hithere, kabachuha, AndyXR, Akumetsu971, koshi...)
+* Everyone trying out Parseq and giving feedback on Discord
 * Everyone behind [Aubio](https://aubio.org/), [AubioJS](https://github.com/qiuxiang/aubiojs), [Wavesurfer](https://wavesurfer-js.org/),  [react-timeline-editor](https://github.com/xzdarcy/react-timeline-editor), [ag-grid](https://www.ag-grid.com/) (community edition), p5, chart.js and recharts.
 * The following scripts and their authors from whom I picked up some good ideas when I was starting out:
    * Filarus for their [vid2vid script](https://github.com/Filarius/stable-diffusion-webui/blob/master/scripts/vid2vid.py).  

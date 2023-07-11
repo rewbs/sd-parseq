@@ -54,7 +54,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
 import './robin.css';
 
 import { defaultFields } from './data/fields';
-import { remapFrameCount } from './utils/maths';
+import { beatToFrame, frameToBeat, frameToSec, secToFrame, beatToSec, secToBeat, remapFrameCount } from './utils/maths';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
@@ -702,8 +702,8 @@ const ParseqUI = (props) => {
 
   const optionsUI = useMemo(() => options && <span>
      
-    <Stack direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'center' }} justifyContent={'space-between'} >
-      <Stack direction='row' gap={2}>
+    <Stack direction={{  xs: 'column', sm: 'column', md: 'row' }} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'flex-start' }} justifyContent={'space-between'} >
+      <Stack direction='row' gap={2} alignItems={{  xs: 'flex-start', sm: 'flex-start', md: 'flex-start' }} >
         <Tooltip2 title="Beats per Minute: you can specify wave interpolators based on beats, e.g. sin(p=1b). Parseq will use your BPM and Output FPS value to determine the number of frames per beat when you render.">
           <TextField
             label={"BPM"}
@@ -821,7 +821,15 @@ const ParseqUI = (props) => {
             size="small"
             variant="outlined" />
         </Tooltip2>
-      </Stack>        
+        <Typography fontSize={'0.6em'} style={{transform:'translate(0px, -2em)', margin:0}}> 
+            <ul>
+              <li>Total duration: {lastFrame+1} frames = {frameToSec(lastFrame+1, options.output_fps).toFixed(4)} seconds = {frameToBeat(lastFrame+1, options.output_fps, options.bpm).toFixed(4)} beats </li>
+              <li>1 frame: {frameToSec(1, options.output_fps).toFixed(4)} seconds = {frameToBeat(1, options.output_fps, options.bpm).toFixed(4)} beats</li>
+              <li>1 second: {secToFrame(1, options.output_fps).toFixed(4)} frames = {secToBeat( 1, options.bpm).toFixed(4)} beats</li>
+              <li>1 beat: {beatToFrame(1, options.output_fps, options.bpm).toFixed(4)} frames = {beatToSec( 1, options.bpm).toFixed(4)} seconds</li>
+            </ul>
+        </Typography>
+      </Stack>
       <Stack
         direction="column"
         alignItems={'center'}

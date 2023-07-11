@@ -171,6 +171,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
             }
           },
           suppressMovable: true,
+          cellDataType: 'text',
           cellStyle: (params: any) => {
             if (isInRangeSelection(params)) {
               return {

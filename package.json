@@ -79,7 +79,7 @@
     "uuid": "^9.0.0",
     "wavesurfer-react": "^2.2.2",
     "wavesurfer.js": "^6.6.4",
-    "web-vitals": "^3.3.2"
+    "web-vitals": "^3.4.0"
   },
   "scripts": {
     "compile-grammar": "npx nearleyc src/parseq-lang/parseq-lang.ne -o src/parseq-lang/parseq-lang.js",

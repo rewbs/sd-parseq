@@ -13,7 +13,7 @@
     "@mui/material": "^5.13.7",
     "@p5-wrapper/react": "^4.2.0",
     "@sentry/react": "^7.57.0",
-    "@sentry/tracing": "^7.57.0",
+    "@sentry/tracing": "^7.58.1",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
     "@types/chart.js": "^2.9.37",

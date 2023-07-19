@@ -655,12 +655,12 @@ function getPromptSummary(prompt: AdvancedParseqPrompt, trim: boolean): JSX.Elem
 
     return <>
         <Tooltip title={prompt.positive}>
-            <Typography fontSize='0.75em' color='DarkGreen'>
+            <Typography fontSize='0.75em'>
                 {smartTrim(prompt.positive, trim ? 80 : Number.MAX_SAFE_INTEGER)}
             </Typography>
         </Tooltip>
         <Tooltip title={prompt.negative}>
-            <Typography fontSize='0.75em' color='Firebrick' >
+            <Typography fontSize='0.75em'>
                 {smartTrim(prompt.negative, trim ? 80 : Number.MAX_SAFE_INTEGER)}
             </Typography>
         </Tooltip>

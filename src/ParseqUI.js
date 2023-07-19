@@ -2,8 +2,9 @@
 import { Alert, Button, Checkbox, Collapse, FormControlLabel, Stack, ToggleButton, ToggleButtonGroup, Tooltip as Tooltip2, Typography } from '@mui/material';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -16,6 +17,7 @@ import Grid from '@mui/material/Unstable_Grid2';
 
 import equal from 'fast-deep-equal';
 import _ from 'lodash';
+import prettyBytes from 'pretty-bytes';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
@@ -33,12 +35,14 @@ import { InitialisationStatus } from "./components/InitialisationStatus";
 import { AddKeyframesDialog, BulkEditDialog, DeleteKeyframesDialog, MergeKeyframesDialog } from './components/KeyframeDialogs';
 import { MovementPreview } from "./components/MovementPreview";
 import { Preview } from "./components/Preview";
-import { Prompts, convertPrompts } from "./components/Prompts";
+import { convertPrompts, Prompts } from "./components/Prompts";
 import StyledSwitch from "./components/StyledSwitch";
 import { TimeSeriesUI } from './components/TimeSeriesUI';
 import { UploadButton } from "./components/UploadButton";
 import { Viewport } from './components/Viewport';
+import { defaultFields } from './data/fields';
 import runDbTasks from './dbTasks';
+
 import { parseqLoad } from "./parseq-loader";
 import { parseqRender } from './parseq-renderer';
 import { DECIMATION_THRESHOLD } from './utils/consts';
@@ -47,19 +51,15 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
 
 
-import prettyBytes from 'pretty-bytes';
-
-import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
-import 'ag-grid-community/styles/ag-theme-alpine.css'; // Optional theme CSS
+// Optional theme CSS
 import './robin.css';
 
-import { defaultFields } from './data/fields';
 import { beatToFrame, frameToBeat, frameToSec, secToFrame, beatToSec, secToBeat, remapFrameCount } from './utils/maths';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
-  const defaultTemplate = props.defaultTemplate;
+  const { defaultTemplate, darkMode } = props
   const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
   
   //////////////////////////////////////////
@@ -302,6 +302,7 @@ const ParseqUI = (props) => {
   // Assumes any required deep copying has already occurred.  
   const setPersistableState = useCallback((doc) => {
     if (doc) {
+      // setDarkMode(doc.darkMode) // TODO: implement dark mode persistence
       setPrompts(convertPrompts(doc.prompts, Math.max(...doc.keyframes.map(kf => kf.frame))));
       setOptions(doc.options);
       setManagedFields(doc.managedFields);
@@ -653,6 +654,7 @@ const ParseqUI = (props) => {
   const promptsUI = useMemo(() => (prompts && options) ? <Prompts
     initialPrompts={prompts}
     lastFrame={lastFrame}
+    darkMode={darkMode}
     keyframeLock={keyframeLock}
     fps={options?.output_fps}
     bpm={options?.bpm}    
@@ -1251,7 +1253,7 @@ const ParseqUI = (props) => {
           </Alert>
           : <></>
       }
-      <div style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', maxHeight: '40em', overflow: 'scroll' }}>
+      <div style={{ fontSize: '0.75em', maxHeight: '40em', overflow: 'scroll' }}>
         <pre data-testid="output">{renderedDataJsonString.substring(0, getOutputTruncationLimit())}</pre>
       </div>
     </>, [renderedDataJsonString]);

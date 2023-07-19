@@ -16,6 +16,7 @@ interface PromptsProps {
     keyframeLock: 'frames' | 'beats' | 'seconds',
     bpm: number,
     fps: number,
+    darkMode: boolean,
     markDirty: (active: boolean) => void,
     commitChange: (event: any) => void
 }
@@ -81,7 +82,6 @@ export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): Ad
 }
 
 export function Prompts(props: PromptsProps) {
-
     //const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
     const [unsavedPrompts, setUnsavedPrompts] = useState<AdvancedParseqPromptsV2>(_.cloneDeep(props.initialPrompts));
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
@@ -131,6 +131,11 @@ export function Prompts(props: PromptsProps) {
 
         const hasUnsavedChanges = initPrompt && (unsavedPrompt[posNegStr] !== initPrompt[posNegStr]);
 
+        const inputTextColors = {
+            positive: props.darkMode ? 'LightGreen' : 'DarkGreen',
+            negative: props.darkMode ? '#ff8d8d' : 'Firebrick'
+        }
+
         return <TextField
             multiline
             minRows={2}
@@ -140,7 +145,7 @@ export function Prompts(props: PromptsProps) {
             label={(positive ? "Positive" : "Negative") + " " + unsavedPrompt?.name?.toLowerCase()}
             value={unsavedPrompt[posNegStr]}
             InputProps={{
-                style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? 'DarkGreen' : 'Firebrick' },
+                style: { fontSize: '0.7em', fontFamily: 'Monospace', color: inputTextColors[positive ? 'positive' : 'negative']},
                 sx: { background: hasUnsavedChanges ? 'ivory' : '', },
                 endAdornment: hasUnsavedChanges ? '🖊️' : ''
             }}
@@ -377,7 +382,7 @@ export function Prompts(props: PromptsProps) {
         <Grid container xs={12} sx={{ paddingTop: '0', paddingBottom: '0' }}>
             {
                 advancedPrompts.promptList.map((prompt, idx) =>
-                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, borderRadius: 1 }} >
                         <Grid xs={12} style={{ padding: 0, margin: 0, border: 0 }}>
 
                             <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%' }}>
@@ -509,7 +514,7 @@ export function Prompts(props: PromptsProps) {
                     </Box>)
             }
             {(advancedPrompts.commonPrompt.positive || advancedPrompts.commonPrompt.negative || advancedPrompts.promptList.length > 1) &&
-                <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0,  borderRadius: 1 }} >
                     <Grid container xs={12} style={{ margin: 0, padding: 0 }}>
                         <Grid xs={12} style={{ margin: 0, padding: 0 }}>
                             <h5>Common prompt</h5>
@@ -761,7 +766,7 @@ export function Prompts(props: PromptsProps) {
                             size="small"
                             fullWidth={true}
                             InputLabelProps={{ shrink: true }}
-                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em', background: 'whitesmoke' } }}
+                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em',  } }}
                             value={quickPreview}
                             label={`Quick preview [frame ${quickPreviewPosition} / beat ${frameToBeat(quickPreviewPosition, props.fps, props.bpm).toFixed(2)} / ${frameToSec(quickPreviewPosition, props.fps).toFixed(2)}s]`}
                             variant="outlined"

@@ -7,5 +7,7 @@ export const supporterList = [
     { name: 'Zirteq', link: 'https://youtube.com/@ZirTeq/videos' },
     { name: 'Kewk', link: 'https://twitter.com/kewkd' },
     { name: 'BinaryLady at TheTechMargin', link: 'https://bio.site/techmargin' },
-    { name: 'Chris Erickson', link: '' },   // TODO - awaiting name confirmation & link
+    { name: 'ascendant', link: 'https://tiktok.com/@malaclypse23' },
+    { name: 'Koshi Mazaki', link: 'https://glitchcandies.art/spectralshift/' }, 
+    
 ] 

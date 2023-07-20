@@ -1,10 +1,12 @@
 import Dexie, { Table } from 'dexie';
 import { isStoragePersisted, persist } from './persistance';
 import { ParseqDoc, ParseqDocVersion } from './ParseqUI';
+import { UserSetting } from './UserSettings';
 
 export class ParseqDexie extends Dexie {
     parseqVersions!: Table<ParseqDocVersion>;
     parseqDocs!: Table<ParseqDoc>;
+    parseqUserSettings!: Table<UserSetting>;
 
     constructor() {
         super('parseqDB');
@@ -15,7 +17,12 @@ export class ParseqDexie extends Dexie {
         this.version(2).stores({
             parseqVersions: 'versionId, docId, timestamp',
             parseqDocs: 'docId, name, timestamp, latestVersionId'
-        });        
+        });
+        this.version(6).stores({
+            parseqVersions: 'versionId, docId, timestamp',
+            parseqDocs: 'docId, name, timestamp, latestVersionId',
+            parseqUserSettings: 'name'
+        });          
     }
 }
 

@@ -1,4 +1,4 @@
-import { Alert, Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, MenuItem, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, FormControlLabel, Link, MenuItem, Tooltip, Typography } from "@mui/material";
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2';
@@ -9,6 +9,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdvancedParseqPrompt, AdvancedParseqPromptsV2, OverlapType, ParseqPrompts, SimpleParseqPrompts } from "../ParseqUI";
 import StyledSwitch from './StyledSwitch';
 import { frameToBeat, frameToSec } from "../utils/maths";
+import type {} from '@mui/material/themeCssVarsAugmentation';
+import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
+import { themeFactory } from "../theme";
 
 interface PromptsProps {
     initialPrompts: AdvancedParseqPromptsV2,
@@ -81,11 +84,12 @@ export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): Ad
 }
 
 export function Prompts(props: PromptsProps) {
-
     //const [prompts, setPrompts] = useState<AdvancedParseqPrompts>(props.initialPrompts);
     const [unsavedPrompts, setUnsavedPrompts] = useState<AdvancedParseqPromptsV2>(_.cloneDeep(props.initialPrompts));
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
+    const theme = extendTheme(themeFactory());
+
 
     // Copy the initial prompts into the unsaved prompts
     // unless  the initial prompts have a marker indicating they have just looped around
@@ -140,8 +144,8 @@ export function Prompts(props: PromptsProps) {
             label={(positive ? "Positive" : "Negative") + " " + unsavedPrompt?.name?.toLowerCase()}
             value={unsavedPrompt[posNegStr]}
             InputProps={{
-                style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? 'DarkGreen' : 'Firebrick' },
-                sx: { background: hasUnsavedChanges ? 'ivory' : '', },
+                style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? theme.vars.palette.positive.main : theme.vars.palette.negative.main },
+                sx: { background: hasUnsavedChanges ? theme.vars.palette.unsavedbg.main : '', },
                 endAdornment: hasUnsavedChanges ? '🖊️' : ''
             }}
             onBlur={(e: any) => {
@@ -167,7 +171,7 @@ export function Prompts(props: PromptsProps) {
             InputLabelProps={{ shrink: true, style: { fontSize: '0.9em' } }}
             size="small"
             variant="outlined" />
-    }, [commitChanges, props, unsavedPrompts]);
+    }, [commitChanges, props, unsavedPrompts, theme]);
 
     const addPrompt = useCallback(() => {
         const newIndex = unsavedPrompts.promptList.length;
@@ -215,7 +219,7 @@ export function Prompts(props: PromptsProps) {
             && (prompt.positive.match(/\sAND\s/)
                 || prompt.negative.match(/\sAND\s/))) {
             return <Alert severity="warning">
-                Warning: Parseq uses <a href="https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion">composable diffusion</a> to combine overlapping prompts.
+                Warning: Parseq uses <Link href="https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features#composable-diffusion">composable diffusion</Link> to combine overlapping prompts.
                 &nbsp;{prompt.name} overlaps with the following: <strong>{overlappingPrompts.map(p => p.name).join(', ')}</strong>.
                 But {prompt.name}  also appears to contain its own composable diffusion sections (<span style={{ fontFamily: 'monospace' }}>&#8230; AND &#8230;</span>).
                 This may lead to unexpected results. Check your rendered prompts in the preview window and consider removing the composable diffusion sections  from {prompt.name} if possible.
@@ -258,7 +262,7 @@ export function Prompts(props: PromptsProps) {
                     disabled={prompt.overlap.type === "none"}
                     inputProps={{
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.inFrames !== props.initialPrompts.promptList[promptIdx]?.overlap?.inFrames ? 'ivory' : '', },
+                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.inFrames !== props.initialPrompts.promptList[promptIdx]?.overlap?.inFrames ? theme.vars.palette.unsavedbg.main : '', },
                     }}
                     InputLabelProps={{ shrink: true, }}
                     value={prompt.overlap.inFrames}
@@ -300,7 +304,7 @@ export function Prompts(props: PromptsProps) {
                     disabled={prompt.overlap.type === "none"}
                     inputProps={{
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.outFrames !== props.initialPrompts.promptList[promptIdx]?.overlap?.outFrames ? 'ivory' : '', },
+                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.outFrames !== props.initialPrompts.promptList[promptIdx]?.overlap?.outFrames ? theme.vars.palette.unsavedbg.main : '', },
                     }}
                     InputLabelProps={{ shrink: true, }}
                     value={prompt.overlap.outFrames}
@@ -344,7 +348,7 @@ export function Prompts(props: PromptsProps) {
                     disabled={prompt.overlap.type !== "custom"}
                     inputProps={{
                         style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.custom !== props.initialPrompts.promptList[promptIdx]?.overlap?.custom ? 'ivory' : '', },
+                        sx: { background: unsavedPrompts.promptList[promptIdx].overlap.custom !== props.initialPrompts.promptList[promptIdx]?.overlap?.custom ? theme.vars.palette.unsavedbg.main : '', },
                     }}
                     InputLabelProps={{ shrink: true, }}
                     value={prompt.overlap.custom}
@@ -370,14 +374,14 @@ export function Prompts(props: PromptsProps) {
                 />
             </Tooltip>
         </>
-    }, [unsavedPrompts, commitChanges, props]);
+    }, [unsavedPrompts, commitChanges, props, theme]);
 
 
     const displayPrompts = useCallback((advancedPrompts: AdvancedParseqPromptsV2) =>
         <Grid container xs={12} sx={{ paddingTop: '0', paddingBottom: '0' }}>
             {
                 advancedPrompts.promptList.map((prompt, idx) =>
-                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, borderRadius: 1 }} >
                         <Grid xs={12} style={{ padding: 0, margin: 0, border: 0 }}>
 
                             <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%' }}>
@@ -406,7 +410,7 @@ export function Prompts(props: PromptsProps) {
                                             disabled={prompt.allFrames}
                                             inputProps={{
                                                 style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                                                sx: { background: unsavedPrompts.promptList[idx].from !== props.initialPrompts.promptList[idx]?.from ? 'ivory' : '', },
+                                                sx: { background: unsavedPrompts.promptList[idx].from !== props.initialPrompts.promptList[idx]?.from ? theme.vars.palette.unsavedbg.main : '', },
                                             }}
                                             InputLabelProps={{ shrink: true, }}
                                             value={prompt.from}
@@ -447,7 +451,7 @@ export function Prompts(props: PromptsProps) {
                                             disabled={prompt.allFrames}
                                             inputProps={{
                                                 style: { fontFamily: 'Monospace', fontSize: '0.75em' },
-                                                sx: { background: unsavedPrompts.promptList[idx].to !== props.initialPrompts.promptList[idx]?.to ? 'ivory' : '', },
+                                                sx: { background: unsavedPrompts.promptList[idx].to !== props.initialPrompts.promptList[idx]?.to ? theme.vars.palette.unsavedbg.main : '', },
                                             }}
                                             InputLabelProps={{ shrink: true, }}
                                             value={prompt.to}
@@ -509,7 +513,7 @@ export function Prompts(props: PromptsProps) {
                     </Box>)
             }
             {(advancedPrompts.commonPrompt.positive || advancedPrompts.commonPrompt.negative || advancedPrompts.promptList.length > 1) &&
-                <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+                <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0,  borderRadius: 1 }} >
                     <Grid container xs={12} style={{ margin: 0, padding: 0 }}>
                         <Grid xs={12} style={{ margin: 0, padding: 0 }}>
                             <h5>Common prompt</h5>
@@ -544,7 +548,7 @@ export function Prompts(props: PromptsProps) {
                 </Box>
             }
         </Grid>
-        , [delPrompt, promptInput, unsavedPrompts, props, displayFadeOptions, composableDiffusionWarning, commitChanges]);
+        , [delPrompt, promptInput, unsavedPrompts, props, displayFadeOptions, composableDiffusionWarning, commitChanges, theme]);
 
 
     const reorderPrompts = useCallback(() => {
@@ -761,7 +765,7 @@ export function Prompts(props: PromptsProps) {
                             size="small"
                             fullWidth={true}
                             InputLabelProps={{ shrink: true }}
-                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em', background: 'whitesmoke' } }}
+                            InputProps={{ readOnly: true, style: { fontFamily: 'Monospace', fontSize: '0.75em',  } }}
                             value={quickPreview}
                             label={`Quick preview [frame ${quickPreviewPosition} / beat ${frameToBeat(quickPreviewPosition, props.fps, props.bpm).toFixed(2)} / ${frameToSec(quickPreviewPosition, props.fps).toFixed(2)}s]`}
                             variant="outlined"

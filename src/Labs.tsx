@@ -1,13 +1,12 @@
-import { Box, CssBaseline, Stack } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import Grid from '@mui/material/Unstable_Grid2';
-import Header from "./components/Header";
-import { ParseqGrid } from "./components/ParseqGrid";
-import { ParseqGraph } from "./components/ParseqGraph";
-import { GraphableData, ParseqKeyframe, ParseqKeyframes, ParseqPersistableState, RenderedData } from "./ParseqUI";
-import { useCallback, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { parseqRender } from "./parseq-renderer";
 import _ from "lodash";
+import { useCallback, useRef, useState } from "react";
+import { GraphableData, ParseqKeyframe, ParseqKeyframes, ParseqPersistableState, RenderedData } from "./ParseqUI";
+import { ParseqGraph } from "./components/ParseqGraph";
+import { ParseqGrid } from "./components/ParseqGrid";
+import { parseqRender } from "./parseq-renderer";
 
 type MiniParseqProps = {
     keyframes: ParseqKeyframes
@@ -101,7 +100,7 @@ const MiniParseq = ({ keyframes, fields }: MiniParseqProps) => {
                         custom: "",
                     }
                 },
-
+                commonPromptPos: 'append'
             },
             keyframeLock: "frames"
         }
@@ -184,7 +183,6 @@ const Labs = () => {
     const singleValinterps = ['vibe(p=1b, c="easeOut6")'];        
 
     return <>
-        <Header title="Parseq Labs (experiments)" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2} sx={{
             '--Grid-borderWidth': '1px',
             borderTop: 'var(--Grid-borderWidth) solid',
@@ -197,7 +195,6 @@ const Labs = () => {
                 borderColor: 'divider',
             },
         }}>
-            <CssBaseline />
             <Grid padding={2} xs={12}>
                 <>
                 {

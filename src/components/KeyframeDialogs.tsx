@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-target-blank */
 import React, { useMemo, FC, useState, useEffect } from 'react';
 import {
     Dialog,
@@ -14,6 +15,7 @@ import {
     Box,
     Stack,
     Alert,
+    Link,
 } from '@mui/material';
 import { TabPanel } from './TabPanel';
 import { SmallTextField } from './SmallTextField';
@@ -631,11 +633,7 @@ export const MergeKeyframesDialog: FC<MergeKeyframesDialogProps> = ({
             <DialogTitle>🌪️ Merge keyframes</DialogTitle>
             <DialogContent>
                 <DialogContentText>
-                    Merge keyframes from another source into the current document. For example:
-                    <ul>
-                        <li>Try the <a href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noreferrer">browser</a> to find keyframe data from your other documents.</li>
-                        <li>⚠️ Experimental: try the <a href={'/analyser?fps=' + (fps || 20) + '&refDocId=' + activeDocId} target='_blank' rel="noreferrer">analyser</a> to generate keyframes from audio.</li>
-                    </ul>
+                    Merge keyframes from another source into the current document. Try the <Link href={'/browser?refDocId=' + activeDocId} target='_blank' rel="noopener">browser</Link> to find keyframe data from your other documents.
                 </DialogContentText>
                 <TextField
                     style={{ width: '100%', paddingTop: '10px' }}

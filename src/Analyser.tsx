@@ -1,11 +1,9 @@
-import { Alert, Box, Button, InputAdornment, MenuItem, Slider, Stack, TextField, Typography } from "@mui/material";
-import CssBaseline from '@mui/material/CssBaseline';
+import { Link, Alert, Box, Button, InputAdornment, MenuItem, Slider, Stack, TextField, Typography } from "@mui/material";
 import Grid from '@mui/material/Unstable_Grid2';
 import { PitchMethod } from "aubiojs";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from "react-router-dom";
 import { WaveForm, WaveSurfer } from "wavesurfer-react";
-import Header from './components/Header';
 import LinearWithValueLabel from "./components/LinearProgressWithLabel";
 //@ts-ignore
 import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
@@ -625,7 +623,6 @@ export default function Analyser() {
     }    
 
     return <>
-        <Header title="Parseq - audio analyser (Legacy)" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2} sx={{
             '--Grid-borderWidth': '1px',
             borderTop: 'var(--Grid-borderWidth) solid',
@@ -638,14 +635,13 @@ export default function Analyser() {
                 borderColor: 'divider',
             },
         }}>
-            <CssBaseline />
             <Grid xs={12}>
-                <a href={'/' + (searchParams.get('refDocId') ? '?docId=' + searchParams.get('refDocId') : '')}>⬅️ Home</a>
+                <Link href={'/' + (searchParams.get('refDocId') ? '?docId=' + searchParams.get('refDocId') : '')}>⬅️ Home</Link>
                 <small>
                     <ul>
                         <li><strong>This legacy audio analyser is deprecated and will eventually be removed.</strong> All its functionality is now integrated into the main Parseq UI.</li>
                         <li>⚠️ This feature is experimental. That's why it's quite separate from the main Parseq UI for now. The keyframes generated here can be merged into an existing Parseq document using the "Merge keyframes" button in the main UI.</li>
-                        <li>Tempo, onset event and pitch detection use <a href="https://aubio.org/">Aubio</a>, via <a href="https://github.com/qiuxiang/aubiojs">AubioJS</a>. See the <a href="https://aubio.org/manual/latest/cli.html"> Aubio CLI documentation</a> for the meaning of all parameters.</li>
+                        <li>Tempo, onset event and pitch detection use <Link href="https://aubio.org/">Aubio</Link>, via <Link href="https://github.com/qiuxiang/aubiojs">AubioJS</Link>. See the <Link href="https://aubio.org/manual/latest/cli.html"> Aubio CLI documentation</Link> for the meaning of all parameters.</li>
                         <li>Not all parameters are exposed by AubioJS. Some look like they should be, but aren't (those are grayed out here).</li>
                         <li>All processing runs in the browser, using web workers. This seems to be faster in Chrome and Safari compared to Firefox. You can speed things up by increasing the hop sizes to larger multiples of 2 (trading off accuracy).</li>
                         <li>Expects a constant Tempo. Tempo detection is not perfect, so you can override it before generating keyframes. If the first beat is not at the very beginning of the track, you will need to enter a manual offset for now. </li>
@@ -1136,7 +1132,7 @@ export default function Analyser() {
             <Grid xs={12}>
                 <div
                     id="generated"
-                    style={{ fontSize: '0.75em', backgroundColor: 'whitesmoke', height: Math.min(80,keyframesString.split(/\r\n|\r|\n/).length) + 'em', overflow: 'scroll' }}
+                    style={{ fontSize: '0.75em', height: Math.min(80,keyframesString.split(/\r\n|\r|\n/).length) + 'em', overflow: 'scroll' }}
                     onClick={(e) =>
                         //@ts-ignore
                         window.getSelection().selectAllChildren(document.getElementById('generated'))

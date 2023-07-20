@@ -9,6 +9,7 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
+  Link,
   MenuItem,
   Stack,
   Tab,
@@ -392,7 +393,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   }, [audioBuffer, pitchMethod, selectionEndMs, selectionStartMs, updateChartData]);
 
   const timeSeriesList = useMemo(() => allTimeSeries.map(({ ts, alias }, idx) => <>
-    <Box key={"ts-" + idx} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, backgroundColor: 'rgb(250, 249, 246)', borderRadius: 1 }} >
+    <Box key={"ts-" + idx} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, borderRadius: 1 }} >
       <Grid xs={2}>
         <SmallTextField
           value={allTimeSeries[idx].alias}
@@ -527,7 +528,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                 <Tooltip arrow placement="top" title={"Convert your audio's pitch to a time series input, ready for processing."} >
                   <Button size='small' variant='contained' onClick={extractPitch}> Extract Pitch &nbsp; <Typography fontSize={"0.7em"} fontFamily={"monospace"} ref={pitchProgressRef}>(0%)</Typography></Button>
                 </Tooltip>
-                <Typography fontSize={"0.5em"}>Parseq uses <a href="https://github.com/qiuxiang/aubiojs">Aubio.js</a> extract pitch. This works best with isolated melodies (no beat).</Typography>
+                <Typography fontSize={"0.5em"}>Parseq uses <Link href="https://github.com/qiuxiang/aubiojs">Aubio.js</Link> extract pitch. This works best with isolated melodies (no beat).</Typography>
               </Stack>
             </Stack>
           }

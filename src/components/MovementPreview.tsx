@@ -1,4 +1,4 @@
-import { Alert, Stack, Tooltip, Typography } from "@mui/material";
+import { Alert, Link, Stack, Tooltip, Typography } from "@mui/material";
 import { P5CanvasInstance, ReactP5Wrapper, SketchProps } from "@p5-wrapper/react";
 import _ from "lodash";
 import { all, create } from 'mathjs';
@@ -60,7 +60,6 @@ const sketch = (p5: P5CanvasInstance) => {
 
         if (!generationBuffer || !inputBuffer) {
             //perspective(height) // TODO figure out how to convert deforum perspective
-            console.log("Creating canvas", width, height);
             p5.createCanvas(width, height, "webgl");
             p5.imageMode("center");
             p5.rectMode("center");
@@ -290,7 +289,7 @@ export const MovementPreview = ({renderedData, fps, width, height, hideWarning, 
     return <Stack direction="column" spacing={2} alignItems={"center"}>
         {hideWarning || <Alert severity="warning">
                 <p>This experimental feature gives you a rough idea of what your camera movements will look like.
-                Inspired by <a href="https://colab.research.google.com/github/pharmapsychotic/ai-notebooks/blob/main/pharmapsychotic_AnimationPreview.ipynb">AnimationPreview by @pharmapsychotic</a>.
+                Inspired by <Link href="https://colab.research.google.com/github/pharmapsychotic/ai-notebooks/blob/main/pharmapsychotic_AnimationPreview.ipynb">AnimationPreview by @pharmapsychotic</Link>.
                 </p>
                 <ul>
                     <li>This is a rough reference only: the image warping algorithm is not identical to Deforum's.</li>
@@ -298,7 +297,7 @@ export const MovementPreview = ({renderedData, fps, width, height, hideWarning, 
                     <li>Does not factor in FPS or perspective params (fov, near, far).</li>
                     <li>Using a higher cadence (~10) in this preview can make it easier to see the effect of your camera movements. However, whether you should use a high cadence during your real generation depends on how often you want the Diffusion process to run.</li>
                 </ul>
-                Feedback welcome on <a href="https://discord.gg/deforum">Discord</a> or <a href="https://github.com/rewbs/sd-parseq/issues">GitHub</a>.
+                Feedback welcome on <Link href="https://discord.gg/deforum">Discord</Link> or <Link href="https://github.com/rewbs/sd-parseq/issues">GitHub</Link>.
             </Alert>
         }
         {sketchElem}

@@ -6,6 +6,8 @@ import { frameToXAxisType, xAxisTypeToFrame } from '../utils/maths';
 import { fieldNametoRGBa } from '../utils/utils';
 import { GridTooltip } from './GridToolTip';
 import { ValueParserParams, ValueSetterParams } from 'ag-grid-community';
+import { experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
+import { themeFactory } from "../theme";
 
 const config = {}
 const mathjs = create(all, config)
@@ -36,6 +38,11 @@ type ParseqGridProps = {
 
 export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridReady, onCellValueChanged, onCellKeyPress, onFirstDataRendered, onChangeGridCursorPosition, showCursors, keyframeLock, fps, bpm, managedFields, agGridProps, agGridStyle }: ParseqGridProps, gridRef) => {
 
+  const theme = extendTheme(themeFactory());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const {colorScheme, setColorScheme }  = useColorScheme();
+  
+
   if (!rangeSelection) {
     rangeSelection = {};
   }
@@ -46,7 +53,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       return;
     }
 
-    // Broadcast and broadcast the cursor position
+    // Update and broadcast the cursor position
     // TODO: showCursors doesn't need to be a prop, it could be local
     // to the parent (this isn't perf sensitive so we could call the callback unconditionally)
     if (showCursors) {
@@ -113,7 +120,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
           useFormatter: true,
         },
         cellStyle: (params: { api: { getFocusedCell: () => any; }; }) => ({
-          borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+          borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMinor.main,
         }),
         flex: 1,
 
@@ -137,13 +144,13 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         cellStyle: (params: any): any => {
           if (isInRangeSelection(params)) {
             return {
-              backgroundColor: 'lightgrey',
-              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+              backgroundColor: theme.vars.palette.gridInfoField.light,
+              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMajor.main
             }
           } else {
             return {
-              backgroundColor: 'white',
-              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+              backgroundColor: theme.vars.palette.gridInfoField.main,
+              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid '+ theme.vars.palette.gridColSeparatorMajor.main
             }
           }
         },
@@ -176,12 +183,12 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
             if (isInRangeSelection(params)) {
               return {
                 backgroundColor: fieldNametoRGBa(field, 0.4),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMinor.main
               }
             } else {
               return {
                 backgroundColor: fieldNametoRGBa(field, 0.1),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid lightgrey'
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMinor.main
               }
             }
           },
@@ -206,12 +213,12 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
             if (isInRangeSelection(params)) {
               return {
                 backgroundColor: fieldNametoRGBa(field, 0.4),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMajor.main
               }
             } else {
               return {
                 backgroundColor: fieldNametoRGBa(field, 0.1),
-                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid black'
+                borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMajor.main
               }
             }
           },
@@ -221,7 +228,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       ]) : [])
     ]
 
-  }, [managedFields, isInRangeSelection, keyframeLock, fps, bpm]);
+  }, [managedFields, isInRangeSelection, keyframeLock, fps, bpm, theme]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -238,63 +245,65 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
     }
   }), [fps, bpm]);
 
-  //@ts-ignore
-  return <div className="ag-theme-alpine" style={agGridStyle}> <AgGridReact
-    {...agGridProps}
-    ref={gridRef}
-    columnDefs={columnDefs}
-    defaultColDef={defaultColDef}
-    onCellValueChanged={onCellValueChanged}
-    onCellKeyPress={onCellKeyPress}
-    onGridReady={onGridReady}
-    onFirstDataRendered={onFirstDataRendered}
-    animateRows={true}
-    columnHoverHighlight={true}
-    enableCellChangeFlash={true}
-    tooltipShowDelay={0}
-    navigateToNextCell={navigateToNextCell}
-    suppressColumnVirtualisation={process.env?.NODE_ENV === "test"}
-    suppressRowVirtualisation={process.env?.NODE_ENV === "test"}
-    onCellKeyDown={(e: any) => {
-      if (e.event.keyCode === 46 || e.event.keyCode === 8) {
-        if (rangeSelection.anchor && rangeSelection.tip) {
-          const x1 = Math.min(rangeSelection.anchor.x, rangeSelection.tip.x);
-          const x2 = Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
-          const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
-          const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);
-          for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
-            const col = e.columnApi.getAllGridColumns().find((c: any) => c.instanceId === colInstanceId);
-            if (col && col.visible && col.colId !== 'frame') {
-              for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
-                e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
+  
+  return <div className={colorScheme==='dark'?"ag-theme-alpine-dark":"ag-theme-alpine"} style={agGridStyle}>
+    {/* @ts-ignore  */}
+    <AgGridReact
+      {...agGridProps}
+      ref={gridRef}
+      columnDefs={columnDefs}
+      defaultColDef={defaultColDef}
+      onCellValueChanged={onCellValueChanged}
+      onCellKeyPress={onCellKeyPress}
+      onGridReady={onGridReady}
+      onFirstDataRendered={onFirstDataRendered}
+      animateRows={true}
+      columnHoverHighlight={true}
+      enableCellChangeFlash={true}
+      tooltipShowDelay={0}
+      navigateToNextCell={navigateToNextCell}
+      suppressColumnVirtualisation={process.env?.NODE_ENV === "test"}
+      suppressRowVirtualisation={process.env?.NODE_ENV === "test"}
+      onCellKeyDown={(e: any) => {
+        if (e.event.keyCode === 46 || e.event.keyCode === 8) {
+          if (rangeSelection.anchor && rangeSelection.tip) {
+            const x1 = Math.min(rangeSelection.anchor.x, rangeSelection.tip.x);
+            const x2 = Math.max(rangeSelection.anchor.x, rangeSelection.tip.x);
+            const y1 = Math.min(rangeSelection.anchor.y, rangeSelection.tip.y);
+            const y2 = Math.max(rangeSelection.anchor.y, rangeSelection.tip.y);
+            for (let colInstanceId = x1; colInstanceId <= x2; colInstanceId++) {
+              const col = e.columnApi.getAllGridColumns().find((c: any) => c.instanceId === colInstanceId);
+              if (col && col.visible && col.colId !== 'frame') {
+                for (let rowIndex = y1; rowIndex <= y2; rowIndex++) {
+                  e.api.getDisplayedRowAtIndex(rowIndex).setDataValue(col.colId, "");
+                }
               }
             }
           }
         }
-      }
-    }}
-    onCellClicked={(e: any) => {
-      if (showCursors) {
-        onChangeGridCursorPosition(e.data.frame);
-      }
-      if (e.event.shiftKey) {
-        onSelectRange({
-          anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
-          tip: { x: e.column.instanceId, y: e.rowIndex }
-        })
-      } else {
-        onSelectRange({});
-      }
-    }}
-    onCellMouseOver={(e: any) => {
-      if (e.event.buttons === 1) {
-        onSelectRange({
-          anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
-          tip: { x: e.column.instanceId, y: e.rowIndex }
-        })
-      }
-    }}
-  />
+      }}
+      onCellClicked={(e: any) => {
+        if (showCursors) {
+          onChangeGridCursorPosition(e.data.frame);
+        }
+        if (e.event.shiftKey) {
+          onSelectRange({
+            anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
+            tip: { x: e.column.instanceId, y: e.rowIndex }
+          })
+        } else {
+          onSelectRange({});
+        }
+      }}
+      onCellMouseOver={(e: any) => {
+        if (e.event.buttons === 1) {
+          onSelectRange({
+            anchor: { x: e.api.getFocusedCell().column.instanceId, y: e.api.getFocusedCell().rowIndex },
+            tip: { x: e.column.instanceId, y: e.rowIndex }
+          })
+        }
+      }}
+    />
   </div>
 
 });

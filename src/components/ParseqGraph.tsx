@@ -16,7 +16,9 @@ import debounce from 'lodash.debounce';
 //@ts-ignore
 import range from 'lodash.range';
 import { RenderedData, GraphableData } from '../ParseqUI';
-
+import { Theme } from '@mui/material';
+import { SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
+import { themeFactory } from "../theme";
 
 const ChartJSAddPointPlugin = {
     id: 'click',
@@ -61,7 +63,7 @@ ChartJS.register(
 //@ts-ignore
 //Interaction.modes.interpolate = Interpolate
 
-export class ParseqGraph extends React.Component<{
+class ParseqGraphRaw extends React.Component<{
     renderedData: RenderedData,
     graphableData: GraphableData,
     displayedFields: string[],
@@ -80,7 +82,11 @@ export class ParseqGraph extends React.Component<{
     height: number|string;
     editingDisabled?: boolean;
     hideLegend?: boolean;
+    theme: Theme;
+    colorScheme: SupportedColorScheme;
 }> {
+
+    
 
     isKeyframeWithFieldValue = (field: string, idx: number): boolean => {
         return this.props.renderedData.keyframes
@@ -99,6 +105,7 @@ export class ParseqGraph extends React.Component<{
     };
 
     render() {
+
         // TODO - annotation construction is horrible here, need some utility functions to reduce duplication.
         const promptAnnotations = this.props.promptMarkers.reduce((acc: any, marker: { x: number, label: string, color: string, top: boolean }, idx: number) => {
             return {
@@ -228,7 +235,13 @@ export class ParseqGraph extends React.Component<{
             capturedThis.props.onGraphScalesChanged(newScales);
         }, 100);
 
+
+        const palette = this.props.theme.colorSchemes[this.props.colorScheme].palette;
+
         let options: ChartOptions<'line'> = {
+            backgroundColor: palette.graphBackground.main,
+            borderColor: palette.graphBorder.main,
+            color: palette.graphFont.main,
             parsing: false,
             normalised: true,
             spanGaps: true,
@@ -257,15 +270,24 @@ export class ParseqGraph extends React.Component<{
                                 case 'seconds': return frameToSec(Number(value), capturedThis.props.renderedData.options.output_fps).toFixed(3);
                                 case 'beats': return frameToBeat(Number(value), capturedThis.props.renderedData.options.output_fps, capturedThis.props.renderedData.options.bpm).toFixed(2);
                             }
-                        }
+                        },
+                        color: palette.graphFont.main,
+                    },
+                    grid: {
+                        color: palette.graphBorder.main,
                     }
                 },
                 y: {
                     type: 'linear',
                     ticks: {
                         minRotation: 0,
-                        maxRotation: 0
+                        maxRotation: 0,
+                        color: palette.graphFont.main,
+                    },
+                    grid: {
+                        color: palette.graphBorder.main,
                     }
+
                 },
             },
             onClick: (event: any, elements: any, chart: any) => {
@@ -424,4 +446,12 @@ export class ParseqGraph extends React.Component<{
 
         return <div style={{height:this.props.height, width:'100%', position:"relative"}}><Line options={options} data={chartData} /></div>;
     }
+}
+
+// Wrap class component to be able to access theme - see https://reactnavigation.org/docs/use-theme/#using-with-class-component
+export const ParseqGraph = function(props : any) {
+  const theme = extendTheme(themeFactory());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { colorScheme, setColorScheme } = useColorScheme();
+  return <ParseqGraphRaw {...props} theme={theme} colorScheme={colorScheme} />;
 }

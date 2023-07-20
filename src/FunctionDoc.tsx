@@ -1,19 +1,19 @@
-import { Box, CssBaseline, FormControlLabel, Stack, Typography } from "@mui/material";
+import { Box, FormControlLabel, Link, Stack, Typography } from "@mui/material";
 import Grid from '@mui/material/Unstable_Grid2';
-import Header from "./components/Header";
-import { ParseqGrid } from "./components/ParseqGrid";
-import { ParseqGraph } from "./components/ParseqGraph";
-import { GraphableData, ParseqKeyframe, ParseqKeyframes, ParseqPersistableState, RenderedData } from "./ParseqUI";
-import { useCallback, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { parseqRender } from "./parseq-renderer";
 import _ from "lodash";
-import functionLibrary, { ArgDef, ParseqFunction } from "./parseq-lang/parseq-lang-functions";
-import MovementPreview from "./components/MovementPreview";
-import StyledSwitch from "./components/StyledSwitch";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useRef, useState } from "react";
 import ReactMarkdown from 'react-markdown';
-
+import { useSearchParams } from "react-router-dom";
+import { GraphableData, ParseqKeyframe, ParseqKeyframes, ParseqPersistableState, RenderedData } from "./ParseqUI";
+import MovementPreview from "./components/MovementPreview";
+import { ParseqGraph } from "./components/ParseqGraph";
+import { ParseqGrid } from "./components/ParseqGrid";
+import StyledSwitch from "./components/StyledSwitch";
+import functionLibrary, { ArgDef, ParseqFunction } from "./parseq-lang/parseq-lang-functions";
+import { parseqRender } from "./parseq-renderer";
+import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
+import { themeFactory } from "./theme";
 
 type MiniParseqProps = {
     keyframes: ParseqKeyframes
@@ -197,7 +197,7 @@ const FunctionDoc = () => {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [searchParams, setSearchParams] = useSearchParams();
-
+    const theme = extendTheme(themeFactory());
 
     const docEntries: DocEntry[] = [
         {
@@ -919,7 +919,7 @@ const FunctionDoc = () => {
         return _.chain(docEntries)
             .groupBy('category')
             .map((category) => <>
-                <Box width={'100%'} sx={{ background: 'lightblue', paddingLeft: '0.5rem', borderRadius: '.3rem' }}>
+                <Box width={'100%'} sx={{ background: theme.vars.palette.info.main, paddingLeft: '0.5rem', borderRadius: '.3rem' }}>
                     <Typography variant="h4">{category[0].category}</Typography>
                 </Box>
                 {
@@ -963,7 +963,6 @@ const FunctionDoc = () => {
     }
 
     return <>
-        <Header title="Parseq Live Docs" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2} sx={{
             '--Grid-borderWidth': '1px',
             borderTop: 'var(--Grid-borderWidth) solid',
@@ -976,9 +975,8 @@ const FunctionDoc = () => {
                 borderColor: 'divider',
             },
         }}>
-            <CssBaseline />
             <Grid xs={12}>
-                <a href={'/' + (searchParams.get('refDocId') ? '?docId=' + searchParams.get('refDocId') : '')}>⬅️ Home</a>
+                <Link href={'/' + (searchParams.get('refDocId') ? '?docId=' + searchParams.get('refDocId') : '')}>⬅️ Home</Link>
             </Grid>
             <Grid padding={2} xs={12}>
                 {renderDocEntries()}

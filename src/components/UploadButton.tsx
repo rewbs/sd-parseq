@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-target-blank */
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -10,6 +11,7 @@ import CopyToClipboard from 'react-copy-to-clipboard';
 import ReactTimeAgo from 'react-time-ago';
 import { useUserAuth } from "../UserAuthContext";
 import { DocId } from '../ParseqUI';
+import { Link } from '@mui/material';
 
 type UploadButtonProps = {
     docId: DocId,
@@ -58,7 +60,7 @@ export function UploadButton({ docId, renderedJson, autoUpload, onNewUploadStatu
                                 <CopyToClipboard text={url}>
                                     <Button size="small" variant="outlined">✅ Copy URL</Button>
                                 </CopyToClipboard>
-                                <Typography fontSize={'0.7em'}><a rel="noreferrer" target={'_blank'} href={url}>See uploaded file</a></Typography>
+                                <Typography fontSize={'0.7em'}><Link rel="noopener" target={'_blank'} href={url}>See uploaded file</Link></Typography>
                             </Stack>);
                         setLastUploadTime(Date.now());
                     });

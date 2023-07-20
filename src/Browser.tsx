@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Link, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -9,27 +9,24 @@ import TableRow from '@mui/material/TableRow';
 
 import { faBroom, faCopy, faDownload, faTrash, faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import CssBaseline from '@mui/material/CssBaseline';
 import Grid from '@mui/material/Unstable_Grid2';
 import { ImportOptions, exportDB, importInto, peakImportFile } from "dexie-export-import";
 import { useLiveQuery } from "dexie-react-hooks";
 import { saveAs } from 'file-saver';
 import _ from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import prettyBytes from 'pretty-bytes';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from "react-router-dom";
 import ReactTimeAgo from 'react-time-ago';
 import { useEffectOnce } from 'react-use';
 import { AdvancedParseqPrompt, AdvancedParseqPromptsV2, DocId, ParseqDoc, ParseqDocVersion, VersionId } from './ParseqUI';
-import Header from './components/Header';
 import LinearProgressWithLabel from './components/LinearProgressWithLabel';
+import { convertPrompts } from './components/Prompts';
 import { SmallTextField } from './components/SmallTextField';
 import { TabPanel } from './components/TabPanel';
 import { db } from './db';
-import { isStoragePersisted, showEstimatedQuota, persist } from './persistance';
+import { isStoragePersisted, persist, showEstimatedQuota } from './persistance';
 import { navigateToClone, smartTrim } from './utils/utils';
-import prettyBytes from 'pretty-bytes';
-import React from 'react';
-import { convertPrompts } from './components/Prompts';
 
 function VersionCount({ docId }: { docId: DocId }) {
     const [versionCount, setVersionCount] = useState(<Typography>loading...</Typography>);
@@ -267,11 +264,10 @@ export default function Browser() {
 
 
     return <React.StrictMode>
-        <Header title="Parseq - local storage browser" />
         <Grid container paddingLeft={5} paddingRight={5} spacing={2}>
-            <CssBaseline />
+
             <Grid xs={12}>
-                <a href={'/' + (searchParams.get('refDocId') ? '?docId=' + searchParams.get('refDocId') : '')}>⬅️ Home</a>
+                <Link href={'/' + (searchParams.get('refDocId') ? '?docId=' + searchParams.get('refDocId') : '')}>⬅️ Home</Link>
             </Grid>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
@@ -293,7 +289,7 @@ export default function Browser() {
                                     <Grid xs={12}>
                                         <ul>
                                             <li>Showing {selectedDocVersions?.length} versions for document: <strong>{selectedDocVersions[0]?.docName}</strong></li>
-                                            <li><a href={'/Browser?refDocId=' + searchParams.get('refDocId')} >Back to recent docs</a></li>
+                                            <li><Link href={'/Browser?refDocId=' + searchParams.get('refDocId')} >Back to recent docs</Link></li>
                                         </ul>
                                     </Grid>
                                     <Grid xs={12}>
@@ -405,7 +401,7 @@ export default function Browser() {
                                             mostRecentVersions.map((v: VersionSummary) => {
                                                 return <TableRow>
                                                     <TableCell>
-                                                        <a href={'/?docId=' + v.docId}>{v.docName}</a>
+                                                        <Link href={'/?docId=' + v.docId}>{v.docName}</Link>
                                                         <Typography fontSize={"0.5em"} fontStyle={'monospace'}>{v.docId}</Typography>
                                                     </TableCell>
                                                     <TableCell>
@@ -421,7 +417,7 @@ export default function Browser() {
                                                         }
                                                     </TableCell>
                                                     <TableCell>{v.timeSeriesNames?.length}</TableCell>
-                                                    <TableCell><VersionCount docId={v.docId} /><a href={'/browser?refDocId=' + searchParams.get('refDocId') + '&selectedDocId=' + v.docId}>show</a></TableCell>
+                                                    <TableCell><VersionCount docId={v.docId} /><Link href={'/browser?refDocId=' + searchParams.get('refDocId') + '&selectedDocId=' + v.docId}>show</Link></TableCell>
                                                 </TableRow>
                                             }) : <></>
 

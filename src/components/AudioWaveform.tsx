@@ -1,4 +1,4 @@
-import { Box, Alert, Typography, Button, Stack, TextField, MenuItem, Tab, Tabs, Tooltip } from "@mui/material";
+import { Box, Alert, Typography, Button, Stack, TextField, MenuItem, Tab, Tabs, Tooltip, Link } from "@mui/material";
 import Fade from '@mui/material/Fade';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -683,7 +683,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             <Typography fontFamily={"monospace"} fontWeight={"bold"} ref={tempoRef}> </Typography>
                             <Typography fontFamily={"monospace"} fontSize={"0.7em"} ref={tempoConfidenceRef}> </Typography>
                         </Stack>
-                        <Typography fontSize={"0.75em"}>Parseq uses <a href="https://github.com/qiuxiang/aubiojs">Aubio.js</a> to estimate your reference audio's BPM. The result is not always accurate, but can guide you towards a good overall BPM value for your Parseq document (which you set above the grid). Parseq does not yet support variable BPMs. </Typography>
+                        <Typography fontSize={"0.75em"}>Parseq uses <Link href="https://github.com/qiuxiang/aubiojs">Aubio.js</Link> to estimate your reference audio's BPM. The result is not always accurate, but can guide you towards a good overall BPM value for your Parseq document (which you set above the grid). Parseq does not yet support variable BPMs. </Typography>
                     </TabPanel>
                     <TabPanel index={2} activeTab={tab}>
                         <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -743,7 +743,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             </Box>
                         </Stack>
 
-                        <Typography fontSize={"0.75em"}>Parseq uses <a href="https://github.com/qiuxiang/aubiojs">Aubio.js</a> to detect events in your reference audio. You can move events by dragging them, add events by double-clicking, and delete events by shift-clicking. You can generate Parseq keyframes from audio events in the "Keyframe generation" tab.</Typography>
+                        <Typography fontSize={"0.75em"}>Parseq uses <Link href="https://github.com/qiuxiang/aubiojs">Aubio.js</Link> to detect events in your reference audio. You can move events by dragging them, add events by double-clicking, and delete events by shift-clicking. You can generate Parseq keyframes from audio events in the "Keyframe generation" tab.</Typography>
                     </TabPanel>
 
                     <TabPanel index={3} activeTab={tab}>

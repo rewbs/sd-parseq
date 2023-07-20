@@ -7,7 +7,6 @@ import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
-import CssBaseline from '@mui/material/CssBaseline';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Paper from '@mui/material/Paper';
@@ -50,18 +49,17 @@ import { fieldNametoRGBa, getOutputTruncationLimit, getUTCTimeStamp, getVersionN
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
 
-
-import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
-// Optional theme CSS
+import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-import './robin.css';
 
 import { beatToFrame, frameToBeat, frameToSec, secToFrame, beatToSec, secToBeat, remapFrameCount } from './utils/maths';
+import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
+import { themeFactory } from "./theme";
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
-  const { defaultTemplate, darkMode } = props
+  const { defaultTemplate } = props
   const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
   
   //////////////////////////////////////////
@@ -114,6 +112,8 @@ const ParseqUI = (props) => {
 
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
+  const theme = extendTheme(themeFactory());
+  console.log("theme", theme);
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Initialisation logic
@@ -655,7 +655,6 @@ const ParseqUI = (props) => {
   const promptsUI = useMemo(() => (prompts && options) ? <Prompts
     initialPrompts={prompts}
     lastFrame={lastFrame}
-    darkMode={darkMode}
     keyframeLock={keyframeLock}
     fps={options?.output_fps}
     bpm={options?.bpm}    
@@ -737,7 +736,7 @@ const ParseqUI = (props) => {
             InputLabelProps={{ shrink: true, }}
             InputProps={{
               style: { fontSize: '0.75em' },
-              sx: { background: (Number(candidateBPM) !== Number(options.bpm))? 'ivory' : '', },
+              sx: { background: (Number(candidateBPM) !== Number(options.bpm))? theme.vars.palette.unsavedbg.main : '', },
               endAdornment: (Number(candidateBPM) !== Number(options.bpm)) ? '🖊️' : ''
             }}
             sx={{ minWidth: 70, maxWidth: 100, }}
@@ -774,7 +773,7 @@ const ParseqUI = (props) => {
             InputLabelProps={{ shrink: true, }}
             InputProps={{
               style: { fontSize: '0.75em' },
-              sx: { background: (Number(candidateFPS) !== Number(options.output_fps)) ? 'ivory' : '', },
+              sx: { background: (Number(candidateFPS) !== Number(options.output_fps)) ? theme.vars.palette.unsavedbg.main  : '', },
               endAdornment: (Number(candidateFPS) !== Number(options.output_fps)) ? '🖊️' : ''
             }}
             sx={{ minWidth: 70, maxWidth: 100, }}
@@ -817,7 +816,7 @@ const ParseqUI = (props) => {
             InputLabelProps={{ shrink: true, }}
             InputProps={{
               style: { fontSize: '0.75em' },
-              sx: { background: Number(candidateLastFrame) !== Number(lastFrame) ? 'ivory' : '', },
+              sx: { background: Number(candidateLastFrame) !== Number(lastFrame) ? theme.vars.palette.unsavedbg.main : '', },
               endAdornment: Number(candidateLastFrame) !== Number(lastFrame) ? '🖊️' : ''
             }}
             sx={{ minWidth: 70, maxWidth: 100, }}
@@ -884,7 +883,7 @@ const ParseqUI = (props) => {
           label={<Typography fontSize={"0.75em"}>Generate in reverse</Typography>} />
       </Tooltip2>
     </Stack>
-  </span>, [options, candidateBPM, candidateFPS, candidateLastFrame, lastFrame, keyframeLock, reverseRender, remapFrames, keyframes])
+  </span>, [options, candidateBPM, candidateFPS, candidateLastFrame, lastFrame, keyframeLock, reverseRender, remapFrames, keyframes, theme])
 
 
 
@@ -1086,7 +1085,7 @@ const ParseqUI = (props) => {
     height={"400px"} // TODO - make this configurable
     updateKeyframe={(field, index, value) => {
       let rowId = frameToRowId(index)
-      gridRef.current.api.getRowNode(rowId).setDataValue(field, value);
+      gridRef.current.api.getRowNode(rowId).setDataValue(field, value+""); //coerce to string
     }}
     addKeyframe={(index) => {
       // If this isn't already a keyframe, add a keyframe
@@ -1181,8 +1180,19 @@ const ParseqUI = (props) => {
         <Grid container>
           {
             managedFields.filter((field) => showFlatSparklines ? true : getAnimatedFields(renderedData).includes(field)).sort().map((field) =>
-              <Grid key={"sparkline_" + field} xs={1} sx={{ bgcolor: displayedFields.includes(field) ? '#f9fff9' : 'GhostWhite', border: '1px solid', borderColor: 'divider' }} id={`sparkline_${field}`} onClick={handleClickedSparkline} >
-                <Typography style={{ fontSize: "0.5em" }}>{(displayedFields.includes(field) ? "✔️" : "") + field}</Typography>
+              <Grid
+                key={"sparkline_" + field}
+                xs={1} 
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: displayedFields.includes(field) ? theme.vars.palette.faintHighlight.main : theme.vars.palette.background.main
+                }}
+                id={`sparkline_${field}`}
+                onClick={handleClickedSparkline} >
+                
+                <Typography style={{ fontSize: "0.5em" }}>
+                {displayedFields.includes(field) ? <CheckCircleOutlineRoundedIcon fontSize='inherit' /> : <></>}&nbsp;{field}</Typography>
                 {defaultFields.find(f => f.name === field)?.labels?.includes("2D") ?
                   <Typography style={{ color: 'SeaGreen', fontSize: "0.5em" }} >[2D]</Typography> :
                   defaultFields.find(f => f.name === field)?.labels?.includes("3D") ?
@@ -1190,7 +1200,7 @@ const ParseqUI = (props) => {
                     <Typography style={{ color: 'grey', fontSize: "0.5em" }} >[2D+3D]</Typography>
                 }
                 {
-                  <Sparklines style={{ bgcolor: 'white' }} data={sparklineData[field]} margin={1} padding={1}>
+                  <Sparklines data={sparklineData[field]} margin={1} padding={1}>
                     <SparklinesLine style={{ stroke: fieldNametoRGBa(field, 255) }} />
                   </Sparklines>
                 }
@@ -1212,7 +1222,7 @@ const ParseqUI = (props) => {
           Sparklines are disabled when frame count &gt; 1000. This will be improved in future versions of Parseq.
         </Alert>
         : <></>
-  }, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline, sparklineData]);
+  }, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline, sparklineData, theme]);
 
 
 
@@ -1315,13 +1325,13 @@ const ParseqUI = (props) => {
 
     let miniMessage;
     if (enqueuedRender && !renderedErrorMessage) {
-      miniMessage = {icon: <WarningAmberRoundedIcon />, color: 'rgb(255, 244, 229)', message: "Render in progres..."};
+      miniMessage = {icon: <WarningAmberRoundedIcon />, color: theme.vars.palette.warning.light, message: "Render in progres..."};
     } else if (renderedErrorMessage) {
-      miniMessage = {icon: <ErrorOutlineRoundedIcon />, color: 'rgb(253, 237, 237)',  message: "Error during render. Hover for details."};
+      miniMessage = {icon: <ErrorOutlineRoundedIcon />, color: theme.vars.palette.error.light,  message: "Error during render. Hover for details."};
     } else if (needsRender) {
-      miniMessage = {icon: <InfoOutlinedIcon />, color:'rgb(229, 246, 253)', message: "Please render to update the output."};
+      miniMessage = {icon: <InfoOutlinedIcon />, color: theme.vars.palette.info.light, message: "Please render to update the output."};
     } else {
-      miniMessage = {icon: <CheckCircleOutlineRoundedIcon />, color:'rgb(237, 247, 237)', message: "Output is up-to-date."};
+      miniMessage = {icon: <CheckCircleOutlineRoundedIcon />, color: theme.vars.palette.success.light, message: "Output is up-to-date."};
     }
 
     return <Grid container spacing={1} alignItems='center' >
@@ -1332,7 +1342,7 @@ const ParseqUI = (props) => {
         </Stack>
       </Grid>
     </Grid>
-  }, [needsRender, renderedErrorMessage, enqueuedRender]);
+  }, [needsRender, renderedErrorMessage, enqueuedRender, theme]);
 
   const maxiFooterContent = useMemo(() => <Grid container spacing={1} wrap='nowrap'>
     <Grid xs={'auto'}>
@@ -1402,12 +1412,12 @@ const ParseqUI = (props) => {
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: 'rgba(200,200,200,0.85)',
+      backgroundColor: theme.vars.palette.footerbg.main,
       opacity: '99%'
     }}>
     <Collapse in={pinFooter || hoverFooter}>{maxiFooterContent}</Collapse>
     <Collapse in={!pinFooter && !hoverFooter}>{miniFooterContent}</Collapse>
-  </Paper>, [pinFooter, hoverFooter, maxiFooterContent, miniFooterContent]);
+  </Paper>, [pinFooter, hoverFooter, maxiFooterContent, miniFooterContent, theme]);
 
 
 
@@ -1429,7 +1439,6 @@ const ParseqUI = (props) => {
 
     }}>
     <React.StrictMode>
-      <CssBaseline />
       <Grid xs={8}  >
         {docManager}
       </Grid>

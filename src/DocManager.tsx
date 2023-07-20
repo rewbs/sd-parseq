@@ -1,4 +1,5 @@
-import { Alert, Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, Radio, RadioGroup, Stack, TextField, Tooltip, Typography } from '@mui/material';
+/* eslint-disable react/jsx-no-target-blank */
+import { Alert, Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControlLabel, Link, Radio, RadioGroup, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useLiveQuery } from "dexie-react-hooks";
@@ -19,6 +20,8 @@ import _ from 'lodash';
 import { DocId, ParseqDoc, ParseqDocVersion, ParseqPersistableState, VersionId } from './ParseqUI';
 import { useUserAuth } from "./UserAuthContext";
 import { navigateToClone, navigateToDocId, navigateToTemplateId } from './utils/utils';
+import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
+import { themeFactory } from "./theme";
 
 export const makeDocId = (): DocId => "doc-" + uuidv4() as DocId
 const makeVersionId = (): VersionId => "version-" + uuidv4() as VersionId
@@ -104,6 +107,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
     const [parseqShareUrl, setParseqShareUrl] = useState("");
     const [uploadStatus, setUploadStatus] = useState(defaultUploadStatus);
     const [loadingStatus, setLoadingStatus] = useState(false);
+    const theme = extendTheme(themeFactory());
 
     //@ts-ignore - this type check is too deep down for me to figure out right now.
     const { user } = useUserAuth();
@@ -185,7 +189,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                 }
             </TextField>
             <Typography fontSize={"0.75em"}>
-                Explore versions of this doc in the <a href={`/browser?refDocId=${activeDoc.docId}&activeDoc.docIdselectedDocId=${activeDoc.docId}`} target='_blank' rel="noreferrer">browser</a>.
+                Explore versions of this doc in the <Link href={`/browser?refDocId=${activeDoc.docId}&activeDoc.docIdselectedDocId=${activeDoc.docId}`} target='_blank' rel="noopener">browser</Link>.
             </Typography>
         </DialogContent>
         <DialogActions>
@@ -360,7 +364,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                         }
 
                     />
-                    <Typography paddingTop="5px" fontSize="0.6em">Remember the prompt but not the doc name? Try the <a href={'/browser?refDocId=' + activeDoc.docId} target='_blank' rel="noreferrer">browser</a>.</Typography>
+                    <Typography paddingTop="5px" fontSize="0.6em">Remember the prompt but not the doc name? Try the <Link href={'/browser?refDocId=' + activeDoc.docId} target='_blank' rel="noopener">browser</Link>.</Typography>
                 </Grid>
                 <Grid xs={2} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'end' }}>
                     <Button size="small" disabled={!selectedDocForLoad} variant="contained" id="load" onClick={handleCloseLoadDialog}>⬇️ Load</Button>
@@ -430,7 +434,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     if (matchRes && matchRes[1]) {
                         setParseqShareUrl(window.location.href.replace(window.location.search, '') + `?importRemote=${matchRes[1]}&token=${token}`);
                         setUploadStatus(<Alert severity="success">
-                            <p>Upload <a href={url}>successful</a>. Share the URL above to load it directly into Parseq on another system.</p>
+                            <p>Upload <Link href={url}>successful</Link>. Share the URL above to load it directly into Parseq on another system.</p>
                         </Alert>);
                     } else {
                         setUploadStatus(<Alert severity="error">Unexpected response path: {url}</Alert>);
@@ -523,7 +527,8 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     value={editingDocName}
                     InputProps={{
                         style: { fontSize: '0.75em' },
-                        sx: { background: (editingDocName !== activeDoc.name) ? 'ivory' : '', },
+                        //@ts-ignore
+                        sx: { background: (editingDocName !== activeDoc.name) ? theme.vars.palette.unsavedbg.main : '', },
                         endAdornment: (editingDocName !== activeDoc.name) ? '🖊️' : ''
                     }}
                     size="small"
@@ -557,7 +562,7 @@ export function DocManagerUI({ docId, onLoadContent, lastSaved }: MyProps) {
                     <Button size="small" variant="outlined" onClick={handleClickOpenLoadDialog} >⬇️&nbsp;Load...</Button>
                     <Button size="small" variant="outlined" onClick={handleClickOpenNewDialog} >🆕&nbsp;New...</Button>
                     <Tooltip title="Explore your Parseq documents.">
-                        <Button size="small" variant="outlined" href={'/browser?refDocId=' + activeDoc.docId} target='_blank' rel="noreferrer">🔎&nbsp;Browse...</Button>
+                        <Button size="small" variant="outlined" href={'/browser?refDocId=' + activeDoc.docId} target='_blank' rel="noopener">🔎&nbsp;Browse...</Button>
                     </Tooltip>                    
                 </Stack>
             </Stack>

@@ -1,15 +1,17 @@
 import { faDiscord, faGithub } from '@fortawesome/free-brands-svg-icons';
 import { faBook, faBug, faFilm, faWaveSquare, faMoon, faLightbulb } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Box, Chip, Stack, Typography } from '@mui/material';
+import { Box, Chip, Link, Stack, SupportedColorScheme, Typography, useColorScheme, useMediaQuery } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { getAnalytics, isSupported } from "firebase/analytics";
 import GitInfo from 'react-git-info/macro';
 import Login from "../Login";
 import { UserAuthContextProvider } from "../UserAuthContext";
 import { app, auth } from '../firebase-config';
-import '../robin.css';
 import { getVersionNumber } from '../utils/utils';
+import { useLocation } from 'react-router-dom';
+import { UserSettings } from '../UserSettings';
+import { useEffect } from 'react';
 
 var analytics: any;
 isSupported().then((isSupported) => { 
@@ -26,24 +28,44 @@ const GIT_COMMIT_HASH = gitInfo.commit.hash;
 const GIT_COMMIT_SHORTHASH = gitInfo.commit.shortHash;
 const GIT_COMMIT_DATE = gitInfo.commit.date;
 
-type HeaderProps = {
-    title: string,
-    darkMode: boolean,
-    updateDarkMode: (darkMode: boolean) => void
-};
 
-export default function Header({ title, darkMode, updateDarkMode }: HeaderProps) {
+export default function Header() {
 
     const displayDate = GIT_COMMIT_DATE;
     const displayBranch = (!GIT_BRANCH || GIT_BRANCH === 'master') ? '' : `Branch: ${GIT_BRANCH};`;
-    const commitLink = <a href={"https://github.com/rewbs/sd-parseq/commit/" + GIT_COMMIT_HASH}>{GIT_COMMIT_SHORTHASH}</a>
-    const changeLogLink = <a href={"https://github.com/rewbs/sd-parseq/commits/" + (GIT_BRANCH ?? '')}>all changes</a>
+    const commitLink = <Link href={"https://github.com/rewbs/sd-parseq/commit/" + GIT_COMMIT_HASH}>{GIT_COMMIT_SHORTHASH}</Link>
+    const changeLogLink = <Link href={"https://github.com/rewbs/sd-parseq/commits/" + (GIT_BRANCH ?? '')}>all changes</Link>
+
+    const { colorScheme, setColorScheme } = useColorScheme();
+    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+
+    // Retrieve color scheme setting from local db if any, and apply.
+    // Else, use browser settings, and default to light.
+    useEffect(() => {
+        UserSettings.getColorScheme().then((colorScheme) => {
+            if (colorScheme !== undefined) {
+                console.log("Setting color scheme based on local db");
+                setColorScheme(colorScheme as SupportedColorScheme);
+            } else if (prefersDarkMode) {
+                console.log("Setting color scheme based prefers-color-scheme");
+                setColorScheme('dark');
+            } else {
+                console.log("defaulting to light scheme");
+                setColorScheme('light');
+            }
+        })}, [prefersDarkMode, setColorScheme]);
+
+    const location = useLocation();
+    // Don't render a header in raw view.
+    if (location.pathname === '/raw') {
+        return <></>
+    }    
 
     return (
         <Grid container paddingLeft={5} paddingRight={5} paddingBottom={1}>
             <Grid xs={6}>
                 <h2> 
-                    {title} <small>v{getVersionNumber()}</small>
+                    Parseq <small>v{getVersionNumber()}</small>
                     <Typography fontSize='0.4em'>
                         [{process.env.NODE_ENV}] {displayBranch} Built {displayDate} ({commitLink} - {changeLogLink})
                     </Typography>
@@ -58,7 +80,16 @@ export default function Header({ title, darkMode, updateDarkMode }: HeaderProps)
             </Grid>
             <Grid xs={6} display='flex' justifyContent="right">
                 <Stack  justifyContent="right" gap={1} alignItems={{ sm: 'stretch', md: 'center' }}  direction={{  xs: 'column-reverse', sm: 'column-reverse', md: 'row' }}>
-                    <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" clickable onClick={() => updateDarkMode(!darkMode)} icon={<FontAwesomeIcon icon={darkMode?faLightbulb:faMoon} />} label={(darkMode?"Light":"Dark")+" Mode"}/>
+                    {/* <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" clickable onClick={() => updateDarkMode(!darkMode)} icon={<FontAwesomeIcon icon={darkMode?faLightbulb:faMoon} />} label={(darkMode?"Light":"(wip) Dark")+" Mode"}/> */}
+                    {/* @ts-ignore */}
+                    <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" clickable icon={<FontAwesomeIcon icon={colorScheme === 'dark'?faLightbulb:faMoon} />} label={(colorScheme === 'dark'?"Light":"(wip) Dark")+" Mode"}
+                        onClick={() => {
+                            console.log("Setting color scheme");
+                            const newColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
+                            setColorScheme(newColorScheme);
+                            UserSettings.setColorScheme(newColorScheme);
+                        }} 
+                    /> 
                     <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8" clickable icon={<FontAwesomeIcon  size='2xs' icon={faFilm} />} label="Tutorial" />
                     <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon size='2xs' icon={faBook} />} label="Docs" />
                     <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="/functionDocs" clickable icon={<FontAwesomeIcon size='2xs' icon={faWaveSquare} />} label="Reference" />

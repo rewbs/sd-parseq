@@ -22,7 +22,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
-import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
+import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { ParseqGraph } from './components/ParseqGraph';
 import { ParseqGrid } from './components/ParseqGrid';
 import SupportParseq from './components/SupportParseq'
@@ -55,6 +55,8 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { beatToFrame, frameToBeat, frameToSec, secToFrame, beatToSec, secToBeat, remapFrameCount } from './utils/maths';
 import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
 import { themeFactory } from "./theme";
+
+import { useHotkeys } from 'react-hotkeys-hook'
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
@@ -93,6 +95,9 @@ const ParseqUI = (props) => {
   const [rangeSelection, setRangeSelection] = useState({});
   const [audioCursorPos, setAudioCursorPos] = useState(0);
   const [activeVersionId, setActiveVersionId] = useState();
+
+  const [undoStack, setUndoStack] = useState([]);
+  const [recoveredFrom, setRecoveredFrom] = useState();
   
   const [isDocDirty, setIsDocDirty] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
@@ -204,11 +209,29 @@ const ParseqUI = (props) => {
       savedStatus.then((versionIdIfSaved) => {      
         if (versionIdIfSaved) {
           setActiveVersionId(versionIdIfSaved);
+          setUndoStack((undoStack) => [versionIdIfSaved, ...undoStack]);          
+          // HACK
+          // We want to reset the undo pointer IFF the user made a non-reversion change.
+          // We do NOT want to reset the undo pointer if we're only saving after an undo/redo. 
+          // A quick & dirty way to determine this is to store the full state that we last
+          // recovered from and compare it against the current state...
+          // This is not memory or CPU efficient, and will have a latency impact when saving
+          if (recoveredFrom && (!equal(recoveredFrom.reverseRender, reverseRender)
+                  || !equal(recoveredFrom.keyframeLock, keyframeLock)
+                  || !equal(recoveredFrom.options, options)
+                  || !equal(recoveredFrom.managedFields, managedFields)          
+                  || !equal(recoveredFrom.displayedFields, displayedFields)                  
+                  || !equal(recoveredFrom.prompts, prompts)
+                  || !equal(recoveredFrom.keyframes, keyframes)          
+                  || !equal(recoveredFrom.timeSeries, timeSeries))) {
+              console.log("User made a non-reversion change. Reset revision pointer.", [versionIdIfSaved, ...undoStack], 0);
+              setRecoveredFrom(undefined);
+            }
         }
       });
       setLastSaved(Date.now());
     }
-  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock, reverseRender]);
+  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock, reverseRender, undoStack, recoveredFrom]);
 
   // TODO - can this be moved out of an effect to reduce re-renders?
   // Render if there is an enqueued render.
@@ -644,6 +667,7 @@ const ParseqUI = (props) => {
         console.log("Loading version", content);
         if (content) {
           setPersistableState(content);
+          setRecoveredFrom(content);
         }
       }}
     />
@@ -1418,7 +1442,44 @@ const ParseqUI = (props) => {
     <Collapse in={!pinFooter && !hoverFooter}>{miniFooterContent}</Collapse>
   </Paper>, [pinFooter, hoverFooter, maxiFooterContent, miniFooterContent, theme]);
 
+  //////////////////////////////////////////
+  // Hotkeys
+  ///////////////////////////////////////////////////////////////
 
+
+  useHotkeys('mod+z', () => {
+    const idx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : 0;
+    if (idx === -1 || idx >= undoStack.length-1) {
+      console.log("Cannot undo any further - try using the revert dialog.")
+      console.log("undostack", undoStack, idx)
+      return;
+    }
+    const versionToLoad = undoStack[idx+1]
+    loadVersion(activeDocId, versionToLoad).then((loaded) => {
+      setPersistableState(loaded);
+      console.log("undostack", undoStack)
+
+      //HACK - track the full state that we recovered from, to see whether we deviate from it.
+      setRecoveredFrom(_.cloneDeep(loaded));
+    });
+  }, {preventDefault:true}, [loadVersion, setPersistableState, undoStack, activeDocId])
+
+  useHotkeys('shift+mod+z', () => {
+    const idx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : 0;
+    if (idx <=0) {
+      console.log("Cannot redo any further - try using the revert dialog.")
+      console.log("undostack", undoStack, idx)
+      return;
+    }
+    const versionToLoad = undoStack[idx-1]
+    loadVersion(activeDocId, versionToLoad).then((loaded) => {
+      setPersistableState(loaded);
+      console.log("undostack", undoStack)
+
+      //HACK - track the full state that we recovered from, to see whether we deviate from it.
+      setRecoveredFrom(_.cloneDeep(loaded));
+    });
+  }, {preventDefault:true}, [loadVersion, setPersistableState, undoStack, activeDocId])
 
   //////////////////////////////////////////
   // Main layout

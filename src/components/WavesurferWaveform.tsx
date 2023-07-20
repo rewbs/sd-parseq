@@ -9,13 +9,15 @@ import TimelinePlugin from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js
 import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
 import colormap from '../data/hot-colormap.json';
 
-interface AudioWaveformProps {
+interface WavesurferAudioWaveformProps {
   audioBuffer: AudioBuffer;
   initialSelection: { start: number, end: number }
   onSelectionChange: (start: number, end: number) => void;
 }
 
-const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionChange }: AudioWaveformProps) => {
+// Used by the timeseries extractor
+// TODO: merge with AudioWaveform.tsx
+const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionChange }: WavesurferAudioWaveformProps) => {
   const waveformRef = useRef<HTMLDivElement | null>(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
   const [playbackStart, setPlaybackStart] = useState<number>(initialSelection.start);

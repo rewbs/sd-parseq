@@ -18,6 +18,7 @@ import { createAudioBufferCopy } from "../utils/utils";
 import { SmallTextField } from "./SmallTextField";
 import { TabPanel } from "./TabPanel";
 import { BiquadFilter } from "./BiquadFilter";
+import { useHotkeys } from 'react-hotkeys-hook'
 
 type AudioWaveformProps = {
     fps: number,
@@ -33,6 +34,8 @@ type AudioWaveformProps = {
     onAddKeyframes: (frames: number[], infoLabel:string) => void,
 }
 
+// Used by the audio reference view in the Main UI.
+// TODO: merge with WavesurferWaveform.tsx
 export function AudioWaveform(props: AudioWaveformProps) {
 
     //console.log("Initialising Waveform with props: ", props);
@@ -74,6 +77,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const [showSpectrogram, setShowSpectrogram] = useState(false);
     
+
 
     // Triggered when user makes viewport changes outside of wavesurfer, and we need to update wavesurfer.
     const scrollToPosition = useCallback((startFrame: number) => {
@@ -268,7 +272,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             scrollToPosition(props.viewport.startFrame);
         }
     }
-
+   
     const handleWSMount = useCallback((waveSurfer: WaveSurfer) => {
         if (waveSurfer.markers) {
             waveSurfer.clearMarkers();
@@ -318,6 +322,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             // Load audio file into wavesurfer visualisation
             wavesurferRef.current?.loadDecodedBuffer(newAudioBuffer);
             updateMarkers();
+            event.target.blur(); // Remove focus from the file input so that spacebar doesn't trigger it again (and can be used for immediate playback)
 
         } catch (e: any) {
             setStatusMessage(<Alert severity="error">Error loading file: {e.message}</Alert>)
@@ -325,6 +330,18 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
     }
 
+    function playPause(fromStart:boolean = false) {
+        if (isPlaying) {
+            wavesurferRef.current?.pause();
+        } else {
+            if (fromStart) {
+                wavesurferRef.current?.seekTo(0);
+            }
+            wavesurferRef.current?.play();
+        }
+        setIsPlaying(!isPlaying);
+        updatePlaybackPos();
+    }    
 
     const updateMarkers = useCallback(() => {
         wavesurferRef.current?.markers.clear();
@@ -597,6 +614,23 @@ export function AudioWaveform(props: AudioWaveformProps) {
         props.onAddKeyframes(frames, infoLabel);
     }
 
+    useHotkeys('space', () => {
+        playPause();
+    }, {preventDefault:true}, [isPlaying, updatePlaybackPos])
+
+    useHotkeys('shift+space', () => {
+        playPause(true);
+    }, {preventDefault:true}, [isPlaying, updatePlaybackPos])
+
+    useHotkeys('shift+a', () => {
+        const time = wavesurferRef.current?.getCurrentTime();
+        //@ts-ignore
+        const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
+        //@ts-ignore
+        setManualEvents(newMarkers);
+    }, {preventDefault:true}, [manualEvents])
+
+
     return <>
         <Grid container>
             <Grid xs={12}>
@@ -648,15 +682,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 </Grid>
                 <Grid xs={12}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined' onClick={(e) => {
-                            if (isPlaying) {
-                                wavesurferRef.current?.pause();
-                            } else {
-                                wavesurferRef.current?.play();
-                            }
-                            setIsPlaying(!isPlaying);
-                            updatePlaybackPos();
-                        }}>
+                        <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined' onClick={(e) => playPause()}>
                             {isPlaying ? "⏸️ Pause" : "▶️ Play"}
                         </Button>
                         <Typography fontSize={"0.75em"}>{playbackPos}</Typography>

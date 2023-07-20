@@ -113,7 +113,7 @@ const ParseqUI = (props) => {
   const runOnceTimeout = useRef();
   const _frameToRowId_cache = useRef();
   const theme = extendTheme(themeFactory());
-  console.log("theme", theme);
+  
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Initialisation logic
@@ -528,7 +528,6 @@ const ParseqUI = (props) => {
       prompt.overlap.outFrames = Math.round(remapFrameCount(prompt.overlap.outFrames, keyframeLock, oldFps, oldBpm, newFps, newBpm));
     });
     delete newPrompts.sentinel; // Ensures UI picks up modified prompts.
-    console.log("prompts", prompts, "newPrompts", newPrompts);
     setPrompts(newPrompts);
 
   }, [keyframeLock, keyframes, prompts]);

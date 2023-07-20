@@ -46,7 +46,7 @@ export const themeFactory = (): CssVarsThemeOptions => {
                     graphBorder: palette.augmentColor({ color: { main: 'rgba(0, 0, 0, 0.1)' } }),
                     graphBackground: palette.augmentColor({ color: { main: 'rgba(0, 0, 0, 0.1)' } }),
                     graphFont: palette.augmentColor({ color: { main: '#666' } }),
-                    gridInfoField: palette.augmentColor({ color: { main: '#eee' } }),
+                    gridInfoField: palette.augmentColor({ color: { main: '#e5e5e5' } }),
                     gridColSeparatorMajor: palette.augmentColor({ color: { main: '#000' } }),
                     gridColSeparatorMinor: palette.augmentColor({ color: { main: '#ccc' } }),
                     codeBackground: palette.augmentColor({ color: { main: '#ccc' } }),

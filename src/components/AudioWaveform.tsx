@@ -19,6 +19,8 @@ import { SmallTextField } from "./SmallTextField";
 import { TabPanel } from "./TabPanel";
 import { BiquadFilter } from "./BiquadFilter";
 import { useHotkeys } from 'react-hotkeys-hook'
+import { SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
+import { themeFactory } from "../theme";
 
 type AudioWaveformProps = {
     fps: number,
@@ -54,6 +56,10 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const [lastViewport, setLastViewport] = useState({ startFrame: 0, endFrame: 0 });
     const [tab, setTab] = useState(1);
 
+    // if the user clicks on the waveform or pauses the track, we capture the position
+    // so that we can repeatedly play back from that position with ctrl+space
+    const [capturedPos, setCapturedPos] = useState<number>(0); 
+
     const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
     const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
     const [isAnalysing, setIsAnalysing] = useState(false);
@@ -77,7 +83,10 @@ export function AudioWaveform(props: AudioWaveformProps) {
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const [showSpectrogram, setShowSpectrogram] = useState(false);
     
-
+    const theme = extendTheme(themeFactory());
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {colorScheme, setColorScheme }  = useColorScheme();
+    const palette = theme.colorSchemes[(colorScheme||'light') as SupportedColorScheme].palette;
 
     // Triggered when user makes viewport changes outside of wavesurfer, and we need to update wavesurfer.
     const scrollToPosition = useCallback((startFrame: number) => {
@@ -148,6 +157,11 @@ export function AudioWaveform(props: AudioWaveformProps) {
         //@ts-ignore
         setManualEvents(newMarkers);
     }, [manualEvents]);
+
+    const handleClick = useCallback((event: any) => {
+        const time = wavesurferRef.current?.getCurrentTime();
+        setCapturedPos(time || 0);
+    }, []);
 
     const handleMarkerDrop = useCallback((marker: Marker) => {
         //console.log("In handleMarkerDrop", marker);
@@ -232,6 +246,15 @@ export function AudioWaveform(props: AudioWaveformProps) {
             wavesurferRef.current?.drawer?.un("dblclick", handleDoubleClick);
         }
     }, [handleDoubleClick]);
+
+    useEffect(() => {
+        //wavesurferRef.current?.on("dblclick", handleDoubleClick);
+        wavesurferRef.current?.drawer?.on("lick", handleClick);
+        return () => {
+            //wavesurferRef.current?.un("dblclick", handleDoubleClick);
+            wavesurferRef.current?.drawer?.un("click", handleClick);
+        }
+    }, [handleClick]);
 
     useEffect(() => {
         wavesurferRef.current?.on("marker-drop", handleMarkerDrop);
@@ -330,18 +353,20 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
     }
 
-    function playPause(fromStart:boolean = false) {
-        if (isPlaying) {
+    function playPause(from : number = -1, pauseIfPlaying = true) {
+        if (isPlaying && pauseIfPlaying) {
             wavesurferRef.current?.pause();
+            setCapturedPos(wavesurferRef.current?.getCurrentTime() || 0);
         } else {
-            if (fromStart) {
-                wavesurferRef.current?.seekTo(0);
+            if (from>=0) {
+                wavesurferRef.current?.setCurrentTime(from);
+            } if (!isPlaying) {
+                wavesurferRef.current?.play();
             }
-            wavesurferRef.current?.play();
         }
-        setIsPlaying(!isPlaying);
+        setIsPlaying(wavesurferRef.current?.isPlaying() ?? false );
         updatePlaybackPos();
-    }    
+    }
 
     const updateMarkers = useCallback(() => {
         wavesurferRef.current?.markers.clear();
@@ -477,6 +502,13 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 container: "#timeline",
                 formatTimeCallback: formatTimeCallback,
                 timeInterval: timeInterval,
+                unlabeledNotchColor: palette.graphBorder.main,
+                primaryColor: palette.graphBorder.dark,
+                secondaryColor: palette.graphBorder.light,
+                primaryFontColor: palette.graphFont.main,
+                secondaryFontColor: palette.graphFont.light,
+                fontFamily: 'Arial',
+                fontSize: 10,                                    
             }));
             wavesurferRef.current.initPlugin('timeline');
             // HACK to force the timeline position to update.
@@ -488,7 +520,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             // Force the wavesurfer to redraw the timeline
             wavesurferRef.current.drawBuffer();
         }
-    }, [formatTimeCallback, props.viewport.startFrame, scrollToPosition]);
+    }, [formatTimeCallback, props.viewport.startFrame, scrollToPosition, palette]);
 
     const waveSurferPlugins = [
         {
@@ -616,11 +648,15 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
     useHotkeys('space', () => {
         playPause();
-    }, {preventDefault:true}, [isPlaying, updatePlaybackPos])
+    }, {preventDefault:true}, [playPause]);
 
     useHotkeys('shift+space', () => {
-        playPause(true);
-    }, {preventDefault:true}, [isPlaying, updatePlaybackPos])
+        playPause(0, false);
+    }, {preventDefault:true}, [playPause]);
+
+    useHotkeys('ctrl+space', () => {
+        playPause(capturedPos, false);
+    }, {preventDefault:true}, [playPause, capturedPos]);    
 
     useHotkeys('shift+a', () => {
         const time = wavesurferRef.current?.getCurrentTime();
@@ -629,6 +665,8 @@ export function AudioWaveform(props: AudioWaveformProps) {
         //@ts-ignore
         setManualEvents(newMarkers);
     }, {preventDefault:true}, [manualEvents])
+
+
 
 
     return <>
@@ -675,6 +713,8 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             minPxPerSec={10}
                             autoCenter={false}
                             interact={true}
+                            cursorColor={palette.success.light}
+                            cursorWidth={3}
                         />
                         <div id="timeline" />
                         <div style={{display:showSpectrogram? 'block' : 'none'}} id="spectrogram" />

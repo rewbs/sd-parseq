@@ -128,7 +128,7 @@ const ParseqUI = (props) => {
   // Resize grid to fit content and update graph view if last frame changes.
   // TODO: UI optimisation: only need to do this keyframes have changed, could store a prevKeyframes and deepEquals against it.
   if (keyframes) {
-    const gridContainer = document.querySelector(".ag-theme-alpine");
+    const gridContainer = document.querySelector("#grid-container");
     if (gridContainer) {
       if (gridHeight === 0) {
         // auto-size grid to fit content

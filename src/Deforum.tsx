@@ -3,13 +3,24 @@ import Header from "./components/Header";
 import ParseqUI from './ParseqUI';
 import {createTheme, ThemeOptions, ThemeProvider} from '@mui/material/styles';
 import { useMediaQuery } from "@mui/material";
+import { UserSettings } from "./UserSettings";
 
 const Deforum = () => {
 
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
   const [darkMode, setDarkMode] = useState(prefersDarkMode);
   const theme = useMemo(() => createTheme(themeFactory(darkMode)), [darkMode]);
-  const updateDarkMode = useCallback((darkMode: boolean) => setDarkMode(darkMode), []);
+  const updateDarkMode = useCallback((darkMode: boolean) => {
+      setDarkMode(darkMode);
+      UserSettings.setDarkMode(darkMode);
+    }, []);
+
+  // Retrieve dark mode setting from local db
+  UserSettings.getDarkMode().then((darkMode) => {
+    if (darkMode !== undefined) {
+      setDarkMode(darkMode);
+    }
+  });
 
   return (<ThemeProvider theme={theme}>
     <Header title="Parseq for Deforum" darkMode={darkMode} updateDarkMode={updateDarkMode} />

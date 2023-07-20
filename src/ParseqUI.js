@@ -51,7 +51,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbtack } from '@fortawesome/free-solid-svg-icons'
 
 
+import 'ag-grid-community/styles/ag-grid.css'; // Core grid CSS, always needed
 // Optional theme CSS
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 import './robin.css';
 
 import { beatToFrame, frameToBeat, frameToSec, secToFrame, beatToSec, secToBeat, remapFrameCount } from './utils/maths';
@@ -302,7 +304,6 @@ const ParseqUI = (props) => {
   // Assumes any required deep copying has already occurred.  
   const setPersistableState = useCallback((doc) => {
     if (doc) {
-      // setDarkMode(doc.darkMode) // TODO: implement dark mode persistence
       setPrompts(convertPrompts(doc.prompts, Math.max(...doc.keyframes.map(kf => kf.frame))));
       setOptions(doc.options);
       setManagedFields(doc.managedFields);

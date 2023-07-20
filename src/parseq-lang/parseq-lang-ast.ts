@@ -224,6 +224,7 @@ export class VariableReferenceAst extends ParseqAstNode {
         return cubicSplineInterpolation(ctx.definedFrames, ctx.definedValues, ctx.frame);
       case 'f':
         return ctx.frame;
+      case 'final_frame':        
       case 'last_frame':
         return _.maxBy(ctx.allKeyframes, 'frame')?.frame ?? 0;
       case 'b':

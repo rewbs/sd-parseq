@@ -323,6 +323,23 @@ const FunctionDoc = () => {
         },
         {
             category: "Context variables",
+            name: "**final_frame**: the last frame",
+            examples: [{
+                keyframeOverrides: [
+                    { frame: 0, translation_z_i: 'final_frame', },
+                    { frame: 99, },
+                ],
+            },
+            {
+                description: "Make something happen half-way through the animation, regardless of the length.",
+                keyframeOverrides: [
+                    { frame: 0, translation_z: 0, translation_z_i: 'if (f < final_frame/2) L else (L+sin(p=2b, a=20))', },
+                    { frame: 99, translation_z: 100 },
+                ],
+            }],
+        },        
+        {
+            category: "Context variables",
             name: "**prev_computed_value**: Value computed at the previous frame.",
             description: "Allows you to express the value of the current frame relative to the previous frame. Value on frame 0 is the default value for this field. Equivalent to `computed_at(f-1)`",
             examples: [
@@ -779,6 +796,70 @@ const FunctionDoc = () => {
                         { frame: 75, },
                         { frame: 90, info: "bassdrum 4", },
                         { frame: 99, info: "bassdrum 5", },
+                    ]
+                }
+            ]
+        },
+        {
+            category: "Info matching",
+            name: "**info_match_since()**: frames since previous match",
+            function_ref: functionLibrary.info_match_since,
+            examples: [
+                {
+                    keyframeOverrides: [
+                        { frame: 0, info: "bassdrum 1", translation_z_i: 'info_match_since("bassdrum")' },
+                        { frame: 15, },
+                        { frame: 30, },
+                        { frame: 45, info: "bassdrum 2", },
+                        { frame: 60, info: "bassdrum 3", },
+                        { frame: 75, },
+                        { frame: 90, info: "bassdrum 4", },
+                        { frame: 99, },
+                    ]
+                },
+                {
+                    description: "Hold a value for half a beat after every matching keyframe",
+                    keyframeOverrides: [
+                        { frame: 0, info: "bassdrum 1", translation_z_i: 'if info_match_since("bassdrum")<0.5b 100 else 0 ' },
+                        { frame: 15, },
+                        { frame: 30, },
+                        { frame: 45, info: "bassdrum 2", },
+                        { frame: 60, info: "bassdrum 3", },
+                        { frame: 75, },
+                        { frame: 90, info: "bassdrum 4", },
+                        { frame: 99},
+                    ]
+                }
+            ]
+        },
+        {
+            category: "Info matching",
+            name: "**info_match_until()**: frames until next match",
+            function_ref: functionLibrary.info_match_until,
+            examples: [
+                {
+                    keyframeOverrides: [
+                        { frame: 0, info: "bassdrum 1", translation_z_i: 'info_match_until("bassdrum")' },
+                        { frame: 15, },
+                        { frame: 30, },
+                        { frame: 45, info: "bassdrum 2", },
+                        { frame: 60, info: "bassdrum 3", },
+                        { frame: 75, },
+                        { frame: 90, info: "bassdrum 4", },
+                        { frame: 99, },
+                    ]
+                },
+                {
+                    description: "Hold a value for half a beat before every matching keyframe",
+                    keyframeOverrides: [
+                        { frame: 0, info: "bassdrum 1", translation_z_i: 'if info_match_until("bassdrum", 10)<0.5b 100 else 0' },
+                        { frame: 15, },
+                        { frame: 30, },
+                        { frame: 45, info: "bassdrum 2", },
+                        { frame: 60, info: "bassdrum 3", },
+                        { frame: 75, },
+                        { frame: 90, info: "bassdrum 4", },
+                        { frame: 99},
                     ]
                 }
             ]

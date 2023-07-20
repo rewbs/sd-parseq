@@ -16,6 +16,7 @@ import {
 } from "react-router-dom";
 import Deforum from './Deforum';
 import * as utils from './utils/utils';
+import { Experimental_CssVarsProvider as CssVarsProvider } from "@mui/material/styles";
 
 //@ts-ignore
 Dexie.dependencies.indexedDB = indexedDB;
@@ -64,6 +65,14 @@ jest.mock('./components/TimeSeriesUI', () => ({
   TimeSeriesUI: () => <></>
 }));
 
+window.matchMedia = window.matchMedia || function() {
+  return {
+      matches: false,
+      addListener: function() {},
+      removeListener: function() {}
+  };
+};
+
 jest.setTimeout(15000);
 
 async function loadAndRender(fixture: {}) {
@@ -78,7 +87,7 @@ async function loadAndRender(fixture: {}) {
   jest.spyOn(URLSearchParams.prototype, 'get').mockImplementation((key) => JSON.stringify(fixture));
 
   // Render the app
-  render(<BrowserRouter><Routes><Route path="*" element={<Deforum />} /></Routes></BrowserRouter>);
+  render(<CssVarsProvider><BrowserRouter><Routes><Route path="*" element={<Deforum />} /></Routes></BrowserRouter></CssVarsProvider>);
 
   // Wait for Parseq to complete
   await waitFor(() => {

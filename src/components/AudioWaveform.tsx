@@ -2,7 +2,7 @@ import { Box, Alert, Typography, Button, Stack, TextField, MenuItem, Tab, Tabs, 
 import Fade from '@mui/material/Fade';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { WaveForm, WaveSurfer } from "wavesurfer-react";
+import { WaveForm, WaveSurfer } from "wavesurfer-react"; // TODO: react wrapper isn't that useful, consider removing so we can upgrade to ws7
 //@ts-ignore
 import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
 //@ts-ignore
@@ -149,6 +149,19 @@ export function AudioWaveform(props: AudioWaveformProps) {
     }, [props, lastViewport, trackLength]), 50);
 
     const debouncedOnCursorMove = useMemo(() => debounce(props.onCursorMove, 100), [props]);
+
+    // Update the colours manually on palette change.
+    // This is necessary because we are not recreating wavesurfer that often
+    useEffect(() => {
+        if (wavesurferRef.current) {
+            // @ts-ignore - type definition is wrong?
+            wavesurferRef.current.setWaveColor([palette.waveformStart.main, palette.waveformEnd.main]);
+            // @ts-ignore - type definition is wrong?
+            wavesurferRef.current.setProgressColor([palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main]);
+            wavesurferRef.current.setCursorColor(palette.success.light);
+        }
+    }, [palette]);
+
 
     const handleDoubleClick = useCallback((event: any) => {
         const time = wavesurferRef.current?.getCurrentTime();
@@ -356,11 +369,11 @@ export function AudioWaveform(props: AudioWaveformProps) {
     function playPause(from : number = -1, pauseIfPlaying = true) {
         if (isPlaying && pauseIfPlaying) {
             wavesurferRef.current?.pause();
-            setCapturedPos(wavesurferRef.current?.getCurrentTime() || 0);
         } else {
             if (from>=0) {
                 wavesurferRef.current?.setCurrentTime(from);
             } if (!isPlaying) {
+                setCapturedPos(wavesurferRef.current?.getCurrentTime() || 0);
                 wavesurferRef.current?.play();
             }
         }
@@ -506,9 +519,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 primaryColor: palette.graphBorder.dark,
                 secondaryColor: palette.graphBorder.light,
                 primaryFontColor: palette.graphFont.main,
-                secondaryFontColor: palette.graphFont.light,
-                fontFamily: 'Arial',
-                fontSize: 10,                                    
+                secondaryFontColor: palette.graphFont.light,                               
             }));
             wavesurferRef.current.initPlugin('timeline');
             // HACK to force the timeline position to update.
@@ -646,28 +657,31 @@ export function AudioWaveform(props: AudioWaveformProps) {
         props.onAddKeyframes(frames, infoLabel);
     }
 
-    useHotkeys('space', () => {
-        playPause();
-    }, {preventDefault:true}, [playPause]);
+    useHotkeys('space',
+        () => playPause(),
+        {preventDefault:true, scopes: ['main']},
+        [playPause]);
 
-    useHotkeys('shift+space', () => {
-        playPause(0, false);
-    }, {preventDefault:true}, [playPause]);
+    useHotkeys('shift+space',
+        () => playPause(0, false),
+        {preventDefault:true, scopes: ['main']},
+        [playPause]);
 
-    useHotkeys('ctrl+space', () => {
-        playPause(capturedPos, false);
-    }, {preventDefault:true}, [playPause, capturedPos]);    
+    useHotkeys('ctrl+space',
+        () => playPause(capturedPos, false),
+        {preventDefault:true, scopes: ['main']},
+        [playPause, capturedPos]);    
 
-    useHotkeys('shift+a', () => {
-        const time = wavesurferRef.current?.getCurrentTime();
-        //@ts-ignore
-        const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
-        //@ts-ignore
-        setManualEvents(newMarkers);
-    }, {preventDefault:true}, [manualEvents])
-
-
-
+    useHotkeys('shift+a', 
+        () => {
+            const time = wavesurferRef.current?.getCurrentTime();
+            //@ts-ignore
+            const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
+            //@ts-ignore
+            setManualEvents(newMarkers);
+        },
+        {preventDefault:true, scopes: ['main']},
+        [manualEvents])
 
     return <>
         <Grid container>
@@ -714,7 +728,11 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             autoCenter={false}
                             interact={true}
                             cursorColor={palette.success.light}
-                            cursorWidth={3}
+                            // @ts-ignore - type definition is wrong?
+                            waveColor={[palette.waveformStart.main, palette.waveformEnd.main]}
+                            // @ts-ignore - type definition is wrong?
+                            progressColor={[palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main]}
+                            cursorWidth={1}
                         />
                         <div id="timeline" />
                         <div style={{display:showSpectrogram? 'block' : 'none'}} id="spectrogram" />

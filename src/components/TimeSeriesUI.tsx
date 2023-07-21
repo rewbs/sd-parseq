@@ -19,18 +19,21 @@ import {
 } from '@mui/material';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Unstable_Grid2/Grid2';
+import { SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
 import { PitchMethod } from 'aubiojs';
 import { range } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Line } from 'react-chartjs-2';
+import { useHotkeysContext } from 'react-hotkeys-hook';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import { InterpolationType, TimeSeries, TimestampType } from '../parseq-lang/parseq-timeseries';
+import { themeFactory } from "../theme";
 import { DECIMATION_THRESHOLD } from '../utils/consts';
 import { frameToSec } from '../utils/maths';
-import {createAudioBufferCopy}  from '../utils/utils';
-import WavesurferAudioWaveform from './WavesurferWaveform';
-import { TabPanel } from './TabPanel';
+import { channelToRgba, createAudioBufferCopy } from '../utils/utils';
 import { SmallTextField } from './SmallTextField';
+import { TabPanel } from './TabPanel';
+import WavesurferAudioWaveform from './WavesurferWaveform';
 
 type TimeSeriesUIProps = {
   lastFrame: number,
@@ -104,17 +107,25 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
 
   const [status, setStatus] = useState(<></>);
 
+  const theme = extendTheme(themeFactory());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { colorScheme, setColorScheme } = useColorScheme();
+  const palette = theme.colorSchemes[(colorScheme || 'light') as SupportedColorScheme].palette;
+
+  const { disableScope: disableHotkeyScope, enableScope: enableHotkeyScope } = useHotkeysContext();
 
   const handleTimestampTypeChange = (event: any) => {
     setTimestampType(event.target.value);
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setOpen(false);
-  };
+    disableHotkeyScope('timeseries');
+    enableHotkeyScope('main');
+  }, [disableHotkeyScope, enableHotkeyScope]);
 
   const handleAddTimeSeries = useCallback(() => {
-    setOpen(false);
+    handleClose();
     if (processedTimeSeries) {
       let num = allTimeSeries.length;
       let alias = 'ts' + num;
@@ -128,10 +139,10 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
         ts: processedTimeSeries
       }];
       setAllTimeSeries(newTimeSeries);
-      onChange(newTimeSeries);      
+      onChange(newTimeSeries);
     }
 
-  }, [allTimeSeries, processedTimeSeries, onChange]);
+  }, [allTimeSeries, processedTimeSeries, onChange, handleClose]);
 
   const handleDeleteTimeSeries = useCallback((idx: number) => {
     const newTimeSeries = allTimeSeries.filter((_, i) => i !== idx);
@@ -141,6 +152,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
 
   const handleOpen = () => {
     setOpen(true);
+    enableHotkeyScope('timeseries');
+    disableHotkeyScope('main');
     setRawTimeSeries(undefined);
     setSetProcessedTimeSeries(undefined);
     setChartData(defaultData);
@@ -159,8 +172,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       yAxisID: 'raw',
       pointRadius: showValuesAtFrames ? 2 : 0,
       pointStyle: 'cross',
-      pointColor: 'black',
-      borderColor: 'rgba(100,100,100,0.5)',
+      pointColor: channelToRgba(palette.primary.mainChannel, 0.45),
+      borderColor: channelToRgba(palette.primary.mainChannel, 0.45),
       borderWidth: 1
     });
 
@@ -171,10 +184,10 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
         label: 'Processed',
         data: graphableProcessed,
         yAxisID: 'processed',
-        pointRadius: showValuesAtFrames ? 2 : 0,
+        pointRadius: showValuesAtFrames ? 4 : 0,
         pointStyle: 'cross',
-        pointColor: 'red',
-        borderColor: 'red',
+        pointColor: palette.warning.dark,
+        borderColor: palette.warning.dark,
         borderWidth: 1
       });
 
@@ -182,9 +195,9 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
         datasets.push({
           label: 'Frame positions',
           data: range(0, lastFrame).map((x) => ({
-              x: (processed.timestampType === TimestampType.Millisecond) ? frameToSec(x, fps) * 1000 : x,
-              y: processed.getValueAt(x, fps, InterpolationType.Step)
-            })),
+            x: (processed.timestampType === TimestampType.Millisecond) ? frameToSec(x, fps) * 1000 : x,
+            y: processed.getValueAt(x, fps, InterpolationType.Step)
+          })),
           yAxisID: 'processed',
           pointRadius: 2,
           pointStyle: 'circle',
@@ -200,7 +213,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
     //console.log(datasets);
     //@ts-ignore    
     setChartData({ datasets });
-  }, [lastFrame, showValuesAtFrames, fps]);
+  }, [lastFrame, showValuesAtFrames, fps, palette]);
 
   const handleLoadFromAudio = async (event: any) => {
     try {
@@ -213,6 +226,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       const newAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       setUnfilteredAudioBuffer(createAudioBufferCopy(newAudioBuffer));
       setAudioBuffer(newAudioBuffer);
+      event.target.blur(); // Remove focus from the file input so that spacebar doesn't trigger it again (and can be used for immediate playback)
     } catch (e: any) {
       console.error(e);
     }
@@ -318,8 +332,8 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
     rawTimeSeries,
     updateChartData]);
 
-    /*eslint-disable react-hooks/exhaustive-deps */
-    useEffect(() => handleProcess(), [showValuesAtFrames]);
+  /*eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => handleProcess(), [showValuesAtFrames]);
 
 
   const extractAmplitude = () => {
@@ -393,31 +407,36 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   }, [audioBuffer, pitchMethod, selectionEndMs, selectionStartMs, updateChartData]);
 
   const timeSeriesList = useMemo(() => allTimeSeries.map(({ ts, alias }, idx) => <>
-    <Box key={"ts-" + idx} sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, borderRadius: 1 }} >
-      <Grid xs={2}>
-        <SmallTextField
-          value={allTimeSeries[idx].alias}
-          label={"name"}
-          onChange={(e) => {
-            allTimeSeries[idx].alias = e.target.value.trim();
-            setAllTimeSeries([...allTimeSeries]);
-            onChange(allTimeSeries);
-          }}
-          onBlur={(e: any) => afterBlur(e)}
-          onFocus={(e: any) => afterFocus(e)}
-          helperText={allTimeSeries.find((t, i) => i !== idx && t.alias === allTimeSeries[idx].alias) ? "⚠️ duplicate name" : ""}
-        />
-      </Grid>
-      <Grid xs={9}>
-        <Sparklines data={ts.data.map(({ x, y }) => y)} height={25}>
-          <SparklinesLine style={{ fill: 'none', strokeWidth: 0.25, stroke: 'rgba(30,100,0,0.8)', }} />
-        </Sparklines>
-      </Grid>
-      <Grid xs={1}>
-        <Button variant='outlined' onClick={(e) => handleDeleteTimeSeries(idx)}>❌</Button>
-      </Grid>
-    </Box>
-  </>), [allTimeSeries, handleDeleteTimeSeries, onChange, afterBlur, afterFocus]);
+    <Stack
+      key={"ts-" + idx}
+      direction={'row'}
+      alignItems={'center'}
+      justifyItems={'center'}
+      gap={4}
+      sx={{ width: '100%', padding: 0, marginTop: 0, marginRight: 2, border: 0, borderRadius: 1 }} >
+      <SmallTextField
+        value={allTimeSeries[idx].alias}
+        label={"name"}
+        onChange={(e) => {
+          allTimeSeries[idx].alias = e.target.value.trim();
+          setAllTimeSeries([...allTimeSeries]);
+          onChange(allTimeSeries);
+        }}
+        style={{ width: "9em" }}
+        onBlur={(e: any) => afterBlur(e)}
+        onFocus={(e: any) => afterFocus(e)}
+        helperText={allTimeSeries.find((t, i) => i !== idx && t.alias === allTimeSeries[idx].alias) ? "⚠️ duplicate name" : ""}
+      />
+      <Sparklines data={ts.data.map(({ x, y }) => y)} height={8}>
+        <SparklinesLine style={{
+          fill: 'none',
+          strokeWidth: 0.1,
+          stroke: channelToRgba([palette.primary.mainChannel, palette.secondary.mainChannel, palette.success.mainChannel, palette.error.mainChannel][idx % 4], 0.7),
+        }} />
+      </Sparklines>
+      <Button variant='outlined' onClick={(e) => handleDeleteTimeSeries(idx)}>❌</Button>
+    </Stack>
+  </>), [allTimeSeries, handleDeleteTimeSeries, onChange, afterBlur, afterFocus, palette]);
 
   const waveSuferWaveform = useMemo(() => audioBuffer &&
     <WavesurferAudioWaveform
@@ -454,13 +473,13 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                 onClick={
                   //@ts-ignore
                   e => e.target.value = null // Ensures onChange fires even if same file is re-selected.
-                }                
+                }
                 onChange={handleLoadFromAudio} />
             </Box>
             {audioBuffer && <>
-            <Stack direction={"row"} alignItems={"center"} spacing={1}>
-              <Typography fontSize={"0.75em"}>Filter: </Typography>
-              <TextField
+              <Stack direction={"row"} alignItems={"center"} spacing={1}>
+                <Typography fontSize={"0.75em"}>Filter: </Typography>
+                <TextField
                   size="small"
                   style={{ width: "6em" }}
                   label="Type"
@@ -473,7 +492,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                   <MenuItem value={"lowpass"}>lowpass</MenuItem>
                   <MenuItem value={"highpass"}>highpass</MenuItem>
                   <MenuItem value={"bandpass"}>bandpass</MenuItem>
-                </TextField>                
+                </TextField>
                 <SmallTextField
                   label="Freq (Hz)"
                   type="number"
@@ -505,25 +524,25 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
               </Box>
               <Stack direction={"row"} alignItems={"center"} spacing={1}>
                 <Tooltip arrow placement="top" title={"Select the method used for pitch detection. Different methods can yield very different results and some are much faster than others. See the aubio documentation for information on each method."} >
-                <TextField
-                  size="small"
-                  style={{width: "8em" }}
-                  id="pitchMethod"
-                  label="Pitch method"
-                  InputLabelProps={{ shrink: true, }}
-                  InputProps={{ style: { fontSize: '0.75em' } }}
-                  value={pitchMethod}
-                  onChange={(e) => setPitchMethod(e.target.value as PitchMethod)}
-                  select
-                >
-                  <MenuItem value={"default"}>default</MenuItem>
-                  <MenuItem value={"schmitt"}>schmitt</MenuItem>
-                  <MenuItem value={"fcomb"}>fcomb</MenuItem>
-                  <MenuItem value={"mcomb"}>mcomb</MenuItem>
-                  <MenuItem value={"specacf"}>specacf</MenuItem>
-                  <MenuItem value={"yin"}>yin</MenuItem>
-                  <MenuItem value={"yinfft"}>yinfft</MenuItem>
-                </TextField>
+                  <TextField
+                    size="small"
+                    style={{ width: "8em" }}
+                    id="pitchMethod"
+                    label="Pitch method"
+                    InputLabelProps={{ shrink: true, }}
+                    InputProps={{ style: { fontSize: '0.75em' } }}
+                    value={pitchMethod}
+                    onChange={(e) => setPitchMethod(e.target.value as PitchMethod)}
+                    select
+                  >
+                    <MenuItem value={"default"}>default</MenuItem>
+                    <MenuItem value={"schmitt"}>schmitt</MenuItem>
+                    <MenuItem value={"fcomb"}>fcomb</MenuItem>
+                    <MenuItem value={"mcomb"}>mcomb</MenuItem>
+                    <MenuItem value={"specacf"}>specacf</MenuItem>
+                    <MenuItem value={"yin"}>yin</MenuItem>
+                    <MenuItem value={"yinfft"}>yinfft</MenuItem>
+                  </TextField>
                 </Tooltip>
                 <Tooltip arrow placement="top" title={"Convert your audio's pitch to a time series input, ready for processing."} >
                   <Button size='small' variant='contained' onClick={extractPitch}> Extract Pitch &nbsp; <Typography fontSize={"0.7em"} fontFamily={"monospace"} ref={pitchProgressRef}>(0%)</Typography></Button>
@@ -640,6 +659,9 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
             spanGaps: true,
             aspectRatio: 4,
             responsive: true,
+            backgroundColor: palette.graphBackground.main,
+            borderColor: palette.graphBorder.main,
+            color: palette.graphFont.main,
             animation: {
               duration: 175,
               delay: 0
@@ -663,6 +685,9 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
             scales: {
               x: {
                 type: 'linear',
+                min: 0,
+                //@ts-ignore
+                max: showValuesAtFrames ? lastFrame : (chartData.datasets[0].data.at(-1)?.x) ?? lastFrame,
                 title: {
                   display: true,
                   text: (showValuesAtFrames || (rawTimeSeries?.timestampType === TimestampType.Frame)) ? "frame" : "ms"
@@ -670,10 +695,11 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                 ticks: {
                   minRotation: 0,
                   maxRotation: 0,
+                  color: palette.graphFont.main,
                 },
-                min: 0,
-                //@ts-ignore
-                max: showValuesAtFrames ? lastFrame : (chartData.datasets[0].data.at(-1)?.x) ?? lastFrame,
+                grid: {
+                  color: palette.graphBorder.main,
+                },
               },
               raw: {
                 type: 'linear',
@@ -685,7 +711,11 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                 ticks: {
                   minRotation: 0,
                   maxRotation: 0,
+                  color: palette.graphFont.main,
                 },
+                grid: {
+                  color: palette.graphBorder.main,
+                }
               },
               processed: {
                 type: 'linear',
@@ -693,13 +723,16 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                 title: {
                   text: 'processed',
                   display: true,
-                  color: 'red',
+                  color: palette.warning.dark,
                 },
                 ticks: {
-                  color: 'red',
+                  color: palette.warning.dark,
                   minRotation: 0,
                   maxRotation: 0,
                 },
+                grid: {
+                  color: 'rgba(255,0,0,0.15)',
+                }
               },
             },
           }}
@@ -714,7 +747,7 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
               }}
               size='small' />
           } label={<Box component="div" fontSize="0.75em">Only show values at frame positions</Box>} />
-      {status}
+        {status}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Close</Button>

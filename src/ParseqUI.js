@@ -205,31 +205,26 @@ const ParseqUI = (props) => {
   // in quick succession.
   useDebouncedEffect(() => {
     if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields && timeSeries && keyframeLock) {
-      const savedStatus = saveVersion(activeDocId, getPersistableState());
-      savedStatus.then((versionIdIfSaved) => {      
-        if (versionIdIfSaved) {
+      const versionToSave = getPersistableState();
+      if (recoveredFrom
+        && Object.keys(versionToSave)
+            .filter((k) => k !== 'meta') // exclude this field because it has a timestamp that is expected to change.
+            .every((k) => equal(versionToSave[k], recoveredFrom[k]))) {
+        // If the document is identical to the doc we just reverted from, no need to save yet:
+        console.log("Not saving, would be identical to recovered version.");
+      } else { 
+        saveVersion(activeDocId, getPersistableState()).then((versionIdIfSaved) => {      
+          if (!versionIdIfSaved) {
+            // No save occurred.
+            return;
+          }
+          console.log("Non-reversion detected. No longer in a just-recovered state, redo is no longer possible.");
+          setRecoveredFrom(undefined);
           setActiveVersionId(versionIdIfSaved);
-          setUndoStack((undoStack) => [versionIdIfSaved, ...undoStack]);          
-          // HACK
-          // We want to reset the undo pointer IFF the user made a non-reversion change.
-          // We do NOT want to reset the undo pointer if we're only saving after an undo/redo. 
-          // A quick & dirty way to determine this is to store the full state that we last
-          // recovered from and compare it against the current state...
-          // This is not memory or CPU efficient, and will have a latency impact when saving
-          if (recoveredFrom && (!equal(recoveredFrom.reverseRender, reverseRender)
-                  || !equal(recoveredFrom.keyframeLock, keyframeLock)
-                  || !equal(recoveredFrom.options, options)
-                  || !equal(recoveredFrom.managedFields, managedFields)          
-                  || !equal(recoveredFrom.displayedFields, displayedFields)                  
-                  || !equal(recoveredFrom.prompts, prompts)
-                  || !equal(recoveredFrom.keyframes, keyframes)          
-                  || !equal(recoveredFrom.timeSeries, timeSeries))) {
-              console.log("User made a non-reversion change. Reset revision pointer.", [versionIdIfSaved, ...undoStack], 0);
-              setRecoveredFrom(undefined);
-            }
-        }
-      });
-      setLastSaved(Date.now());
+          setUndoStack((undoStack) => [versionIdIfSaved, ...undoStack]);
+          setLastSaved(Date.now());
+        });
+      };
     }
   }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock, reverseRender, undoStack, recoveredFrom]);
 
@@ -1295,6 +1290,29 @@ const ParseqUI = (props) => {
 
   // Footer ------------------------
 
+  const debugStatus = useMemo(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const undoStackSummary = undoStack.map((v, idx) => {
+        return v.split("-")[1];
+      });
+      console.log("undostack", undoStackSummary)
+      const recoveredIdx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : -1;
+
+      return <Alert severity="info">
+        <ul>
+        <li>Current version: <code>{activeVersionId}</code>; recovered from: <code>{recoveredFrom?.versionId || 'None'}</code></li>
+        <li>Undo stack size: {undoStack.length}; "recovered from" index: {recoveredIdx}</li>
+        <li>Undos available: { (recoveredIdx>=0) ? undoStack.length-recoveredIdx : 0}; Redos available: { (recoveredIdx>=0) ? recoveredIdx : 0}</li>
+        <li>Next undo: <code>{ (recoveredIdx>-1 && recoveredIdx<undoStack.length) ? undoStackSummary[recoveredIdx+1] : 'None' }</code>; Next redo: <code>{ recoveredIdx>0 ? undoStackSummary[recoveredIdx-1] : 'None' }</code></li>
+        </ul>
+        
+    </Alert>
+    } else {
+      return <></>;
+    }
+  }, [undoStack, recoveredFrom, activeVersionId]);
+  
+
   const renderStatus = useMemo(() => {
     let animated_fields = getAnimatedFields(renderedData);
     let uses2d = defaultFields.filter(f => f.labels.some(l => l === '2D') && animated_fields.includes(f));
@@ -1378,6 +1396,7 @@ const ParseqUI = (props) => {
     <Grid xs={6}>
       <InitialisationStatus status={initStatus} alignItems='center' />
       {renderStatus}
+      {(process.env.NODE_ENV === 'development') && debugStatus}
     </Grid>
     <Grid xs={2}>
       <Stack direction={'column'}>
@@ -1421,7 +1440,7 @@ const ParseqUI = (props) => {
       </Stack>
     </Grid>
   </Grid>
-  , [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender, pinFooter]);
+  , [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender, pinFooter, debugStatus]);
 
 
   const stickyFooter = useMemo(() => <Paper
@@ -1451,35 +1470,29 @@ const ParseqUI = (props) => {
     const idx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : 0;
     if (idx === -1 || idx >= undoStack.length-1) {
       console.log("Cannot undo any further - try using the revert dialog.")
-      console.log("undostack", undoStack, idx)
       return;
     }
     const versionToLoad = undoStack[idx+1]
     loadVersion(activeDocId, versionToLoad).then((loaded) => {
       setPersistableState(loaded);
-      console.log("undostack", undoStack)
-
       //HACK - track the full state that we recovered from, to see whether we deviate from it.
       setRecoveredFrom(_.cloneDeep(loaded));
     });
-  }, {preventDefault:true}, [loadVersion, setPersistableState, undoStack, activeDocId])
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoStack, activeDocId, recoveredFrom])
 
   useHotkeys('shift+mod+z', () => {
     const idx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : 0;
     if (idx <=0) {
       console.log("Cannot redo any further - try using the revert dialog.")
-      console.log("undostack", undoStack, idx)
       return;
     }
     const versionToLoad = undoStack[idx-1]
     loadVersion(activeDocId, versionToLoad).then((loaded) => {
       setPersistableState(loaded);
-      console.log("undostack", undoStack)
-
       //HACK - track the full state that we recovered from, to see whether we deviate from it.
       setRecoveredFrom(_.cloneDeep(loaded));
     });
-  }, {preventDefault:true}, [loadVersion, setPersistableState, undoStack, activeDocId])
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoStack, activeDocId, recoveredFrom])
 
   //////////////////////////////////////////
   // Main layout

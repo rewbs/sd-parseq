@@ -14,6 +14,10 @@ declare module "@mui/material/styles" {
         gridColSeparatorMajor: PaletteColor;
         gridColSeparatorMinor: PaletteColor;
         codeBackground: PaletteColor;
+        waveformStart: PaletteColor;
+        waveformEnd: PaletteColor;
+        waveformProgressMaskStart: PaletteColor;
+        waveformProgressMaskEnd: PaletteColor;
     }
     interface PaletteOptions {
         negative: PaletteColor;
@@ -28,6 +32,11 @@ declare module "@mui/material/styles" {
         gridColSeparatorMajor: PaletteColor;
         gridColSeparatorMinor: PaletteColor;
         codeBackground: PaletteColor;
+        waveformStart: PaletteColor;
+        waveformEnd: PaletteColor;
+        waveformProgressMaskStart: PaletteColor;
+        waveformProgressMaskEnd: PaletteColor;
+
     }
 }
 
@@ -50,6 +59,11 @@ export const themeFactory = (): CssVarsThemeOptions => {
                     gridColSeparatorMajor: palette.augmentColor({ color: { main: '#000' } }),
                     gridColSeparatorMinor: palette.augmentColor({ color: { main: '#ccc' } }),
                     codeBackground: palette.augmentColor({ color: { main: '#ccc' } }),
+                    waveformStart: palette.augmentColor({ color: { main: '#000' } }),
+                    waveformEnd: palette.augmentColor({ color: { main: '#aaa' } }),
+                    waveformProgressMaskStart: palette.augmentColor({ color: { main: '#aaa' } }),
+                    waveformProgressMaskEnd: palette.augmentColor({ color: { main: '#ccc' } }),
+                    
                 }
             },
             dark: {
@@ -67,6 +81,10 @@ export const themeFactory = (): CssVarsThemeOptions => {
                     gridColSeparatorMajor: palette.augmentColor({ color: { main: '#fff' } }),
                     gridColSeparatorMinor: palette.augmentColor({ color: { main: '#555' } }),
                     codeBackground: palette.augmentColor({ color: { main: '#666' } }),
+                    waveformStart: palette.augmentColor({ color: { main: '#fff' } }),
+                    waveformEnd: palette.augmentColor({ color: { main: '#aaa' } }),
+                    waveformProgressMaskStart: palette.augmentColor({ color: { main: '#bbb' } }),
+                    waveformProgressMaskEnd: palette.augmentColor({ color: { main: '#555' } }),
                 }
             }
         }

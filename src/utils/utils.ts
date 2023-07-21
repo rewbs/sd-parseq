@@ -154,3 +154,8 @@ export function deleteQsParams(qsParamsToDelete: string[]) {
   qsParamsToDelete.forEach(p => url.searchParams.delete(p));
   window.history.replaceState({}, '', url);
 }
+
+export const channelToRgba = (channel: string, alpha: number): string => {
+  //return `rgba(${channel.replaceAll(' ', ',')}, ${alpha})`
+  return `rgba(${channel} / ${alpha})`
+}

@@ -56,13 +56,15 @@ import { beatToFrame, frameToBeat, frameToSec, secToFrame, beatToSec, secToBeat,
 import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
 import { themeFactory } from "./theme";
 
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook';
+import { ParseqUndoManager } from './parseq-undoManager';
 
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
   const { defaultTemplate } = props
   const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
+  const debugMode = new URLSearchParams(window.location.search).get("debug") === "true" || false;
   
   //////////////////////////////////////////
   // App State
@@ -96,9 +98,11 @@ const ParseqUI = (props) => {
   const [audioCursorPos, setAudioCursorPos] = useState(0);
   const [activeVersionId, setActiveVersionId] = useState();
 
-  const [undoStack, setUndoStack] = useState([]);
-  const [recoveredFrom, setRecoveredFrom] = useState();
+  // eslint-disable-next-line no-unused-vars
+  const [undoManager, setUndoManager] = useState(new ParseqUndoManager(activeDocId));
+  const [debugUndoStack, setDebugUndoStack] = useState([]);
   
+
   const [isDocDirty, setIsDocDirty] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
   const [sparklineData, setSparklineData] = useState([]);
@@ -206,27 +210,24 @@ const ParseqUI = (props) => {
   useDebouncedEffect(() => {
     if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields && timeSeries && keyframeLock) {
       const versionToSave = getPersistableState();
-      if (recoveredFrom
-        && Object.keys(versionToSave)
-            .filter((k) => k !== 'meta') // exclude this field because it has a timestamp that is expected to change.
-            .every((k) => equal(versionToSave[k], recoveredFrom[k]))) {
-        // If the document is identical to the doc we just reverted from, no need to save yet:
-        console.log("Not saving, would be identical to recovered version.");
-      } else { 
-        saveVersion(activeDocId, getPersistableState()).then((versionIdIfSaved) => {      
-          if (!versionIdIfSaved) {
+      const changesComparedToLastRecovered = undoManager.compareToLastRecovered(versionToSave);
+      if (changesComparedToLastRecovered.length > 0) { // HACK – detect whether we're here just because we've done undo/redo, in which case we don't want to save. This is slow for large docs.
+        saveVersion(activeDocId, getPersistableState()).then((saveStruct) => {
+          if (!saveStruct?.newVersionId) {
             // No save occurred.
             return;
           }
           console.log("Non-reversion detected. No longer in a just-recovered state, redo is no longer possible.");
-          setRecoveredFrom(undefined);
-          setActiveVersionId(versionIdIfSaved);
-          setUndoStack((undoStack) => [versionIdIfSaved, ...undoStack]);
+          setActiveVersionId(saveStruct?.newVersionId);
+          undoManager.trackVersion(saveStruct.newVersionId, saveStruct.changes);
+          setDebugUndoStack(undoManager.confessUndoStack());
           setLastSaved(Date.now());
         });
-      };
+      } else {
+          console.log("Not saving, would be identical to recovered version.");
+      }
     }
-  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock, reverseRender, undoStack, recoveredFrom]);
+  }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock, reverseRender]);
 
   // TODO - can this be moved out of an effect to reduce re-renders?
   // Render if there is an enqueued render.
@@ -659,10 +660,9 @@ const ParseqUI = (props) => {
       docId={activeDocId}
       lastSaved={lastSaved}
       onLoadContent={(content) => {
-        console.log("Loading version", content);
+        console.log("Reverting to version", content);
         if (content) {
           setPersistableState(content);
-          setRecoveredFrom(content);
         }
       }}
     />
@@ -1291,26 +1291,25 @@ const ParseqUI = (props) => {
   // Footer ------------------------
 
   const debugStatus = useMemo(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const undoStackSummary = undoStack.map((v, idx) => {
-        return v.split("-")[1];
-      });
-      console.log("undostack", undoStackSummary)
-      const recoveredIdx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : -1;
-
+    if (process.env.NODE_ENV === 'development' || debugMode) {
       return <Alert severity="info">
+        Active version: {activeVersionId?.split("-")[1]}
         <ul>
-        <li>Current version: <code>{activeVersionId}</code>; recovered from: <code>{recoveredFrom?.versionId || 'None'}</code></li>
-        <li>Undo stack size: {undoStack.length}; "recovered from" index: {recoveredIdx}</li>
-        <li>Undos available: { (recoveredIdx>=0) ? undoStack.length-recoveredIdx : 0}; Redos available: { (recoveredIdx>=0) ? recoveredIdx : 0}</li>
-        <li>Next undo: <code>{ (recoveredIdx>-1 && recoveredIdx<undoStack.length) ? undoStackSummary[recoveredIdx+1] : 'None' }</code>; Next redo: <code>{ recoveredIdx>0 ? undoStackSummary[recoveredIdx-1] : 'None' }</code></li>
+          {
+            debugUndoStack.map((v, idx) => {
+              return <li key={idx}>
+                <Typography fontSize={'0.8em'} fontWeight={v.current ? 'bold' : ''} >
+                  {idx}: {v.versionId.split("-")[1]} – changes: {v.changes.join(', ')}
+                </Typography></li>
+            })
+          }
         </ul>
-        
-    </Alert>
+
+      </Alert>
     } else {
       return <></>;
     }
-  }, [undoStack, recoveredFrom, activeVersionId]);
+  }, [debugUndoStack, activeVersionId, debugMode]);
   
 
   const renderStatus = useMemo(() => {
@@ -1467,32 +1466,14 @@ const ParseqUI = (props) => {
 
 
   useHotkeys('mod+z', () => {
-    const idx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : 0;
-    if (idx === -1 || idx >= undoStack.length-1) {
-      console.log("Cannot undo any further - try using the revert dialog.")
-      return;
-    }
-    const versionToLoad = undoStack[idx+1]
-    loadVersion(activeDocId, versionToLoad).then((loaded) => {
-      setPersistableState(loaded);
-      //HACK - track the full state that we recovered from, to see whether we deviate from it.
-      setRecoveredFrom(_.cloneDeep(loaded));
-    });
-  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoStack, activeDocId, recoveredFrom])
+    undoManager.undo((recovered => setPersistableState(recovered)));
+    setDebugUndoStack(undoManager.confessUndoStack());
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager])
 
   useHotkeys('shift+mod+z', () => {
-    const idx = (recoveredFrom) ? undoStack.findIndex((v) => v === recoveredFrom.versionId) : 0;
-    if (idx <=0) {
-      console.log("Cannot redo any further - try using the revert dialog.")
-      return;
-    }
-    const versionToLoad = undoStack[idx-1]
-    loadVersion(activeDocId, versionToLoad).then((loaded) => {
-      setPersistableState(loaded);
-      //HACK - track the full state that we recovered from, to see whether we deviate from it.
-      setRecoveredFrom(_.cloneDeep(loaded));
-    });
-  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoStack, activeDocId, recoveredFrom])
+    undoManager.redo((recovered => setPersistableState(recovered)));
+    setDebugUndoStack(undoManager.confessUndoStack());
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager])
 
   //////////////////////////////////////////
   // Main layout

@@ -1,6 +1,7 @@
+import _ from 'lodash';
 import packageJson from '../../package.json';
 import { defaultFields } from '../data/fields';
-import type { ParseqKeyframe, DocId, VersionId } from '../ParseqUI.d.ts';
+import type { ParseqKeyframe, DocId, VersionId, ParseqPersistableState } from '../ParseqUI.d.ts';
 
 export const fieldNametoRGBa = (str: string, alpha: number): string => {
   const rgb = defaultFields.find((field) => field.name === str)?.color || [0, 0, 0];
@@ -159,3 +160,10 @@ export const channelToRgba = (channel: string, alpha: number): string => {
   //return `rgba(${channel.replaceAll(' ', ',')}, ${alpha})`
   return `rgba(${channel} / ${alpha})`
 }
+
+    //TODO this'll be slow, especially for for large timeSeries. Consider making timeseries objects immutable and doing comparison by reference.
+export const compareParseqDocState = (a: ParseqPersistableState, b: ParseqPersistableState): string[] => {
+      return Object.keys(a)
+          .filter((k) => !['meta', 'timestamp', 'versionId', 'changes', 'docId'].includes(k)) // exclude these fields they are expected to change.
+          .flatMap((k) => _.isEqual(a[k as keyof ParseqPersistableState], b[k as keyof ParseqPersistableState]) ? [] : [k]);
+  } 

@@ -43,7 +43,8 @@ type VersionSummary = {
     versionId: VersionId | undefined,    
     prompts: AdvancedParseqPromptsV2 | undefined,
     timeSeriesNames: string[] | undefined,
-    managedFields: string[] | undefined
+    managedFields: string[] | undefined,
+    changes: string[] | undefined,
 }
 
 export default function Browser() {
@@ -100,7 +101,8 @@ export default function Browser() {
                             versionId: version?.versionId,
                             prompts: version?.prompts ? convertPrompts(version?.prompts, 0) : undefined,
                             timeSeriesNames: version?.timeSeries?.map((ts: any) => ts.alias),
-                            managedFields: version?.managedFields
+                            managedFields: version?.managedFields,
+                            changes: version?.changes
                         };
                         resultMap.set(doc.docId, condensed);
                         setLoadedDocs(resultMap.size);
@@ -131,7 +133,8 @@ export default function Browser() {
                             docName: version.meta.docName || '',
                             prompts: version?.prompts ? convertPrompts(version?.prompts, 0) : undefined,
                             timeSeriesNames: version.timeSeries.map((ts: any) => ts.alias),
-                            managedFields: version.managedFields
+                            managedFields: version.managedFields,
+                            changes: version?.changes
                         };
                         versions.push(condensed);
                         setLoadedVersions(versions.length);
@@ -301,13 +304,14 @@ export default function Browser() {
                                                         <TableCell><strong>Prompts</strong></TableCell>
                                                         <TableCell><strong>Timeseries</strong></TableCell>
                                                         <TableCell><strong>Managed fields</strong></TableCell>
+                                                        <TableCell><strong>What changed?</strong></TableCell>
                                                         <TableCell><strong>Actions</strong></TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
                                                     {
                                                         selectedDocVersions.map((v: VersionSummary) => {
-                                                            return <tr>
+                                                            return <TableRow>
                                                                 <TableCell>
                                                                     <ReactTimeAgo
                                                                         date={v.timestamp}
@@ -333,6 +337,9 @@ export default function Browser() {
                                                                     </Tooltip>
                                                                 </TableCell>
                                                                 <TableCell>
+                                                                    { v.changes?.join(", ") }
+                                                                </TableCell>                                                                
+                                                                <TableCell>
                                                                     <Stack spacing={1}>
                                                                         <Tooltip title="Clone this version to a new document">
                                                                             <Button
@@ -344,7 +351,7 @@ export default function Browser() {
                                                                         <Typography fontSize={"0.5em"} fontStyle={'monospace'}>{v.versionId}</Typography>
                                                                     </Stack>
                                                                 </TableCell>
-                                                            </tr>
+                                                            </TableRow>
                                                         })
                                                     }
                                                 </TableBody>

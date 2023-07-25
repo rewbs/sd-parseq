@@ -58,7 +58,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     description: "Returns the frame number of the next keyframe that matched the regex, or -1 if none.",
     argDefs: [
       { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
-      { description: "default if no next match", names: ["default", "d"], type: "string", required: false, default: -1 }
+      { description: "default if no next match", names: ["default", "d"], type: "number", required: false, default: -1 }
     ],
     call: (ctx, args) => {
       const pattern = String(args[0]);
@@ -71,7 +71,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     description: "Returns the number of frames between the previous and next match (equivalent to `info_match_next()-info_match_prev()`), or `-1` if not between matches.",
     argDefs: [
       { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
-      { description: "default if not between matches", names: ["default", "d"], type: "string", required: false, default: -1 }
+      { description: "default if not between matches", names: ["default", "d"], type: "number", required: false, default: -1 }
     ],
     call: (ctx, args) => {
       const pattern = String(args[0]);
@@ -85,7 +85,7 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
     description: "Returns a number between 0 and 1 reprenting how far the current frame is along the gap between (equivalent to `(f-info_match_prev()/info_match_gap())`, or `-1` if not between matches.",
     argDefs: [
       { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
-      { description: "default if not between matches", names: ["default", "d"], type: "string", required: false, default: -1 }
+      { description: "default if not between matches", names: ["default", "d"], type: "number", required: false, default: -1 }
     ],
     call: (ctx, args) => {
       const pattern = String(args[0]);
@@ -93,7 +93,33 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       const nextMatch = frameOfNextMatch(ctx, pattern)
       return (nextMatch && prevMatch) ? (ctx.frame - prevMatch.frame) / (nextMatch.frame - prevMatch.frame) : Number(args[1]);
     }
-  }
+  },
+
+  "info_match_since": {
+    description: "Returns the number of frames since the previous keyframe that matched the regex, or an overridable fallback defaulting to `-1` if no next match. Equivalent to `f-info_match_prev()`.",
+    argDefs: [
+      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
+      { description: "default if not between matches", names: ["default", "d"], type: "number", required: false, default: -1 }
+    ],
+    call: (ctx, args) => {
+      const pattern = String(args[0]);
+      const prevMatch = frameOfPrevMatch(ctx, pattern);
+      return (prevMatch) ? (ctx.frame - prevMatch.frame) : Number(args[1]);
+    }
+  },
+
+  "info_match_until": {
+    description: "Returns the number of frames until the next keyframe that matches the regex, or an overridable fallback defaulting to `-1` if no next match. Equivalent to `info_match_next()-f`.",
+    argDefs: [
+      { description: "regex", names: ["regex", "r"], type: "string", required: true, default: "" },
+      { description: "default if not between matches", names: ["default", "d"], type: "number", required: false, default: -1 }
+    ],
+    call: (ctx, args) => {
+      const pattern = String(args[0]);
+      const nextMatch = frameOfNextMatch(ctx, pattern)
+      return (nextMatch) ? (nextMatch.frame - ctx.frame) : Number(args[1]);
+    }
+  },  
 
 }
 

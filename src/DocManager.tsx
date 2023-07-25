@@ -3,7 +3,6 @@ import { Alert, Autocomplete, Button, Dialog, DialogActions, DialogContent, Dial
 import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useLiveQuery } from "dexie-react-hooks";
-import equal from 'fast-deep-equal';
 import TimeAgo from 'javascript-time-ago';
 import debounce from 'lodash.debounce';
 import { useEffect, useState } from 'react';
@@ -19,7 +18,7 @@ import { db } from './db';
 import _ from 'lodash';
 import { DocId, ParseqDoc, ParseqDocVersion, ParseqPersistableState, VersionId } from './ParseqUI';
 import { useUserAuth } from "./UserAuthContext";
-import { navigateToClone, navigateToDocId, navigateToTemplateId } from './utils/utils';
+import { compareParseqDocState, navigateToClone, navigateToDocId, navigateToTemplateId } from './utils/utils';
 import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
 import { themeFactory } from "./theme";
 
@@ -46,27 +45,24 @@ export const saveVersion = async (docId: DocId, content: ParseqPersistableState)
     //Deep-compare content to previous version so we don't save consecutive identical versions.
     const lastVersion = await loadVersion(docId);
     const document = await db.parseqDocs.get(docId);
-    if (lastVersion
-        && Object.keys(content)
-            .filter((k) => k !== 'meta') // exclude this field because it has a timestamp that is expected to change.
-            .every((k) => equal(content[k as keyof ParseqPersistableState], lastVersion[k as keyof ParseqPersistableState]))) {
-        //console.log("Not saving, would be identical to previous version.");
+
+    const changes = lastVersion ? compareParseqDocState(lastVersion, content) : ["First version."];
+    if (changes.length === 0) {
+        console.log("Not saving, would be identical to previous version.");
     } else {
         content.meta.docName = document?.name ?? "Untitled";
-        //@ts-ignore
         const version: ParseqDocVersion = {
             ...content,
             docId: docId,
             timestamp: Date.now(),
-            versionId: makeVersionId()
+            versionId: makeVersionId(),
+            changes: changes,
         }
-        //console.log("Saving...");
-        const retval = await db.transaction('rw', db.parseqDocs, db.parseqVersions, async () => {
+        const newVersionId = await db.transaction('rw', db.parseqDocs, db.parseqVersions, async () => {
             db.parseqDocs.update(docId, { timestamp: version.timestamp, latestVersionId: version.versionId });
             return db.parseqVersions.add(version, version.versionId);
         });
-
-        return retval;
+        return {newVersionId, changes};
     }
 
 }

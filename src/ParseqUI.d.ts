@@ -56,6 +56,7 @@ type ParseqDocVersion = ParseqPersistableState & {
     versionId: VersionId,
     docId: DocId;
     timestamp: number;
+    changes?: string[];
 }
 
 type ParseqOptions = {

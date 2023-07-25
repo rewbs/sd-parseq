@@ -22,7 +22,7 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { Sparklines, SparklinesLine } from 'react-sparklines-typescript-v2';
 import ReactTimeAgo from 'react-time-ago';
 import useDebouncedEffect from 'use-debounced-effect';
-import { DocManagerUI, makeDocId, saveVersion } from './DocManager';
+import { DocManagerUI, loadVersion, makeDocId, saveVersion } from './DocManager';
 import { ParseqGraph } from './components/ParseqGraph';
 import { ParseqGrid } from './components/ParseqGrid';
 import SupportParseq from './components/SupportParseq'
@@ -56,11 +56,15 @@ import { beatToFrame, frameToBeat, frameToSec, secToFrame, beatToSec, secToBeat,
 import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
 import { themeFactory } from "./theme";
 
+import { useHotkeys } from 'react-hotkeys-hook';
+import { ParseqUndoManager } from './parseq-undoManager';
+
 const ParseqUI = (props) => {
   const activeDocId = queryStringGetOrCreate('docId', makeDocId)   // Will not change unless whole page is reloaded.
   const gridRef = useRef();
   const { defaultTemplate } = props
   const preventInitialRender = new URLSearchParams(window.location.search).get("render") === "false" || false;
+  const debugMode = new URLSearchParams(window.location.search).get("debug") === "true" || false;
   
   //////////////////////////////////////////
   // App State
@@ -93,7 +97,12 @@ const ParseqUI = (props) => {
   const [rangeSelection, setRangeSelection] = useState({});
   const [audioCursorPos, setAudioCursorPos] = useState(0);
   const [activeVersionId, setActiveVersionId] = useState();
+
+  // eslint-disable-next-line no-unused-vars
+  const [undoManager, setUndoManager] = useState(new ParseqUndoManager(activeDocId));
+  const [debugUndoStack, setDebugUndoStack] = useState([]);
   
+
   const [isDocDirty, setIsDocDirty] = useState(false); // true if focus is on a text box, helps prevent constant re-renders on every keystroke.
   const [graphableData, setGraphableData] = useState([]);
   const [sparklineData, setSparklineData] = useState([]);
@@ -123,7 +132,7 @@ const ParseqUI = (props) => {
   // Resize grid to fit content and update graph view if last frame changes.
   // TODO: UI optimisation: only need to do this keyframes have changed, could store a prevKeyframes and deepEquals against it.
   if (keyframes) {
-    const gridContainer = document.querySelector(".ag-theme-alpine");
+    const gridContainer = document.querySelector("#grid-container");
     if (gridContainer) {
       if (gridHeight === 0) {
         // auto-size grid to fit content
@@ -200,13 +209,23 @@ const ParseqUI = (props) => {
   // in quick succession.
   useDebouncedEffect(() => {
     if (autoSaveEnabled && prompts && options && displayedFields && keyframes && managedFields && timeSeries && keyframeLock) {
-      const savedStatus = saveVersion(activeDocId, getPersistableState());
-      savedStatus.then((versionIdIfSaved) => {      
-        if (versionIdIfSaved) {
-          setActiveVersionId(versionIdIfSaved);
-        }
-      });
-      setLastSaved(Date.now());
+      const versionToSave = getPersistableState();
+      const changesComparedToLastRecovered = undoManager.compareToLastRecovered(versionToSave);
+      if (changesComparedToLastRecovered.length > 0) { // HACK – detect whether we're here just because we've done undo/redo, in which case we don't want to save. This is slow for large docs.
+        saveVersion(activeDocId, getPersistableState()).then((saveStruct) => {
+          if (!saveStruct?.newVersionId) {
+            // No save occurred.
+            return;
+          }
+          console.log("Non-reversion detected. No longer in a just-recovered state, redo is no longer possible.");
+          setActiveVersionId(saveStruct?.newVersionId);
+          undoManager.trackVersion(saveStruct.newVersionId, saveStruct.changes);
+          setDebugUndoStack(undoManager.confessUndoStack());
+          setLastSaved(Date.now());
+        });
+      } else {
+          console.log("Not saving, would be identical to recovered version.");
+      }
     }
   }, 200, [prompts, options, displayedFields, keyframes, autoSaveEnabled, managedFields, timeSeries, keyframeLock, reverseRender]);
 
@@ -641,7 +660,7 @@ const ParseqUI = (props) => {
       docId={activeDocId}
       lastSaved={lastSaved}
       onLoadContent={(content) => {
-        console.log("Loading version", content);
+        console.log("Reverting to version", content);
         if (content) {
           setPersistableState(content);
         }
@@ -1271,6 +1290,28 @@ const ParseqUI = (props) => {
 
   // Footer ------------------------
 
+  const debugStatus = useMemo(() => {
+    if (process.env.NODE_ENV === 'development' || debugMode) {
+      return <Alert severity="info">
+        Active version: {activeVersionId?.split("-")[1]}
+        <ul>
+          {
+            debugUndoStack.map((v, idx) => {
+              return <li key={idx}>
+                <Typography fontSize={'0.8em'} fontWeight={v.current ? 'bold' : ''} >
+                  {idx}: {v.versionId.split("-")[1]} – changes: {v.changes.join(', ')}
+                </Typography></li>
+            })
+          }
+        </ul>
+
+      </Alert>
+    } else {
+      return <></>;
+    }
+  }, [debugUndoStack, activeVersionId, debugMode]);
+  
+
   const renderStatus = useMemo(() => {
     let animated_fields = getAnimatedFields(renderedData);
     let uses2d = defaultFields.filter(f => f.labels.some(l => l === '2D') && animated_fields.includes(f));
@@ -1354,6 +1395,7 @@ const ParseqUI = (props) => {
     <Grid xs={6}>
       <InitialisationStatus status={initStatus} alignItems='center' />
       {renderStatus}
+      {(process.env.NODE_ENV === 'development') && debugStatus}
     </Grid>
     <Grid xs={2}>
       <Stack direction={'column'}>
@@ -1397,7 +1439,7 @@ const ParseqUI = (props) => {
       </Stack>
     </Grid>
   </Grid>
-  , [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender, pinFooter]);
+  , [renderStatus, initStatus, renderButton, renderedDataJsonString, activeDocId, autoUpload, needsRender, uploadStatus, autoRender, pinFooter, debugStatus]);
 
 
   const stickyFooter = useMemo(() => <Paper
@@ -1418,7 +1460,20 @@ const ParseqUI = (props) => {
     <Collapse in={!pinFooter && !hoverFooter}>{miniFooterContent}</Collapse>
   </Paper>, [pinFooter, hoverFooter, maxiFooterContent, miniFooterContent, theme]);
 
+  //////////////////////////////////////////
+  // Hotkeys
+  ///////////////////////////////////////////////////////////////
 
+
+  useHotkeys('mod+z', () => {
+    undoManager.undo((recovered => setPersistableState(recovered)));
+    setDebugUndoStack(undoManager.confessUndoStack());
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager])
+
+  useHotkeys('shift+mod+z', () => {
+    undoManager.redo((recovered => setPersistableState(recovered)));
+    setDebugUndoStack(undoManager.confessUndoStack());
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager])
 
   //////////////////////////////////////////
   // Main layout

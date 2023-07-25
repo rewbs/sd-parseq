@@ -144,12 +144,12 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         cellStyle: (params: any): any => {
           if (isInRangeSelection(params)) {
             return {
-              backgroundColor: theme.vars.palette.gridInfoField.light,
+              backgroundColor: theme.vars.palette.gridInfoField.dark,
               borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMajor.main
             }
           } else {
             return {
-              backgroundColor: theme.vars.palette.gridInfoField.main,
+              backgroundColor: theme.vars.palette.gridInfoField.light,
               borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid '+ theme.vars.palette.gridColSeparatorMajor.main
             }
           }
@@ -246,7 +246,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
   }), [fps, bpm]);
 
   
-  return <div className={colorScheme==='dark'?"ag-theme-alpine-dark":"ag-theme-alpine"} style={agGridStyle}>
+  return <div id='grid-container' className={colorScheme==='dark'?"ag-theme-alpine-dark":"ag-theme-alpine"} style={agGridStyle}>
     {/* @ts-ignore  */}
     <AgGridReact
       {...agGridProps}

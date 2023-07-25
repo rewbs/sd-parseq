@@ -35,6 +35,21 @@ export default function Header() {
     const displayBranch = (!GIT_BRANCH || GIT_BRANCH === 'master') ? '' : `Branch: ${GIT_BRANCH};`;
     const commitLink = <Link href={"https://github.com/rewbs/sd-parseq/commit/" + GIT_COMMIT_HASH}>{GIT_COMMIT_SHORTHASH}</Link>
     const changeLogLink = <Link href={"https://github.com/rewbs/sd-parseq/commits/" + (GIT_BRANCH ?? '')}>all changes</Link>
+    const environment = (process.env.NODE_ENV === 'development' ? 'dev' : getEnvFromHostname()) ;
+
+    function getEnvFromHostname() {
+        const hostname = window.location.hostname;
+        if (hostname.includes('--dev')) {
+            return 'dev (hosted)';
+        }
+        if (hostname.includes('--staging')) {
+            return 'staging (hosted)';
+        }
+        if (hostname === 'sd-parseq.web.app') {
+            return 'production';
+        }
+        return 'unknown';
+    }
 
     const { colorScheme, setColorScheme } = useColorScheme();
     const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
@@ -67,7 +82,7 @@ export default function Header() {
                 <h2> 
                     Parseq <small>v{getVersionNumber()}</small>
                     <Typography fontSize='0.4em'>
-                        [{process.env.NODE_ENV}] {displayBranch} Built {displayDate} ({commitLink} - {changeLogLink})
+                        [{environment}] {displayBranch} Built {displayDate} ({commitLink} - {changeLogLink})
                     </Typography>
                 </h2>
                 <Box display='none'>
@@ -80,9 +95,8 @@ export default function Header() {
             </Grid>
             <Grid xs={6} display='flex' justifyContent="right">
                 <Stack  justifyContent="right" gap={1} alignItems={{ sm: 'stretch', md: 'center' }}  direction={{  xs: 'column-reverse', sm: 'column-reverse', md: 'row' }}>
-                    {/* <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" clickable onClick={() => updateDarkMode(!darkMode)} icon={<FontAwesomeIcon icon={darkMode?faLightbulb:faMoon} />} label={(darkMode?"Light":"(wip) Dark")+" Mode"}/> */}
                     {/* @ts-ignore */}
-                    <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" clickable icon={<FontAwesomeIcon icon={colorScheme === 'dark'?faLightbulb:faMoon} />} label={(colorScheme === 'dark'?"Light":"(wip) Dark")+" Mode"}
+                    <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" clickable icon={<FontAwesomeIcon icon={colorScheme === 'dark'?faLightbulb:faMoon} />} label={(colorScheme === 'dark'?"Light":"Dark")+" Mode"}
                         onClick={() => {
                             console.log("Setting color scheme");
                             const newColorScheme = colorScheme === 'dark' ? 'light' : 'dark';

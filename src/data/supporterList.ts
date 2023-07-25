@@ -9,5 +9,5 @@ export const supporterList = [
     { name: 'BinaryLady at TheTechMargin', link: 'https://bio.site/techmargin' },
     { name: 'ascendant', link: 'https://tiktok.com/@malaclypse23' },
     { name: 'Koshi Mazaki', link: 'https://glitchcandies.art/spectralshift/' }, 
-    
+    { name: 'lexvesseur', link: '' }, 
 ] 

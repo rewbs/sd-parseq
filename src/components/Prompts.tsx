@@ -12,6 +12,8 @@ import { frameToBeat, frameToSec } from "../utils/maths";
 import type {} from '@mui/material/themeCssVarsAugmentation';
 import { experimental_extendTheme as extendTheme } from "@mui/material/styles";
 import { themeFactory } from "../theme";
+import useDebouncedEffect from "use-debounced-effect";
+import JSON5 from 'json5';
 
 interface PromptsProps {
     initialPrompts: AdvancedParseqPromptsV2,
@@ -23,6 +25,52 @@ interface PromptsProps {
     commitChange: (event: any) => void
 }
 
+const DEFAULT_PROMPTS: AdvancedParseqPromptsV2 = {
+    format: 'v2' as const,
+    enabled: true,
+    commonPrompt: {
+        name: 'Common',
+        positive: "",
+        negative: "",
+        allFrames: true,
+        from: 0,
+        to: 0,
+        overlap: {
+            inFrames: 0,
+            outFrames: 0,
+            type: "none" as "none" | "linear" | "custom",
+            custom: "prompt_weight_1",
+        }
+    },
+    commonPromptPos: 'append',
+    promptList: [{
+        name: 'Prompt 1',
+        positive: "",
+        negative: "",
+        allFrames: true,
+        from: 0,
+        to: 0,
+        overlap: {
+            inFrames: 0,
+            outFrames: 0,
+            type: "none" as "none" | "linear" | "custom",
+            custom: "prompt_weight_1",
+        }
+    }]
+}
+
+function stringToPrompt(value: string, startFrame: number, endFrame: number|undefined) {
+    const [pos, neg] = value.split('--neg', 2);
+    const newPrompt: AdvancedParseqPrompt = _.cloneDeep(DEFAULT_PROMPTS.promptList[0]);
+    newPrompt.positive = pos?.trim() || '';
+    newPrompt.negative = neg?.trim() || '';
+    newPrompt.allFrames = false;
+    newPrompt.from = startFrame;
+    newPrompt.to = endFrame||startFrame+1;
+    return newPrompt;
+}
+
+
 export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): AdvancedParseqPromptsV2 {
     //@ts-ignore
     if (oldPrompts.format === 'v2') {
@@ -33,39 +81,9 @@ export function convertPrompts(oldPrompts: ParseqPrompts, lastFrame: number): Ad
         return v2Prompt;
     }
 
-    const defaultPrompts: AdvancedParseqPromptsV2 = {
-        format: 'v2' as const,
-        enabled: true,
-        commonPrompt: {
-            name: 'Common',
-            positive: "",
-            negative: "",
-            allFrames: true,
-            from: 0,
-            to: lastFrame,
-            overlap: {
-                inFrames: 0,
-                outFrames: 0,
-                type: "none" as "none" | "linear" | "custom",
-                custom: "prompt_weight_1",
-            }
-        },
-        commonPromptPos: 'append',
-        promptList: [{
-            name: 'Prompt 1',
-            positive: "",
-            negative: "",
-            allFrames: true,
-            from: 0,
-            to: lastFrame,
-            overlap: {
-                inFrames: 0,
-                outFrames: 0,
-                type: "none" as "none" | "linear" | "custom",
-                custom: "prompt_weight_1",
-            }
-        }]
-    }
+    const defaultPrompts = _.cloneDeep(DEFAULT_PROMPTS);
+    defaultPrompts.commonPrompt.to = lastFrame;
+    defaultPrompts.promptList[0].to = lastFrame;
 
     if (!oldPrompts) {
         return defaultPrompts;
@@ -126,6 +144,15 @@ export function Prompts(props: PromptsProps) {
 
     }, [props]);
 
+    const getNextPromptIndex = useCallback(() => {
+        const nextPromptIndex = unsavedPrompts.promptList.length;
+        let nextPromptNameNumber = nextPromptIndex + 1;
+        //eslint-disable-next-line no-loop-func
+        while (unsavedPrompts.promptList.some(prompt => prompt.name === 'Prompt ' + nextPromptNameNumber)) {
+            nextPromptNameNumber++;
+        }
+        return { nextPromptIndex, nextPromptNameNumber };
+    }, [unsavedPrompts]);
 
     const promptInput = useCallback((index: number, positive: boolean) => {
 
@@ -174,33 +201,27 @@ export function Prompts(props: PromptsProps) {
     }, [commitChanges, props, unsavedPrompts, theme]);
 
     const addPrompt = useCallback(() => {
-        const newIndex = unsavedPrompts.promptList.length;
-        let nameNumber = newIndex + 1;
-        //eslint-disable-next-line no-loop-func
-        while (unsavedPrompts.promptList.some(unsavedPrompts => prompt.name === 'Prompt ' + nameNumber)) {
-            nameNumber++;
-        }
-
+        const { nextPromptIndex, nextPromptNameNumber } = getNextPromptIndex();
         const newPrompts = { ...unsavedPrompts };
         newPrompts.promptList = [
             ...unsavedPrompts.promptList,
             {
                 positive: "",
                 negative: "",
-                from: Math.min(props.lastFrame, unsavedPrompts.promptList[newIndex - 1].to + 1),
-                to: Math.min(props.lastFrame, unsavedPrompts.promptList[newIndex - 1].to + 50),
+                from: Math.min(props.lastFrame, unsavedPrompts.promptList[nextPromptIndex - 1].to + 1),
+                to: Math.min(props.lastFrame, unsavedPrompts.promptList[nextPromptIndex - 1].to + 50),
                 allFrames: false,
-                name: 'Prompt ' + nameNumber,
+                name: 'Prompt ' + nextPromptNameNumber,
                 overlap: {
                     inFrames: 0,
                     outFrames: 0,
                     type: "none" as const,
-                    custom: "prompt_weight_" + nameNumber,
+                    custom: "prompt_weight_" + nextPromptNameNumber,
                 }
             }
         ];
         commitChanges(newPrompts);
-    }, [unsavedPrompts, props.lastFrame, commitChanges]);
+    }, [getNextPromptIndex, unsavedPrompts, props.lastFrame, commitChanges]);
 
     const delPrompt = useCallback((idxToDelete: number) => {
         const newPrompts = { ...unsavedPrompts };
@@ -381,7 +402,7 @@ export function Prompts(props: PromptsProps) {
         <Grid container xs={12} sx={{ paddingTop: '0', paddingBottom: '0' }}>
             {
                 advancedPrompts.promptList.map((prompt, idx) =>
-                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0, borderRadius: 1 }} >
+                    <Box key={"prompt-" + idx} sx={{ width: '100%', padding: 0, marginTop: 1, marginRight: 2, border: 0, borderRadius: 1 }} >
                         <Grid xs={12} style={{ padding: 0, margin: 0, border: 0 }}>
 
                             <Box sx={{ display: 'flex', justifyContent: 'left', alignItems: 'center', width: '100%' }}>
@@ -494,7 +515,7 @@ export function Prompts(props: PromptsProps) {
                                         color='warning'
                                         style={{ marginLeft: '40px', float: 'right', fontSize: '0.75em' }}
                                         onClick={(e) => delPrompt(idx)}>
-                                        ❌ Delete prompt
+                                        ❌ Delete prompt {idx+1}
                                     </Button>
                                 </Box>
                             </Box>
@@ -516,14 +537,13 @@ export function Prompts(props: PromptsProps) {
                 <Box sx={{ width: '100%', padding: 0, marginTop: 2, marginRight: 2, border: 0,  borderRadius: 1 }} >
                     <Grid container xs={12} style={{ margin: 0, padding: 0 }}>
                         <Grid xs={12} style={{ margin: 0, padding: 0 }}>
-                            <h5>Common prompt</h5>
-                        </Grid>
-                        <Grid xs={12} style={{ marginBottom: '1em' }}>
-                            <TextField
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'left', alignItems: 'center', width: '100%' }}>
+                                <h5>Common prompt – </h5>
+                                <TextField
                                 select
                                 fullWidth={false}
                                 size="small"
-                                style={{ width: '6em'}}
+                                style={{ width: '12em'}}
                                 label={"Position: "}
                                 InputLabelProps={{ shrink: true, }}
                                 InputProps={{ style: { fontSize: '0.75em' } }}
@@ -533,11 +553,12 @@ export function Prompts(props: PromptsProps) {
                                     commitChanges({ ...unsavedPrompts });
                                 }}
                             >
-                                <MenuItem value={"append"}>Append</MenuItem>
-                                <MenuItem value={"prepend"}>Prepend</MenuItem>
-                            </TextField>
-                            <small>&nbsp; to all prompts.</small>
-                    </Grid>
+                                    <MenuItem value={"append"}>Append to all prompts</MenuItem>
+                                    <MenuItem value={"prepend"}>Prepend to all prompts</MenuItem>
+                                </TextField>
+                            </Box>
+                        
+                        </Grid>
                         <Grid xs={6} style={{ margin: 0, padding: 0 }}>
                             {promptInput(-1, true)}
                         </Grid>
@@ -562,6 +583,7 @@ export function Prompts(props: PromptsProps) {
     }, [commitChanges, unsavedPrompts])
 
     const [openSpacePromptsDialog, setOpenSpacePromptsDialog] = useState(false);
+    const [openImportPromptsDialog, setOpenImportPromptsDialog] = useState(false);
     const [spacePromptsLastFrame, setSpacePromptsLastFrame] = useState(props.lastFrame);
     const [spacePromptsOverlap, setSpacePromptsOverlap] = useState(0);
 
@@ -592,13 +614,13 @@ export function Prompts(props: PromptsProps) {
         commitChanges(newPrompts);
 
     }, [unsavedPrompts, commitChanges, spacePromptsLastFrame, spacePromptsOverlap, props.lastFrame]);
-    const spacePromptsDialog = <Dialog open={openSpacePromptsDialog} onClose={handleCloseSpacePromptsDialog}>
+
+    const spacePromptsDialog = useMemo(() => <Dialog open={openSpacePromptsDialog} onClose={handleCloseSpacePromptsDialog}>
         <DialogTitle>↔️ Evenly space prompts </DialogTitle>
         <DialogContent>
             <DialogContentText>
                 Space all {unsavedPrompts.promptList.length} prompts evenly across the entire video, with optional fade between prompts.
                 <br />
-
             </DialogContentText>
             <TextField
                 type="number"
@@ -626,7 +648,117 @@ export function Prompts(props: PromptsProps) {
             <Button size="small" id="cancel_space" onClick={handleCloseSpacePromptsDialog}>Cancel</Button>
             <Button size="small" variant="contained" id="space" onClick={handleCloseSpacePromptsDialog}>↔️ Space</Button>
         </DialogActions>
-    </Dialog>
+    </Dialog>, [handleCloseSpacePromptsDialog, openSpacePromptsDialog, spacePromptsLastFrame, spacePromptsOverlap, unsavedPrompts.promptList.length]);
+
+
+
+const [candidatePromptsToImport, setCandidatePromptsToImport] = useState<string>();
+const [validatedPromptsToImport, setValidatedPromptsToImport] = useState<AdvancedParseqPrompt[]>([]);
+const [validationMessage, setValidationMessage] = useState<JSX.Element>(<></>);
+
+    const handleCloseImportPromptsDialog = useCallback((e: any): void => {    
+        setOpenImportPromptsDialog(false);
+        if (e.target.id !== "import") {
+            return;
+        }
+        unsavedPrompts.promptList = [...unsavedPrompts.promptList, ...validatedPromptsToImport];
+        commitChanges({...unsavedPrompts});
+        setCandidatePromptsToImport(undefined);
+        setValidatedPromptsToImport([]);
+        setValidationMessage(<></>);
+    }, [unsavedPrompts, commitChanges, validatedPromptsToImport]);
+
+    // Validate candidate importable prompts 
+    useDebouncedEffect(() => {
+        if (candidatePromptsToImport === undefined) {
+            setValidatedPromptsToImport([]);
+            return;
+        }
+        try {
+            //Relaxed JSON parser
+            const parsedPrompts = JSON5.parse(candidatePromptsToImport||"");
+            try {
+                const prompts : AdvancedParseqPrompt[] = [];                
+
+                //eslint-disable-next-line @typescript-eslint/no-unused-vars
+                let {nextPromptIndex, nextPromptNameNumber} = getNextPromptIndex();
+                for (const [key, value] of Object.entries(parsedPrompts)) {
+                    const startFrame = parseInt(key);
+                    if (isNaN(startFrame) || typeof value !== 'string') {
+                        throw new Error(`${key}:${value}`);                    
+                    }
+                    if (prompts.length > 0) {
+                        prompts[prompts.length-1].to = startFrame-1;
+                    }
+                    const newPrompt = stringToPrompt(value, startFrame, undefined);
+                    newPrompt.name = `Prompt ${nextPromptNameNumber++}`;
+                    prompts.push(newPrompt);
+                }
+                if (prompts.length > 0) {
+                    prompts[prompts.length-1].to = props.lastFrame;
+                }
+
+                setValidatedPromptsToImport(prompts);
+                setValidationMessage(<Alert severity="info">Input will be treated as a JSON file with <strong>{prompts.length}</strong> new prompt{prompts.length===1?'':'s'}.</Alert>);
+
+            } catch (e : any) {
+                setValidatedPromptsToImport([]);
+                setValidationMessage(<Alert severity="error">The input looks like JSON but has an issue with the following entry, which is not of the expected format <code>"&lt;number&gt;":"&lt;string&gt;"</code>: {e.message}</Alert>);
+                return;
+            }
+        } catch (e) {
+            // Data to import is not valid JSON, even using a relaxed parser.             
+            // Is it trying to be?
+            if (candidatePromptsToImport?.startsWith('{') || candidatePromptsToImport?.endsWith('}')) {
+                setValidatedPromptsToImport([]);
+                setValidationMessage(<Alert severity="error">The input looks like JSON but is not valid. Try putting it through a JSON validator, or remove the leading/trailing curly braces to treat as plain text.</Alert>);
+                return;
+            }
+
+            // Treating as list of lines.
+            const lines = candidatePromptsToImport?.split('\n').filter((line) => line && line.trim().length > 0);
+            //eslint-disable-next-line @typescript-eslint/no-unused-vars
+            let {nextPromptIndex, nextPromptNameNumber} = getNextPromptIndex();            
+            const prompts = lines?.map((line, idx) => {
+                const startFrame = Math.floor(idx * props.lastFrame/lines.length);
+                const endFrame = Math.floor((idx+1) * props.lastFrame/lines.length)              
+                const newPrompt = stringToPrompt(line, startFrame, endFrame);
+                newPrompt.name = `Prompt ${nextPromptNameNumber++}`;
+                return newPrompt;
+            })
+            setValidatedPromptsToImport(prompts);
+            if (prompts.length>0) {
+                setValidationMessage(<Alert severity="info">Input will be treated as plain list with <strong>{prompts.length}</strong> new prompt{prompts.length===1?'':'s'}.</Alert>);
+            } else {
+                setValidationMessage(<></>);
+            }
+
+        }
+    }, 250, [candidatePromptsToImport]);
+
+    const importPromptsDialog = useMemo(() => <Dialog  maxWidth='md' fullWidth={true} open={openImportPromptsDialog} onClose={handleCloseImportPromptsDialog}>
+        <DialogTitle>⬇️ Import prompts</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                <p>Paste in a Deforum-style JSON object, or a simple list of prompts separated by newlines. Postive and negative prompts will be split around <code>--neg</code>. These prompts will be added to your existing prompts (nothing will be removed).</p>
+            </DialogContentText>
+                <TextField
+                        style={{ width: '100%' }}
+                        multiline
+                        onFocus={event => event.target.select()}
+                        rows={10}
+                        InputProps={{ style: { fontFamily: 'Monospace', fontSize: '0.75em' } }}
+                        placeholder="<Paste your prompts here>"
+                        value={candidatePromptsToImport}
+                        onChange={(e) => setCandidatePromptsToImport(e.target.value)}
+                    />
+                {validationMessage}
+        </DialogContent>
+        <DialogActions>
+            <Button size="small" id="cancel_space" onClick={handleCloseImportPromptsDialog}>Cancel</Button>
+            <Button size="small" disabled={validatedPromptsToImport.length<1} variant="contained" id="import" onClick={handleCloseImportPromptsDialog}>⬇️ Import</Button>
+        </DialogActions>
+    </Dialog>, [openImportPromptsDialog, handleCloseImportPromptsDialog, candidatePromptsToImport, validationMessage, validatedPromptsToImport])
 
     const [timelineWidth, setTimelineWidth] = useState(600);
     const timelineRef = useRef<any>(null);
@@ -736,26 +868,43 @@ export function Prompts(props: PromptsProps) {
         setQuickPreview(preview);
     }, [unsavedPrompts, quickPreviewPosition, props.lastFrame]);
 
+    function setPromptsEnabled(enabled: boolean) {
+        unsavedPrompts.enabled = enabled;
+        commitChanges({ ...unsavedPrompts });
+    }
+
+    function isPromptsEnabled(): boolean {
+        return typeof (unsavedPrompts.enabled) === 'undefined' || unsavedPrompts.enabled;
+    }
+
     return <Grid xs={12} container style={{ margin: 0, padding: 0 }}>
         <Grid xs={12} sx={{ paddingTop: '0', paddingBottom: '0' }}>
-            <FormControlLabel
-                sx={{ padding: '0' }}
-                control={<StyledSwitch
-                    onChange={(e) => { setPromptsEnabled(e.target.checked) }}
-                    checked={isPromptsEnabled()} />}
-                label={<small> Use Parseq to manage prompts (disable to control prompts with Deforum instead).</small>} />
+            <Stack direction={'row'} gap={1} alignItems={"center"} >
+                <Tooltip title="Disable to control prompts with Deforum instead.">
+                    <FormControlLabel
+                        sx={{ padding: '0' }}
+                        control={<StyledSwitch
+                            onChange={(e) => { setPromptsEnabled(e.target.checked) }}
+                            checked={isPromptsEnabled()} />}
+                        label={<small> Use Parseq to manage prompts.</small>} />
+                </Tooltip>
+                {isPromptsEnabled() ?  <>
+                <Button size="small" variant="outlined" onClick={addPrompt}>➕ Add prompts</Button>
+                <Button size="small" disabled={unsavedPrompts.promptList.length < 2} variant="outlined" onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
+                <Tooltip title="Re-order and rename prompts based on their starting frame">
+                    <span><Button size="small" disabled={unsavedPrompts.promptList.length < 2} variant="outlined" onClick={() => reorderPrompts()}>⇵ Reorder prompts</Button></span>
+                </Tooltip>
+                <Tooltip title="Import a list of prompts">
+                    <span><Button size="small" variant="outlined" onClick={() => setOpenImportPromptsDialog(true)}>⬇️ Import prompts</Button></span>
+                </Tooltip>
+                </> : <></>}
+            </Stack>                
         </Grid>
         {isPromptsEnabled() ? <>
             {displayPrompts(unsavedPrompts)}
             {spacePromptsDialog}
-            <Grid xs={12} sx={{ paddingTop: '15px', paddingBottom: '15px' }}  >
-                <Button size="small" variant="outlined" style={{ marginRight: 10 }} onClick={addPrompt}>➕ Add prompts</Button>
-                <Button size="small" disabled={unsavedPrompts.promptList.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => setOpenSpacePromptsDialog(true)}>↔️ Evenly space prompts</Button>
-                <Tooltip title="Re-order and rename prompts based on their starting frame">
-                    <span><Button size="small" disabled={unsavedPrompts.promptList.length < 2} variant="outlined" style={{ marginRight: 10 }} onClick={() => reorderPrompts()}>⇵ Reorder prompts</Button></span>
-                </Tooltip>
-            </Grid>
-            <Grid xs={4} sx={{ paddingRight: '15px' }} >
+            {importPromptsDialog}
+            <Grid xs={4} sx={{ paddingRight: '15px', paddingTop: '25px' }} >
                 <Tooltip title="Quickly see which prompts will be used at each frame, and whether they will be composed. To see the full rendered prompts, use the main preview below." >
                     <Stack>
                         <TextField
@@ -773,23 +922,14 @@ export function Prompts(props: PromptsProps) {
                     </Stack>
                 </Tooltip>
             </Grid>
-            <Grid xs={8}>
+            <Grid xs={8} sx={{ paddingTop: '25px' }} >
                 {timeline}
             </Grid>
         </> : <></>
         }
     </Grid>
 
-    // HACK: this should really be a top-level field on the AdvancedPrompts type,
-    // but there's a lot of code that relies on that being an array type.
-    // So we make it a field of AdvancedPrompt (singular) and check the first prompt instead...
-    function setPromptsEnabled(enabled: boolean) {
-        unsavedPrompts.enabled = enabled;
-        commitChanges({ ...unsavedPrompts });
-    }
-    function isPromptsEnabled(): boolean {
-        return typeof (unsavedPrompts.enabled) === 'undefined' || unsavedPrompts.enabled;
-    }
+
 }
 
 

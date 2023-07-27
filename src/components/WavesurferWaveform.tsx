@@ -37,7 +37,7 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
   useEffect(() => {
 
     // Recreate wavesurfer iff the audio buffer or color scheme has changed
-    if (audioBuffer !== prevAudioBuffer || palette !== prevPalette) {
+    if (audioBuffer !== prevAudioBuffer || palette.mode !== prevPalette?.mode) {
       if (waveSurferRef.current) {
         waveSurferRef.current.destroy();
         waveSurferRef.current = null;

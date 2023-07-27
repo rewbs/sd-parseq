@@ -10,4 +10,6 @@ export const supporterList = [
     { name: 'ascendant', link: 'https://tiktok.com/@malaclypse23' },
     { name: 'Koshi Mazaki', link: 'https://glitchcandies.art/spectralshift/' }, 
     { name: 'lexvesseur', link: '' }, 
+    { name: 'Andreas Lewitzki', link: 'https://www.youtube.com/@ro0otz' }, 
+    
 ] 

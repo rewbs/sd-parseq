@@ -466,7 +466,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         labels: ['guided_images']
     },
     {
-        name: "guidedcolor_correction_factor",
+        name: "guided_color_correction_factor",
         type: "number",
         defaultValue: 0.075,
         description: "",

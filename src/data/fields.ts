@@ -441,37 +441,37 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         color: [150, 200, 250],
         labels: ['control_net']
     },
-    // {
-    //     name: "guided_blendFactorMax",
-    //     type: "number",
-    //     defaultValue: 0.35,
-    //     description: "",
-    //     color: [0, 50, 0],
-    //     labels: ['guided_images']
-    // },
-    // {
-    //     name: "guided_blendFactorSlope",
-    //     type: "number",
-    //     defaultValue: 0.25,
-    //     description: "",
-    //     color: [0, 100, 0],
-    //     labels: ['guided_images']
-    // },
-    // {
-    //     name: "guided_tweening_frames",
-    //     type: "number",
-    //     defaultValue: 20,
-    //     description: "",
-    //     color: [0, 150, 0],
-    //     labels: ['guided_images']
-    // },
-    // {
-    //     name: "guidedcolor_correction_factor",
-    //     type: "number",
-    //     defaultValue: 0.075,
-    //     description: "",
-    //     color: [0, 200, 0],
-    //     labels: ['guided_images']
-    // },
+    {
+        name: "guided_blendFactorMax",
+        type: "number",
+        defaultValue: 0.35,
+        description: "",
+        color: [0, 50, 0],
+        labels: ['guided_images']
+    },
+    {
+        name: "guided_blendFactorSlope",
+        type: "number",
+        defaultValue: 0.25,
+        description: "",
+        color: [0, 100, 0],
+        labels: ['guided_images']
+    },
+    {
+        name: "guided_tweening_frames",
+        type: "number",
+        defaultValue: 20,
+        description: "",
+        color: [0, 150, 0],
+        labels: ['guided_images']
+    },
+    {
+        name: "guidedcolor_correction_factor",
+        type: "number",
+        defaultValue: 0.075,
+        description: "",
+        color: [0, 200, 0],
+        labels: ['guided_images']
+    },
      
 ]

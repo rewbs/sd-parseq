@@ -1343,7 +1343,7 @@ const ParseqUI = (props) => {
       statusMessage = <Alert severity="success">
         Output is up-to-date. 
         {
-          managedFields.some(f => f.startsWith('cn_')) ? ' For ControlNet field support, make sure you are using the latest version of the Deforum extension.' : ''
+          managedFields.some(f => f.startsWith('cn_') ||  f.startsWith('guided_')) ? ' For ControlNet or Guided Image field support, make sure you are using the latest version of the Deforum extension.' : ''
         }
         <p><small>{message}</small></p>
       </Alert>;

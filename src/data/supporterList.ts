@@ -11,5 +11,7 @@ export const supporterList = [
     { name: 'Koshi Mazaki', link: 'https://glitchcandies.art/spectralshift/' }, 
     { name: 'lexvesseur', link: '' }, 
     { name: 'Andreas Lewitzki', link: 'https://www.youtube.com/@ro0otz' }, 
-    
+    { name: 'veryVANYA', link: 'https://twitter.com/veryVANYA'},
+    { name: 'Nenad Kuzmanovic', link: '' },
+    { name: 'Stash', link: ''}  
 ] 

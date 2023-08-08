@@ -742,7 +742,7 @@ const ParseqUI = (props) => {
             }}
             onBlur={(e) => {
               setIsDocDirty(false);
-              let candidate = parseInt(e.target.value);
+              let candidate = parseFloat(e.target.value);
               let fallBack = options.bpm;
               if (!candidate || candidate <= 0 || isNaN(candidate)) {
                 setCandidateBPM(fallBack);
@@ -779,7 +779,7 @@ const ParseqUI = (props) => {
             }}            
             onBlur={(e) => {
               setIsDocDirty(false);
-              let candidate = parseInt(e.target.value);
+              let candidate = parseFloat(e.target.value);
               let fallBack = options.output_fps;
               if (!candidate || candidate <= 0 || isNaN(candidate)) {
                 setCandidateFPS(fallBack);

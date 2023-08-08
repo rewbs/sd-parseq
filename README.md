@@ -663,7 +663,7 @@ firebase hosting:clone sd-parseq:staging sd-parseq:live
 
 This script includes ideas and code sourced from many other scripts. Thanks in particular to the following sources of support and inspiration:
 
-- Everyone supporting [Parseq on Patreon](https://www.patreon.com/rewbs), including: Adam Sinclair, MJ, AndyXT, King Kush, Ben Del Vacchio, Zirteq, Kewk, BinaryLady at TheTechMargin, ascendant, Sasha Agafonoff, Brandon Glasgow, Koshi Mazaki, lexvesseur, Andreas Lewitzki
+- Everyone supporting [Parseq on Patreon](https://www.patreon.com/rewbs), including: Adam Sinclair, MJ, AndyXT, King Kush, Ben Del Vacchio, Zirteq, Kewk, BinaryLady at TheTechMargin, ascendant, Sasha Agafonoff, Brandon Glasgow, Koshi Mazaki, lexvesseur, Andreas Lewitzki, veryVANYA, Nenad Kuzmanovic, Stash
 - Everyone who has [bought me a coffee](https://www.buymeacoffee.com/rewbs)!
 - Everyone who has contributed to the [A1111 web UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
 - Everyone who has contributed to [Deforum](https://github.com/deforum-art/)

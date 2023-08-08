@@ -19,7 +19,12 @@ export class ParseqUndoManager {
     }
 
     undo(doRecovery : (version: ParseqDocVersion) => void) : void {
-        const idxToRecover = this.versionStack.findIndex((v) => v.versionId === this.lastRecovered?.versionId) + 1;
+        let idxToRecover = this.versionStack.findIndex((v) => v.versionId === this.lastRecovered?.versionId) + 1;
+        if (idxToRecover === 0) {
+            // If this is the first undo, don't recover to current version, recover to previous version.
+            idxToRecover = 1;
+        }
+        console.log("idxToRecover: " + idxToRecover);
         if (idxToRecover >= this.versionStack.length) {
           console.log("Cannot undo any further - try using the revert dialog.")
           return;
@@ -29,6 +34,7 @@ export class ParseqUndoManager {
 
     redo(doRecovery : (version: ParseqDocVersion) => void) {
         const idxToRecover = this.versionStack.findIndex((v) => v.versionId === this.lastRecovered?.versionId) - 1;
+        console.log("idxToRecover: " + idxToRecover);
         if (idxToRecover < 0) {
           console.log("Cannot redo any further - try using the revert dialog.")
           return;

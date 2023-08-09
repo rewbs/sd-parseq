@@ -34,6 +34,7 @@ import { channelToRgba, createAudioBufferCopy } from '../utils/utils';
 import { SmallTextField } from './SmallTextField';
 import { TabPanel } from './TabPanel';
 import WavesurferAudioWaveform from './WavesurferWaveform';
+import { BiquadFilter } from './BiquadFilter';
 
 type TimeSeriesUIProps = {
   lastFrame: number,
@@ -97,10 +98,6 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
 
   const [pitchMethod, setPitchMethod] = useState("default");
   const pitchProgressRef = useRef<HTMLInputElement>(null);
-
-  const [biquadFilterFreq, setBiquadFilterFreq] = useState(800);
-  const [biquadFilterQ, setBiquadFilterQ] = useState(0.5);
-  const [biquadFilterType, setBiquadFilterType] = useState<"lowpass" | "highpass" | "bandpass">("lowpass");
 
   const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
@@ -230,35 +227,6 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
     } catch (e: any) {
       console.error(e);
     }
-  }
-
-  const handleResetBandPass = () => {
-    if (unfilteredAudioBuffer) {
-      setAudioBuffer(createAudioBufferCopy(unfilteredAudioBuffer));
-    }
-  }
-
-  const handleApplyBandPass = () => {
-    if (!unfilteredAudioBuffer) {
-      return;
-    }
-
-    const audioData = unfilteredAudioBuffer.getChannelData(0);
-    const context = new OfflineAudioContext(1, audioData.length, unfilteredAudioBuffer.sampleRate);
-    const source = context.createBufferSource();
-    const filteredBuffer = context.createBuffer(1, audioData.length, unfilteredAudioBuffer.sampleRate);
-    filteredBuffer.getChannelData(0).set(audioData);
-    source.buffer = filteredBuffer;
-
-    const biquadFilter = context.createBiquadFilter();
-    biquadFilter.type = biquadFilterType;
-    biquadFilter.frequency.value = biquadFilterFreq;
-    biquadFilter.Q.value = biquadFilterQ;
-    source.connect(biquadFilter);
-    biquadFilter.connect(context.destination);
-
-    source.start();
-    context.startRendering().then(renderedBuffer => setAudioBuffer(renderedBuffer));
   }
 
   const handleLoadFromCSV = async (event: any) => {
@@ -477,41 +445,10 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                 onChange={handleLoadFromAudio} />
             </Box>
             {audioBuffer && <>
-              <Stack direction={"row"} alignItems={"center"} spacing={1}>
-                <Typography fontSize={"0.75em"}>Filter: </Typography>
-                <TextField
-                  size="small"
-                  style={{ width: "6em" }}
-                  label="Type"
-                  InputLabelProps={{ shrink: true, }}
-                  InputProps={{ style: { fontSize: '0.75em' } }}
-                  value={biquadFilterType}
-                  onChange={(e) => setBiquadFilterType(e.target.value as "lowpass" | "highpass" | "bandpass")}
-                  select
-                >
-                  <MenuItem value={"lowpass"}>lowpass</MenuItem>
-                  <MenuItem value={"highpass"}>highpass</MenuItem>
-                  <MenuItem value={"bandpass"}>bandpass</MenuItem>
-                </TextField>
-                <SmallTextField
-                  label="Freq (Hz)"
-                  type="number"
-                  value={biquadFilterFreq}
-                  onChange={(e) => setBiquadFilterFreq(Number(e.target.value))}
+              <BiquadFilter
+                  unfilteredAudioBuffer={unfilteredAudioBuffer||audioBuffer}
+                  updateAudioBuffer={newAudioBuffer => setAudioBuffer(newAudioBuffer)}
                 />
-                <SmallTextField
-                  label="Resonance"
-                  type="number"
-                  value={biquadFilterQ}
-                  onChange={(e) => setBiquadFilterQ(Number(e.target.value))}
-                />
-                <Tooltip arrow placement="top" title={"Apply a filter to your audio."} >
-                  <Button size='small' variant='contained' onClick={handleApplyBandPass}> Apply</Button>
-                </Tooltip>
-                <Tooltip arrow placement="top" title={"Undo the filter to restore your original audio."} >
-                  <Button size='small' variant='outlined' onClick={handleResetBandPass}> Reset</Button>
-                </Tooltip>
-              </Stack>
             </>}
           </Stack>
           {waveSuferWaveform}
@@ -570,17 +507,6 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
           </Stack>
           <Typography fontSize="0.75em">Each row of the supplied file must be formatted like &nbsp;&nbsp; <span><code>timestamp,value</code></span> &nbsp;&nbsp; where the type of the timestamp can be milliseconds or frames as selected above.</Typography>
         </TabPanel>
-
-        {/* <FormControl fullWidth>
-            <InputLabel>Previously Loaded TimeSeries</InputLabel>
-            <Select value={selectedTimeSeriesIndex} onChange={handleSelectTimeSeries}>
-              {timeSeriesList.map((_, index) => (
-                <MenuItem key={index} value={index}>
-                  TimeSeries {index + 1}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl> */}
         <h3>Processing</h3>
         <small><p>Modify the loaded data before adding it as a timeseries.</p></small>
         <Stack direction="row" alignItems={"center"} justifyContent="space-around" >

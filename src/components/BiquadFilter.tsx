@@ -1,8 +1,9 @@
+/* eslint-disable react/jsx-no-target-blank */
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 //@ts-ignore
-import { MenuItem, TextField, Tooltip } from '@mui/material';
+import { Link, MenuItem, TextField, Tooltip } from '@mui/material';
 import { SmallTextField } from './SmallTextField';
 import { useState } from 'react';
 import { createAudioBufferCopy } from '../utils/utils';
@@ -16,7 +17,8 @@ export function BiquadFilter({ unfilteredAudioBuffer, updateAudioBuffer }: Biqua
 
     const [biquadFilterFreq, setBiquadFilterFreq] = useState(800);
     const [biquadFilterQ, setBiquadFilterQ] = useState(0.5);
-    const [biquadFilterType, setBiquadFilterType] = useState<"lowpass" | "highpass" | "bandpass">("lowpass");
+    const [biquadFilterGain, setBiquadFilterGain] = useState(0);
+    const [biquadFilterType, setBiquadFilterType] = useState<BiquadFilterType>("lowpass");
 
   
     const handleResetFilter = () => {
@@ -41,6 +43,7 @@ export function BiquadFilter({ unfilteredAudioBuffer, updateAudioBuffer }: Biqua
         biquadFilter.type = biquadFilterType;
         biquadFilter.frequency.value = biquadFilterFreq;
         biquadFilter.Q.value = biquadFilterQ;
+        biquadFilter.gain.value = biquadFilterGain;
         source.connect(biquadFilter);
         biquadFilter.connect(context.destination);
     
@@ -48,9 +51,8 @@ export function BiquadFilter({ unfilteredAudioBuffer, updateAudioBuffer }: Biqua
         context.startRendering().then(renderedBuffer => updateAudioBuffer(renderedBuffer));
       }    
 
-
     return <Stack direction={"row"} alignItems={"center"} spacing={1}>
-    <Typography fontSize={"0.75em"}>Filter: </Typography>
+    <Typography fontSize={"0.75em"}>Filter <Link href="https://developer.mozilla.org/en-US/docs/Web/API/BiquadFilterNode/type" target='_blank' rel="noopener">(?)</Link>: </Typography>
     <TextField
         size="small"
         style={{ width: "6em" }}
@@ -58,12 +60,17 @@ export function BiquadFilter({ unfilteredAudioBuffer, updateAudioBuffer }: Biqua
         InputLabelProps={{ shrink: true, }}
         InputProps={{ style: { fontSize: '0.75em' } }}
         value={biquadFilterType}
-        onChange={(e) => setBiquadFilterType(e.target.value as "lowpass" | "highpass" | "bandpass")}
+        onChange={(e) => setBiquadFilterType(e.target.value as BiquadFilterType) }
         select
       >
         <MenuItem value={"lowpass"}>lowpass</MenuItem>
         <MenuItem value={"highpass"}>highpass</MenuItem>
         <MenuItem value={"bandpass"}>bandpass</MenuItem>
+        <MenuItem value={"lowshelf"}>lowshelf</MenuItem>
+        <MenuItem value={"highshelf"}>highshelf</MenuItem>
+        <MenuItem value={"peaking"}>peaking</MenuItem>
+        <MenuItem value={"notch"}>notch</MenuItem>
+        <MenuItem value={"allpass"}>allpass</MenuItem>
       </TextField>                
       <SmallTextField
         label="Freq (Hz)"
@@ -72,11 +79,19 @@ export function BiquadFilter({ unfilteredAudioBuffer, updateAudioBuffer }: Biqua
         onChange={(e) => setBiquadFilterFreq(Number(e.target.value))}
       />
       <SmallTextField
-        label="Resonance"
+        label = {filterTypeToQLabel(biquadFilterType)}
+        disabled = {["lowshelf", "highshelf"].includes(biquadFilterType)}
         type="number"
         value={biquadFilterQ}
         onChange={(e) => setBiquadFilterQ(Number(e.target.value))}
       />
+      <SmallTextField
+        label = {["lowshelf", "highshelf", "peaking"].includes(biquadFilterType)? "Gain (db)" : "Gain (unused)"}
+        disabled = {!["lowshelf", "highshelf", "peaking"].includes(biquadFilterType)}
+        type="number"
+        value={biquadFilterGain}
+        onChange={(e) => setBiquadFilterGain(Number(e.target.value))}
+      />      
       <Tooltip arrow placement="top" title={"Apply a filter to your audio."} >
         <Button size='small' variant='contained' onClick={handleApplyFilter}> Apply</Button>
       </Tooltip>
@@ -84,4 +99,22 @@ export function BiquadFilter({ unfilteredAudioBuffer, updateAudioBuffer }: Biqua
         <Button size='small' variant='outlined' onClick={handleResetFilter}> Reset</Button>
       </Tooltip>
     </Stack>;
+}
+
+
+function filterTypeToQLabel(biquadFilterType: BiquadFilterType): string {
+  switch(biquadFilterType) {
+    case "lowpass":
+    case "highpass":
+      return "Q (peak)";
+    case "bandpass":
+    case "notch":        
+    case "peaking":      
+      return "Q (width)";
+    case "allpass":
+      return "Q (phase)";
+    case "lowshelf":
+    case "highshelf":
+        return "Q (unused)";      
+  }
 }

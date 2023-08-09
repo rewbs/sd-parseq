@@ -1,13 +1,9 @@
 import { Button } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
-//@ts-ignore
-import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
-//@ts-ignore
-import TimelinePlugin from 'wavesurfer.js/dist/plugin/wavesurfer.timeline.min.js';
-//@ts-ignore
-import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
-import colormap from '../data/hot-colormap.json';
+import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js";
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
+import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram.js";
 import { CssVarsPalette, Palette, SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
 import { themeFactory } from "../theme";
 import { channelToRgba } from '../utils/utils';
@@ -23,6 +19,7 @@ interface WavesurferAudioWaveformProps {
 // TODO: merge with AudioWaveform.tsx
 const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionChange }: WavesurferAudioWaveformProps) => {
   const waveformRef = useRef<HTMLDivElement | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
   const [playbackStart, setPlaybackStart] = useState<number>(initialSelection.start);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -46,38 +43,36 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
       setPrevPalette(palette);
     }
 
-    if (waveformRef.current && !waveSurferRef.current) {
+    if (waveformRef.current && timelineRef.current  && !waveSurferRef.current) {
+
+      const regionsPlugin = RegionsPlugin.create();
+      const timelinePlugin = TimelinePlugin.create({
+        container: timelineRef.current,
+        // unlabeledNotchColor: palette.graphBorder.main,
+        // primaryColor: palette.graphBorder.dark,
+        // secondaryColor: palette.graphBorder.light,
+        // primaryFontColor: palette.graphFont.main,
+        // secondaryFontColor: palette.graphFont.light,            
+      });
+      const spectrogramPlugin = SpectrogramPlugin.create({
+        container: "#spectrogram_dialog",
+        labels: true,
+        height: 75,
+        //colorMap: colormap
+      });
+
       const wavesurfer = WaveSurfer.create({
+        container: waveformRef.current,
+        normalize: true,
         cursorColor: palette.success.light,
         cursorWidth: 3,
-        container: waveformRef.current,
-        //@ts-ignore - type definition is wrong?
         waveColor: [palette.waveformStart.main, palette.waveformEnd.main],
-        progressColorColor: [palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main],
+        progressColor: [palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main],
         plugins: [
-          RegionsPlugin.create({
-            maxRegions: 1,
-            dragSelection: {
-              slop: 5
-            }
-          }),
-          TimelinePlugin.create({
-            container: '#timeline_dialog',
-            unlabeledNotchColor: palette.graphBorder.main,
-            primaryColor: palette.graphBorder.dark,
-            secondaryColor: palette.graphBorder.light,
-            primaryFontColor: palette.graphFont.main,
-            secondaryFontColor: palette.graphFont.light,            
-          }),
-          SpectrogramPlugin.create({
-                container: "#spectrogram_dialog",
-                labels: true,
-                height: 75,
-                colorMap: colormap
-            }),         
+          regionsPlugin,
+          timelinePlugin,
+          spectrogramPlugin
         ],
-        normalize: true,
-
       });
 
       waveSurferRef.current = wavesurfer;
@@ -85,10 +80,10 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
       wavesurfer.on("ready", () => {
         console.log("WaveSurfer is ready");
         if (waveSurferRef.current) {
-          waveSurferRef.current.regions.add({
+          regionsPlugin.addRegion({
             start: initialSelection.start/1000,
             end: Math.min(initialSelection.end/1000, waveSurferRef.current.getDuration()),
-            loop: false,
+            //loop: false,
             drag: true,
             resize: false,
             color: channelToRgba(palette.primary.mainChannel, 0.3),
@@ -96,23 +91,24 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
           setIsPlaying(false);
         }
       });
-      wavesurfer.on('region-created', (region: any) => {
-        const newStart = Math.floor(region.start * 1000);
-        const newEnd = Math.floor(region.end * 1000);
-        onSelectionChange(newStart, newEnd);
-        setPlaybackStart(region.start);
-      });
-      wavesurfer.on('region-updated', (region: any) => {
-        const newStart = Math.floor(region.start * 1000);
-        const newEnd = Math.floor(region.end * 1000);
-        onSelectionChange(newStart, newEnd);
-        setPlaybackStart(region.start);
-      });
-      wavesurfer.on("finish", (data) => {
+      wavesurfer.on("finish", () => {
         setIsPlaying(false);
+      });      
+      regionsPlugin.on('region-created', (region: any) => {
+        const newStart = Math.floor(region.start * 1000);
+        const newEnd = Math.floor(region.end * 1000);
+        onSelectionChange(newStart, newEnd);
+        setPlaybackStart(region.start);
       });
+      regionsPlugin.on('region-updated', (region: any) => {
+        const newStart = Math.floor(region.start * 1000);
+        const newEnd = Math.floor(region.end * 1000);
+        onSelectionChange(newStart, newEnd);
+        setPlaybackStart(region.start);
+      });
+
       
-      wavesurfer.loadDecodedBuffer(audioBuffer);
+      wavesurfer.load("", [audioBuffer.getChannelData(0)]);
   
 
     }
@@ -126,7 +122,7 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
       waveSurferRef.current?.pause();
     } else {
         if (from>=0) {
-          waveSurferRef.current?.setCurrentTime(from);
+          waveSurferRef.current?.setTime(from);
         } if (!isPlaying) {
           waveSurferRef.current?.play();
         }
@@ -152,7 +148,7 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
   return (
     <div>
       <div ref={waveformRef} id="waveform_dialog" />
-      <div id="timeline_dialog" />
+      <div ref={timelineRef} id="timeline_dialog" />
       <div id="spectrogram_dialog" />
       <Button size="small" variant='outlined' onClick={(e) => playPause(playbackStart??0)}>
         {isPlaying ? "⏸️ Pause" : "▶️ Play"}

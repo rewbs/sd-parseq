@@ -1,7 +1,6 @@
 import { CssBaseline, GlobalStyles } from "@mui/material";
 import { Experimental_CssVarsProvider as CssVarsProvider, experimental_extendTheme as extendTheme } from "@mui/material/styles";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Analyser from "./Analyser";
 import Browser from "./Browser";
 import Deforum from "./Deforum";
 import FunctionDoc from "./FunctionDoc";
@@ -36,7 +35,6 @@ const App = () => {
           <Route path="/" element={<Deforum />} />
           <Route path="/deforum" element={<Deforum />} />
           <Route path="/browser" element={<Browser />} />
-          <Route path="/analyser" element={<Analyser />} />
           <Route path="/labs" element={<Labs />} />
           <Route path="/raw" element={<Raw />} />
           <Route path="/functionDocs" element={<FunctionDoc />} />

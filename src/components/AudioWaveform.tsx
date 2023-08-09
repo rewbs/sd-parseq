@@ -2,13 +2,10 @@ import { Box, Alert, Typography, Button, Stack, TextField, MenuItem, Tab, Tabs, 
 import Fade from '@mui/material/Fade';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { WaveForm, WaveSurfer } from "wavesurfer-react"; // TODO: react wrapper isn't that useful, consider removing so we can upgrade to ws7
-//@ts-ignore
-import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
-//@ts-ignore
-import MarkersPlugin, { Marker } from "wavesurfer.js/src/plugin/markers";
-//@ts-ignore
-import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
+import WaveSurfer  from "wavesurfer.js";
+import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js";
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
+import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram.js";
 import colormap from '../data/hot-colormap.json';
 
 //@ts-ignore
@@ -19,7 +16,7 @@ import { SmallTextField } from "./SmallTextField";
 import { TabPanel } from "./TabPanel";
 import { BiquadFilter } from "./BiquadFilter";
 import { useHotkeys } from 'react-hotkeys-hook'
-import { SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
+import { CssVarsPalette, Palette, SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
 import { themeFactory } from "../theme";
 
 type AudioWaveformProps = {
@@ -48,6 +45,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const wavesurferRef = useRef<WaveSurfer>();
     const fileInput = useRef<HTMLInputElement>("" as any);
     const waveformRef = useRef<HTMLDivElement>(null);
+    const timelineRef = useRef<HTMLDivElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackPos, setPlaybackPos] = useState<string>();
     const [trackLength, setTrackLength] = useState(0);
@@ -61,6 +59,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const [capturedPos, setCapturedPos] = useState<number>(0); 
 
     const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
+    const [prevAudioBuffer, setPrevAudioBuffer] = useState<AudioBuffer | undefined>();    
     const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
     const [isAnalysing, setIsAnalysing] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -87,6 +86,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const {colorScheme, setColorScheme }  = useColorScheme();
     const palette = theme.colorSchemes[(colorScheme||'light') as SupportedColorScheme].palette;
+    const [prevPalette, setPrevPalette] = useState<Palette & CssVarsPalette>(); 
 
     // Triggered when user makes viewport changes outside of wavesurfer, and we need to update wavesurfer.
     const scrollToPosition = useCallback((startFrame: number) => {
@@ -94,19 +94,19 @@ export function AudioWaveform(props: AudioWaveformProps) {
             //console.log('No track loaded');
             return;
         }
-        if (!wavesurferRef.current?.drawer?.wrapper) {
-            console.log('WaveSurfer not yet initialised.',
-                wavesurferRef.current, wavesurferRef.current?.drawer, wavesurferRef.current?.drawer?.wrapper);
+        if (!wavesurferRef.current) {
+            console.log('WaveSurfer not yet initialised.');
             return;
         }
 
         // Convert the frame position to pixels
-        const pxPerSec = wavesurferRef.current.params.minPxPerSec;
+        const pxPerSec = wavesurferRef.current.options.minPxPerSec;
         const startSec = startFrame / props.fps;
         const startPx = startSec * pxPerSec;
 
         // Update the scroll position
-        wavesurferRef.current.drawer.wrapper.scrollLeft = startPx;
+        // TODO – how to SET scrollposition with wavesurfer 7?
+        // wavesurferRef.current.drawer.wrapper.scrollLeft = startPx;
     }, [trackLength, props.fps]);
 
 
@@ -118,12 +118,12 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
 
         //console.log("Scrolling. Old viewport:", lastViewport);
-        if (!wavesurferRef.current) {
+        if (!wavesurferRef.current || !waveformRef.current) {
             return;
         }
-        const pxPerSec = wavesurferRef.current.params.minPxPerSec;
-        const startFrame = Math.round(wavesurferRef.current.drawer.wrapper.scrollLeft / pxPerSec * props.fps);
-        const endFrame = Math.round((wavesurferRef.current.drawer.wrapper.scrollLeft + wavesurferRef.current.drawer.container.clientWidth) / pxPerSec * props.fps);
+        const pxPerSec = wavesurferRef.current.options.minPxPerSec;
+        const startFrame = Math.round(wavesurferRef.current.getScroll() / pxPerSec * props.fps);
+        const endFrame = Math.round((wavesurferRef.current.getScroll() + waveformRef.current.clientWidth ) / pxPerSec * props.fps);
 
          // Check both start and end frame because of elastic scroll 
          // at full right scroll mistakenly triggering a zoom-in.
@@ -150,17 +150,75 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
     const debouncedOnCursorMove = useMemo(() => debounce(props.onCursorMove, 100), [props]);
 
-    // Update the colours manually on palette change.
-    // This is necessary because we are not recreating wavesurfer that often
-    useEffect(() => {
-        if (wavesurferRef.current) {
-            // @ts-ignore - type definition is wrong?
-            wavesurferRef.current.setWaveColor([palette.waveformStart.main, palette.waveformEnd.main]);
-            // @ts-ignore - type definition is wrong?
-            wavesurferRef.current.setProgressColor([palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main]);
-            wavesurferRef.current.setCursorColor(palette.success.light);
+
+    const formatTimeCallback = useCallback((sec: number, pxPerSec: number) => {
+        // TODO - there might be a refresh issue here.
+        switch (props.xaxisType) {
+            case "frames":
+                return `${(sec * props.fps).toFixed(0)}`;
+            case "seconds":
+                return `${sec.toFixed(2)}`;
+            case "beats":
+                return `${(sec * props.bpm / 60).toFixed(2)}`;
         }
-    }, [palette]);
+    }, [props]);
+
+
+    useEffect(() => {
+
+        // Recreate wavesurfer iff the audio buffer or color scheme has changed
+        if (audioBuffer !== prevAudioBuffer || palette.mode !== prevPalette?.mode) {
+          if (wavesurferRef.current) {
+            wavesurferRef.current.destroy();
+            wavesurferRef.current = undefined;
+          }
+          setPrevAudioBuffer(audioBuffer);
+          setPrevPalette(palette);
+        }
+    
+        if (waveformRef.current && timelineRef.current && !wavesurferRef.current) {
+            const wavesurfer = WaveSurfer.create({
+                container: waveformRef.current,
+                normalize: true,
+                //scrollParent: true,
+                fillParent: false,
+                minPxPerSec: 10,
+                autoCenter: false,
+                interact: true,
+                cursorColor: palette.success.light,
+                waveColor:[palette.waveformStart.main, palette.waveformEnd.main],
+                progressColor:[palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main],
+                cursorWidth: 1,
+                plugins: [
+                    TimelinePlugin.create({
+                        container: timelineRef.current,
+                        // formatTimeCallback: formatTimeCallback,
+                        // timeInterval: timeInterval,
+                    }),
+                    SpectrogramPlugin.create({
+                        container: "#spectrogram",
+                        labels: true,
+                        height: 75,
+                        colorMap: colormap
+                    }),
+                    RegionsPlugin.create()
+                ]
+            });
+
+        }
+    }, [audioBuffer, formatTimeCallback, palette, prevAudioBuffer, prevPalette?.mode]);
+    
+    // // Update the colours manually on palette change.
+    // // This is necessary because we are not recreating wavesurfer that often
+    // useEffect(() => {
+    //     if (wavesurferRef.current) {
+    //         // @ts-ignore - type definition is wrong?
+    //         wavesurferRef.current.setWaveColor([palette.waveformStart.main, palette.waveformEnd.main]);
+    //         // @ts-ignore - type definition is wrong?
+    //         wavesurferRef.current.setProgressColor([palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main]);
+    //         wavesurferRef.current.setCursorColor(palette.success.light);
+    //     }
+    // }, [palette]);
 
 
     const handleDoubleClick = useCallback((event: any) => {
@@ -176,46 +234,46 @@ export function AudioWaveform(props: AudioWaveformProps) {
         setCapturedPos(time || 0);
     }, []);
 
-    const handleMarkerDrop = useCallback((marker: Marker) => {
-        //console.log("In handleMarkerDrop", marker);
-        const draggedEventType = deduceMarkerType(marker);
-        const newEvents = (wavesurferRef.current?.markers.markers||[])
-            .filter(m => deduceMarkerType(m) === draggedEventType)
-            .map(m => m.time);
+    // const handleMarkerDrop = useCallback((marker: Marker) => {
+    //     //console.log("In handleMarkerDrop", marker);
+    //     const draggedEventType = deduceMarkerType(marker);
+    //     const newEvents = (wavesurferRef.current?.markers.markers||[])
+    //         .filter(m => deduceMarkerType(m) === draggedEventType)
+    //         .map(m => m.time);
     
-        if (draggedEventType === "manual") {
-            setManualEvents(newEvents);
-        } else if (draggedEventType === "detected") {
-            setDetectedEvents(newEvents);
-        }
+    //     if (draggedEventType === "manual") {
+    //         setManualEvents(newEvents);
+    //     } else if (draggedEventType === "detected") {
+    //         setDetectedEvents(newEvents);
+    //     }
         
-    }, [ ]);
+    // }, [ ]);
 
-    // Shift-clicking a marker deletes it.
-    const handleMarkerClick = useCallback((marker: Marker, event : PointerEvent) => {
-        if (event.shiftKey) { 
-            const draggedEventType = deduceMarkerType(marker);
-            const newEvents = (wavesurferRef.current?.markers.markers||[])
-                .filter(m => deduceMarkerType(m) === draggedEventType)
-                .map(m => m.time)
-                .filter(m => m !== marker.time);
-            if (draggedEventType === "manual") {
-                setManualEvents(newEvents);
-            } else if (draggedEventType === "detected") {
-                setDetectedEvents(newEvents);
-            }
-        }
-    }, []);
+    // // Shift-clicking a marker deletes it.
+    // const handleMarkerClick = useCallback((marker: Marker, event : PointerEvent) => {
+    //     if (event.shiftKey) { 
+    //         const draggedEventType = deduceMarkerType(marker);
+    //         const newEvents = (wavesurferRef.current?.markers.markers||[])
+    //             .filter(m => deduceMarkerType(m) === draggedEventType)
+    //             .map(m => m.time)
+    //             .filter(m => m !== marker.time);
+    //         if (draggedEventType === "manual") {
+    //             setManualEvents(newEvents);
+    //         } else if (draggedEventType === "detected") {
+    //             setDetectedEvents(newEvents);
+    //         }
+    //     }
+    // }, []);
 
-    const deduceMarkerType = (marker: Marker) => {
-        if (marker.label?.includes("manual")) {
-            return "manual";
-        }
-        if (marker.label?.includes("detected")) {
-            return "detected";
-        }
-        return "unknown";
-    };
+    // const deduceMarkerType = (marker: Marker) => {
+    //     if (marker.label?.includes("manual")) {
+    //         return "manual";
+    //     }
+    //     if (marker.label?.includes("detected")) {
+    //         return "detected";
+    //     }
+    //     return "unknown";
+    // };
 
     const updatePlaybackPos = useCallback(() => {
         const lengthFrames = trackLength * props.fps;
@@ -232,9 +290,9 @@ export function AudioWaveform(props: AudioWaveformProps) {
     //Update wavesurfer's seek callback on track length change and fps change
     useEffect(() => {
         updatePlaybackPos();
-        wavesurferRef.current?.on("seek", updatePlaybackPos);
+        wavesurferRef.current?.on("seeking", updatePlaybackPos);
         return () => {
-            wavesurferRef.current?.un("seek", updatePlaybackPos);
+            wavesurferRef.current?.un("seeking", updatePlaybackPos);
         }
     }, [updatePlaybackPos]);
 
@@ -251,37 +309,37 @@ export function AudioWaveform(props: AudioWaveformProps) {
     // TODO: we have to explicitly register the event handler on the drawer element. 
     // Not sure if this is a bug in wavesurfer or if we're doing something wrong.
     // https://github.com/wavesurfer-js/wavesurfer.js/discussions/2759
-    useEffect(() => {
-        //wavesurferRef.current?.on("dblclick", handleDoubleClick);
-        wavesurferRef.current?.drawer?.on("dblclick", handleDoubleClick);
-        return () => {
-            //wavesurferRef.current?.un("dblclick", handleDoubleClick);
-            wavesurferRef.current?.drawer?.un("dblclick", handleDoubleClick);
-        }
-    }, [handleDoubleClick]);
+    // useEffect(() => {
+    //     //wavesurferRef.current?.on("dblclick", handleDoubleClick);
+    //     wavesurferRef.current?.on("dblclick", handleDoubleClick);
+    //     return () => {
+    //         //wavesurferRef.current?.un("dblclick", handleDoubleClick);
+    //         wavesurferRef.current?.drawer?.un("dblclick", handleDoubleClick);
+    //     }
+    // }, [handleDoubleClick]);
 
-    useEffect(() => {
-        //wavesurferRef.current?.on("dblclick", handleDoubleClick);
-        wavesurferRef.current?.drawer?.on("lick", handleClick);
-        return () => {
-            //wavesurferRef.current?.un("dblclick", handleDoubleClick);
-            wavesurferRef.current?.drawer?.un("click", handleClick);
-        }
-    }, [handleClick]);
+    // useEffect(() => {
+    //     //wavesurferRef.current?.on("dblclick", handleDoubleClick);
+    //     wavesurferRef.current?.drawer?.on("lick", handleClick);
+    //     return () => {
+    //         //wavesurferRef.current?.un("dblclick", handleDoubleClick);
+    //         wavesurferRef.current?.drawer?.un("click", handleClick);
+    //     }
+    // }, [handleClick]);
 
-    useEffect(() => {
-        wavesurferRef.current?.on("marker-drop", handleMarkerDrop);
-        return () => {
-            wavesurferRef.current?.un("marker-drop", handleMarkerDrop);
-        }
-    }, [handleMarkerDrop]);
+    // useEffect(() => {
+    //     wavesurferRef.current?.on("marker-drop", handleMarkerDrop);
+    //     return () => {
+    //         wavesurferRef.current?.un("marker-drop", handleMarkerDrop);
+    //     }
+    // }, [handleMarkerDrop]);
 
-    useEffect(() => {
-        wavesurferRef.current?.on("marker-click", handleMarkerClick);
-        return () => {
-            wavesurferRef.current?.un("marker-click", handleMarkerClick);
-        }
-    }, [handleMarkerDrop, handleMarkerClick]);        
+    // useEffect(() => {
+    //     wavesurferRef.current?.on("marker-click", handleMarkerClick);
+    //     return () => {
+    //         wavesurferRef.current?.un("marker-click", handleMarkerClick);
+    //     }
+    // }, [handleMarkerDrop, handleMarkerClick]);        
 
 
     if (props.viewport) {
@@ -309,34 +367,6 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
     }
    
-    const handleWSMount = useCallback((waveSurfer: WaveSurfer) => {
-        if (waveSurfer.markers) {
-            waveSurfer.clearMarkers();
-        }
-
-        wavesurferRef.current = waveSurfer;
-
-        if (wavesurferRef.current) {
-            wavesurferRef.current.on("loading", (data) => {
-                console.log("Wavesurfer loading --> ", data);
-            });
-            wavesurferRef.current.on("ready", () => {
-                console.log("WaveSurfer is ready");
-            });
-            wavesurferRef.current.on("error", (data) => {
-                console.error("WaveSurfer error: ", data);
-            });
-            wavesurferRef.current.on("finish", (data) => {
-                setIsPlaying(false);
-            });
-   
-            if (window) {
-                //@ts-ignore
-                window.surferidze = wavesurferRef.current;
-            }
-     }
-    }, []);
-
     const loadFile = async (event: any) => {
         try {
             const selectedFiles = fileInput.current.files;
@@ -356,8 +386,8 @@ export function AudioWaveform(props: AudioWaveformProps) {
             setUnfilteredAudioBuffer(createAudioBufferCopy(newAudioBuffer));
 
             // Load audio file into wavesurfer visualisation
-            wavesurferRef.current?.loadDecodedBuffer(newAudioBuffer);
-            updateMarkers();
+            wavesurferRef.current?.load("", [newAudioBuffer.getChannelData(0)]);
+            //updateMarkers();
             event.target.blur(); // Remove focus from the file input so that spacebar doesn't trigger it again (and can be used for immediate playback)
 
         } catch (e: any) {
@@ -371,7 +401,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             wavesurferRef.current?.pause();
         } else {
             if (from>=0) {
-                wavesurferRef.current?.setCurrentTime(from);
+                wavesurferRef.current?.setTime(from);
             } if (!isPlaying) {
                 setCapturedPos(wavesurferRef.current?.getCurrentTime() || 0);
                 wavesurferRef.current?.play();
@@ -381,104 +411,92 @@ export function AudioWaveform(props: AudioWaveformProps) {
         updatePlaybackPos();
     }
 
-    const updateMarkers = useCallback(() => {
-        wavesurferRef.current?.markers.clear();
+    // const updateMarkers = useCallback(() => {
+    //     wavesurferRef.current?.markers.clear();
 
-        if (!trackLength) {
-            return;
-        }
+    //     if (!trackLength) {
+    //         return;
+    //     }
 
-        props.promptMarkers.forEach((marker) => {
-            wavesurferRef.current?.markers.add(
-                {
-                    ...marker,
-                    time: frameToSec(marker.x, props.fps),
-                    position: marker.top ? "top" : "bottom" as const,
-                    //@ts-ignore - extra metadata
-                    meta: "prompt"
-                })
-        });
+    //     props.promptMarkers.forEach((marker) => {
+    //         wavesurferRef.current?.markers.add(
+    //             {
+    //                 ...marker,
+    //                 time: frameToSec(marker.x, props.fps),
+    //                 position: marker.top ? "top" : "bottom" as const,
+    //                 //@ts-ignore - extra metadata
+    //                 meta: "prompt"
+    //             })
+    //     });
 
-        props.keyframesPositions.forEach((frame) => {
-            wavesurferRef.current?.markers.add({
-                time: frameToSec(frame, props.fps),
-                color: "rgba(255, 120, 220, 0.5)",
-                position: "bottom" as const,
-                draggable: false,
-                label: `keyframe[${frame}]`,
-                //@ts-ignore - extra metadata
-                meta: "keyframe"
-            });
-        });
+    //     props.keyframesPositions.forEach((frame) => {
+    //         wavesurferRef.current?.markers.add({
+    //             time: frameToSec(frame, props.fps),
+    //             color: "rgba(255, 120, 220, 0.5)",
+    //             position: "bottom" as const,
+    //             draggable: false,
+    //             label: `keyframe[${frame}]`,
+    //             //@ts-ignore - extra metadata
+    //             meta: "keyframe"
+    //         });
+    //     });
 
-        if (props.gridCursorPos >= 0) {
-            wavesurferRef.current?.markers.add({
-                time: frameToSec(props.gridCursorPos, props.fps),
-                color: "blue",
-                position: "top" as const,
-                draggable: false,
-                label: 'grid cursor',
-                //@ts-ignore - extra metadata
-                meta: "cursor"
-            });
-        }
+    //     if (props.gridCursorPos >= 0) {
+    //         wavesurferRef.current?.markers.add({
+    //             time: frameToSec(props.gridCursorPos, props.fps),
+    //             color: "blue",
+    //             position: "top" as const,
+    //             draggable: false,
+    //             label: 'grid cursor',
+    //             //@ts-ignore - extra metadata
+    //             meta: "cursor"
+    //         });
+    //     }
 
-        if (props.beatMarkerInterval > 0) {
-            for (var i = 0; i < trackLength; i += props.beatMarkerInterval * 60 / props.bpm) {
-                wavesurferRef.current?.markers.add({
-                    time: i,
-                    color: "rgba(0, 0, 0, 0.5)",
-                    position: "bottom" as const,
-                    draggable: false,
-                    label: `Beat ${(i / 60 * props.bpm).toFixed(0)}`,
-                    //@ts-ignore - extra metadata
-                    meta: "beat"
-                });
-            }
-        }
+    //     if (props.beatMarkerInterval > 0) {
+    //         for (var i = 0; i < trackLength; i += props.beatMarkerInterval * 60 / props.bpm) {
+    //             wavesurferRef.current?.markers.add({
+    //                 time: i,
+    //                 color: "rgba(0, 0, 0, 0.5)",
+    //                 position: "bottom" as const,
+    //                 draggable: false,
+    //                 label: `Beat ${(i / 60 * props.bpm).toFixed(0)}`,
+    //                 //@ts-ignore - extra metadata
+    //                 meta: "beat"
+    //             });
+    //         }
+    //     }
 
-        manualEvents.forEach((marker) => {
-            wavesurferRef.current?.markers.add({
-                time: marker,
-                position: "top" as const,
-                color: "rgba(255, 0, 0, 0.7)",
-                label: "event (manual)",
-                draggable: true,
-                //@ts-ignore - extra metadata
-                meta: "event - manual"
-            });
-        });
+    //     manualEvents.forEach((marker) => {
+    //         wavesurferRef.current?.markers.add({
+    //             time: marker,
+    //             position: "top" as const,
+    //             color: "rgba(255, 0, 0, 0.7)",
+    //             label: "event (manual)",
+    //             draggable: true,
+    //             //@ts-ignore - extra metadata
+    //             meta: "event - manual"
+    //         });
+    //     });
 
-        detectedEvents.forEach((marker) => {
-            wavesurferRef.current?.markers.add({
-                time: marker,
-                position: "top" as const,
-                color: "rgba(255, 0, 0, 0.7)",
-                label: "event (detected)",
-                draggable: true,
-                //@ts-ignore - extra metadata
-                meta: "event - detected"
-            });
-        });        
+    //     detectedEvents.forEach((marker) => {
+    //         wavesurferRef.current?.markers.add({
+    //             time: marker,
+    //             position: "top" as const,
+    //             color: "rgba(255, 0, 0, 0.7)",
+    //             label: "event (detected)",
+    //             draggable: true,
+    //             //@ts-ignore - extra metadata
+    //             meta: "event - detected"
+    //         });
+    //     });        
 
-    }, [props, trackLength, manualEvents, detectedEvents]);
+    // }, [props, trackLength, manualEvents, detectedEvents]);
 
-    useEffect(() => {
-        updateMarkers();
-    }, [updateMarkers]);
+    // useEffect(() => {
+    //     updateMarkers();
+    // }, [updateMarkers]);
 
-
-    const formatTimeCallback = useCallback((sec: number, pxPerSec: number) => {
-        // TODO - there might be a refresh issue here.
-        switch (props.xaxisType) {
-            case "frames":
-                return `${(sec * props.fps).toFixed(0)}`;
-            case "seconds":
-                return `${sec.toFixed(2)}`;
-            case "beats":
-                return `${(sec * props.bpm / 60).toFixed(2)}`;
-        }
-    }, [props]);
 
     function timeInterval(pxPerSec: number) {
         var retval = 1;
@@ -506,22 +524,22 @@ export function AudioWaveform(props: AudioWaveformProps) {
     // to redraw when formatTimeCallback changes
     // TODO this is being called way too often. Every click triggers it.
     useEffect(() => {
-        if (wavesurferRef.current) {
+        if (wavesurferRef.current && timelineRef.current) {
             // Destroy the existing timeline instance
-            wavesurferRef.current.destroyPlugin('timeline');
+            //wavesurferRef.current.getActivePlugins().find((plugin) => plugin.  .name === "timeline")?.destroy();
 
             // Re-create the timeline instance with 
-            wavesurferRef.current.addPlugin(TimelinePlugin.create({
-                container: "#timeline",
-                formatTimeCallback: formatTimeCallback,
-                timeInterval: timeInterval,
-                unlabeledNotchColor: palette.graphBorder.main,
-                primaryColor: palette.graphBorder.dark,
-                secondaryColor: palette.graphBorder.light,
-                primaryFontColor: palette.graphFont.main,
-                secondaryFontColor: palette.graphFont.light,                               
+            wavesurferRef.current.registerPlugin(TimelinePlugin.create({
+                container: timelineRef.current,
+                // formatTimeCallback: formatTimeCallback,
+                // timeInterval: timeInterval,
+                // unlabeledNotchColor: palette.graphBorder.main,
+                // primaryColor: palette.graphBorder.dark,
+                // secondaryColor: palette.graphBorder.light,
+                // primaryFontColor: palette.graphFont.main,
+                // secondaryFontColor: palette.graphFont.light,                               
             }));
-            wavesurferRef.current.initPlugin('timeline');
+            //wavesurferRef.current.initPlugin('timeline');
             // HACK to force the timeline position to update.
             if (props.viewport.startFrame > 0) {
                 scrollToPosition(props.viewport.startFrame - 1);
@@ -529,35 +547,10 @@ export function AudioWaveform(props: AudioWaveformProps) {
             }
 
             // Force the wavesurfer to redraw the timeline
-            wavesurferRef.current.drawBuffer();
+            //wavesurferRef.current.drawBuffer();
         }
     }, [formatTimeCallback, props.viewport.startFrame, scrollToPosition, palette]);
 
-    const waveSurferPlugins = [
-        {
-            plugin: TimelinePlugin,
-            options: {
-                container: "#timeline",
-                formatTimeCallback: formatTimeCallback,
-                timeInterval: timeInterval,
-            }
-        },
-        {
-            plugin: SpectrogramPlugin,
-            options: {
-                container: "#spectrogram",
-                labels: true,
-                height: 75,
-                colorMap: colormap
-            }
-        },
-        {
-            plugin: MarkersPlugin,
-            options: {
-                markers: [{ draggable: true }]
-            }
-        }
-    ];
 
     const estimateBPM = (): void => {
         if (!audioBuffer) {
@@ -703,7 +696,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             unfilteredAudioBuffer={unfilteredAudioBuffer}
                             updateAudioBuffer={(updatedAudio) => {
                                 setAudioBuffer(updatedAudio);
-                                wavesurferRef.current?.loadDecodedBuffer(updatedAudio);
+                                wavesurferRef.current?.load("", [updatedAudio.getChannelData(0)]);
                             }}
                         />
                     }
@@ -716,11 +709,10 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
             <Box display={isLoaded ? 'inline-block' : 'none'} width={'100%'} >
                 <Grid xs={12} ref={waveformRef}>
-                    <WaveSurfer
-                        plugins={waveSurferPlugins}
-                        onMount={handleWSMount as ((wavesurferRef: WaveSurfer | null) => any)}
-                    >
-                        <WaveForm id="waveform"
+                    <div ref={waveformRef} id="waveform" />
+                    <div ref={timelineRef}  id="timeline" />
+                    <div id="spectrogram" />
+                        {/* <WaveForm id="waveform"
                             normalize={true}
                             scrollParent={true}
                             fillParent={false}
@@ -733,14 +725,11 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             // @ts-ignore - type definition is wrong?
                             progressColor={[palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main]}
                             cursorWidth={1}
-                        />
-                        <div id="timeline" />
-                        <div style={{display:showSpectrogram? 'block' : 'none'}} id="spectrogram" />
-                    </WaveSurfer>
+                        /> */}
                 </Grid>
                 <Grid xs={12}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined' onClick={(e) => playPause()}>
+                        <Button size="small" disabled={!wavesurferRef.current} variant='outlined' onClick={(e) => playPause()}>
                             {isPlaying ? "⏸️ Pause" : "▶️ Play"}
                         </Button>
                         <Typography fontSize={"0.75em"}>{playbackPos}</Typography>
@@ -757,7 +746,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                     </Box>
                     <TabPanel index={1} activeTab={tab}>
                         <Stack direction="row" spacing={1} alignItems="center" >
-                            <Button size="small" disabled={isAnalysing || !wavesurferRef.current?.isReady} onClick={estimateBPM} variant='outlined'>
+                            <Button size="small" disabled={isAnalysing || !wavesurferRef.current } onClick={estimateBPM} variant='outlined'>
                                 Estimate BPM &nbsp;
                                 {(isAnalysing) &&
                                     <Fade in={isAnalysing}>
@@ -813,7 +802,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                                         disabled={isAnalysing}
                                     />
                                 </Tooltip>
-                                <Button size="small" disabled={isAnalysing || !wavesurferRef.current?.isReady} onClick={detectEvents} variant='outlined'>
+                                <Button size="small" disabled={isAnalysing || !wavesurferRef.current} onClick={detectEvents} variant='outlined'>
                                     Detect Events &nbsp;
                                     {(isAnalysing) &&
                                         <Fade in={isAnalysing}>
@@ -823,7 +812,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                                 <Typography fontFamily={"monospace"} fontWeight={"bold"} ref={onsetRef}></Typography>
                             </Stack>
                             <Box>
-                                <Button size="small" disabled={!wavesurferRef.current?.isReady} onClick={() => clearEvents(true)} variant='outlined'>❌ Clear events</Button>
+                                <Button size="small" disabled={!wavesurferRef.current} onClick={() => clearEvents(true)} variant='outlined'>❌ Clear events</Button>
                             </Box>
                         </Stack>
 
@@ -842,7 +831,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             disabled={isAnalysing}
                         />
                         </Tooltip>
-                        <Button size="small" disabled={!wavesurferRef.current?.isReady} onClick={generateKeyframes} variant='outlined'>Generate {manualEvents.length+detectedEvents.length} keyframes</Button>
+                        <Button size="small" disabled={!wavesurferRef.current} onClick={generateKeyframes} variant='outlined'>Generate {manualEvents.length+detectedEvents.length} keyframes</Button>
                     </Stack>
                     </TabPanel>
 

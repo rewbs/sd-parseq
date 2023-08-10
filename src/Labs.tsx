@@ -1,187 +1,137 @@
-import { Box, Stack } from "@mui/material";
+import { Box, MenuItem, TextField } from "@mui/material";
 import Grid from '@mui/material/Unstable_Grid2';
-import { AgGridReact } from "ag-grid-react";
-import _ from "lodash";
-import { useCallback, useRef, useState } from "react";
-import { GraphableData, ParseqKeyframe, ParseqKeyframes, ParseqPersistableState, RenderedData } from "./ParseqUI";
-import { ParseqGraph } from "./components/ParseqGraph";
-import { ParseqGrid } from "./components/ParseqGrid";
-import { parseqRender } from "./parseq-renderer";
+import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import WaveSurfer from "wavesurfer.js";
+import { SmallTextField } from "./components/SmallTextField";
+import { BiquadFilter } from "./components/BiquadFilter";
+import { getWavBytes } from "./utils/utils";
+import { saveAs } from 'file-saver';
 
-type MiniParseqProps = {
-    keyframes: ParseqKeyframes
-    fields: string[]
+// WaveSurfer hook
+const useWavesurfer = (containerRef: MutableRefObject<HTMLDivElement | undefined>, options: any) => {
+    const [wavesurfer, setWavesurfer] = useState<WaveSurfer | null>(null)
+
+    // Initialize wavesurfer when the container mounts
+    // or any of the props change
+    useEffect(() => {
+        if (!containerRef.current) return
+
+        console.log("---> Creating wavesurfer")
+        const ws = WaveSurfer.create({
+            ...options,
+            container: containerRef.current,
+        })
+
+        setWavesurfer(ws)
+
+        return () => {
+            console.log("<--- Destroying wavesurfer")
+            ws.destroy()
+        }
+    }, [options, containerRef])
+
+    return wavesurfer
 }
 
-const miniParseqDefaults = {
-    fields: ["translation_z"],
-    keyframes: [
-        {
-            "frame": 0,
-            "info": "hello",
-            "translation_z": (0 as string|number),
-            "translation_z_i": 'L'
-        },
-        {
-            "frame": 15,
-            "info": "hello",
-            "translation_z": 500 ,
-            "translation_z_i": ''
-        },
-        {
-            "frame": 30,
-            "info": "hello",
-            "translation_z": 250 ,
-            "translation_z_i": ''
-        },
-        {
-            "frame": 80,
-            "info": "hello",
-            "translation_z": 600 ,
-            "translation_z_i": ''
-        },
-        {
-            "frame": 99,
-            "info": "hello",
-            "translation_z": 1000,
-            "translation_z_i": ''
-        }
-    ]
-};
+type WaveSurferPlayerProps = {
+    audioFile: Blob | undefined;
+}
 
-const MiniParseq = ({ keyframes, fields }: MiniParseqProps) => {
+// Create a React component that will render wavesurfer.
+// Props are wavesurfer options.
 
-    const bpm = 120;
-    const fps = 20;
+const staticOptions = {}
 
-    const gridRef = useRef<AgGridReact<ParseqKeyframe>>(null);
-    const [renderedData, setRenderedData] = useState<RenderedData | undefined>(undefined);
-    const [graphableData, setGraphableData] = useState<GraphableData | undefined>(undefined);
+const WaveSurferPlayer = ({ audioFile }: WaveSurferPlayerProps) => {
+    const containerRef = useRef<HTMLDivElement>()
+    const [isPlaying, setIsPlaying] = useState(false)
+    const [currentTime, setCurrentTime] = useState(0)
+    const wavesurfer = useWavesurfer(containerRef, staticOptions)
 
-    // useEffect(() => {
-    //     gridRef.current!.api.setRowData(keyframes);
-    // }, [keyframes, gridRef]);
+    // On play button click
+    const onPlayClick = useCallback(() => {
+        wavesurfer?.isPlaying() ? wavesurfer?.pause() : wavesurfer?.play()
+    }, [wavesurfer])
 
-    const onGridReady = useCallback(() => {
-        if (!gridRef || !gridRef.current) {
-            console.log("gridRef not ready");
-            return;
-        }
-        gridRef.current.api.setRowData(keyframes);
-        const persistableState: ParseqPersistableState = {
-            keyframes: keyframes,
-            meta: {
-                docName: undefined,
-                generated_by: "",
-                version: "",
-                generated_at: ""
-            },
-            options: {
-                bpm: bpm,
-                output_fps: fps,
-            },
-            managedFields: fields,
-            timeSeries: [],
-            prompts: {
-                enabled: false,
-                promptList: [],
-                format: "v2",
-                commonPrompt: {
-                    name: 'Common',
-                    positive: "",
-                    negative: "",
-                    allFrames: true,
-                    from: 0,
-                    to: 100,
-                    overlap: {
-                        inFrames: 0,
-                        outFrames: 0,
-                        type: "none" as "none" | "linear" | "custom",
-                        custom: "",
-                    }
-                },
-                commonPromptPos: 'append'
-            },
-            keyframeLock: "frames"
-        }
+    // Initialize wavesurfer when the container mounts
+    // or any of the props change
+    useEffect(() => {
+        if (!wavesurfer) return
 
-        //gridRef.current.api.sizeColumnsToFit();
+        setCurrentTime(0)
+        setIsPlaying(false)
 
-        const { renderedData, graphData } = parseqRender(persistableState);
-        setRenderedData(renderedData);
-        setGraphableData(graphData);
-        setTimeout(() => { gridRef.current!.columnApi.autoSizeColumns(['frame', 'info', ...fields]); }, 100);
-    }, [keyframes, fields]);
+        const subscriptions = [
+            wavesurfer.on('play', () => setIsPlaying(true)),
+            wavesurfer.on('pause', () => setIsPlaying(false)),
+            wavesurfer.on('timeupdate', (currentTime) => setCurrentTime(currentTime)),
 
+            wavesurfer.on('load', () => console.log('load event')),
+            wavesurfer.on('decode', () => console.log('decode event')),
+            wavesurfer.on('ready', () => console.log('ready event')),
 
-    console.log(renderedData);
+        ]
 
-    const grid = <ParseqGrid
-        ref={gridRef}
-        onCellValueChanged={onGridReady}
-        onCellKeyPress={() => { }}
-        onGridReady={onGridReady}
-        onFirstDataRendered={() => { }}
-        onChangeGridCursorPosition={() => { }}
-        onSelectRange={() => { }}
-        rangeSelection={{}}
-        showCursors={false}
-        keyframeLock={"frames"}
-        fps={20}
-        bpm={120}
-        agGridStyle={{ width: '100%', minHeight: '50px', maxHeight: '500px', }}
-        agGridProps={{ domLayout: 'autoHeight' }}
-        managedFields={fields} />
-
-    const graph = graphableData && renderedData ? <ParseqGraph
-        editingDisabled={true}
-        hideLegend={true}
-        renderedData={renderedData}
-        graphableData={graphableData}
-        displayedFields={fields}
-        as_percents={false}
-        addKeyframe={() => { }}
-        updateKeyframe={() => { }}
-        clearKeyframe={() => { }}
-        onDecimation={() => { }}
-        onGraphScalesChanged={() => { }}
-        promptMarkers={[]}
-        beatMarkerInterval={0}
-        gridCursorPos={NaN}
-        audioCursorPos={NaN}
-        xscales={{
-            xmin: 0,
-            xmax: 100
-        }}
-        height={"200px"}
-        xaxisType={""} /> : <> </>
-
-    return <Stack direction={"row"}>
-        <Box width="33%">
-            {grid}
-        </Box>
-        <Box width="33%">
-            {graph}
-        </Box>
-        {/* <Box width="33%">
-            {renderedData && <MovementPreview 
-                renderedData={renderedData.rendered_frames}
-                fps={10}
-                height={250}
-                width={250}
-                />
+        if (audioFile) {
+            try {
+                wavesurfer.loadBlob(audioFile);
+                wavesurfer.loadBlob(audioFile);
+            } catch (e: any) {
+                console.error(`Failed to load '${audioFile}':`, e)
             }
-        </Box> */}
-    </Stack>;
-}
+        }
 
+        return () => {
+            subscriptions.forEach((unsub) => unsub())
+        }
+    }, [wavesurfer, audioFile])
+
+    return (
+        <>
+            {/* @ts-ignore */}
+            <div ref={containerRef} style={{ minHeight: '120px' }} />
+
+            <button onClick={onPlayClick} style={{ marginTop: '1em' }}>
+                {isPlaying ? 'Pause' : 'Play'}
+            </button>
+
+            <p>Seconds played: {currentTime}</p>
+        </>
+    )
+}
 
 const Labs = () => {
+    const [fps, setFps] = useState(30);
+    const [bpm, setBpm] = useState(120);
+    const [xaxisType, setXaxisType] = useState<"frames" | "seconds" | "beats">("frames");
+    const [startFrame, setStartFrame] = useState(0);
+    const [endFrame, setEndFrame] = useState(0);
 
-    const interps = ['L', 'C', 'S', 'bez(c="easeIn1")', 'bez(c="easeIn6")', 'bez(c="easeInOut6")',
-        'rand()', 'smrand(20)'];
-    const singleValinterps = ['vibe(p=1b, c="easeOut6")'];        
+    const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | undefined>();
+    const [audioFile, setAudioFile] = useState<Blob | undefined>();
+    const fileInput = useRef<HTMLInputElement>("" as any);
 
+    const loadFile = async (event: any) => {
+        try {
+            const selectedFiles = fileInput.current.files;
+            if (!selectedFiles || selectedFiles.length < 1) {
+                return;
+            }
+            // Prepare audio buffer for analysis.
+            const selectedFile = selectedFiles[0];
+            const arrayBuffer = await selectedFile.arrayBuffer();
+            const audioContext = new AudioContext();
+            const newAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            setAudioBuffer(newAudioBuffer);
+            setAudioFile(selectedFile);
+        } catch (e: any) {
+            console.error(e);
+        }
+    }
+
+
+    // Render the wavesurfer component
+    // and a button to load a different audio file
     return <>
         <Grid container paddingLeft={5} paddingRight={5} spacing={2} sx={{
             '--Grid-borderWidth': '1px',
@@ -196,27 +146,78 @@ const Labs = () => {
             },
         }}>
             <Grid padding={2} xs={12}>
-                <>
-                {
-                    interps.slice(0,5).map((interp) => {
-                        const miniParseqConfig = _.cloneDeep(miniParseqDefaults);
-                        miniParseqConfig.keyframes[0].translation_z_i = interp;
-                        return <MiniParseq {...miniParseqConfig} />;
-                    })
-                }
-                {
-                    singleValinterps.map((interp) => {
-                        const miniParseqConfig = _.cloneDeep(miniParseqDefaults);
-                        miniParseqConfig.keyframes[0].translation_z_i = interp;
-                        miniParseqConfig.keyframes[1].translation_z = '';
-                        miniParseqConfig.keyframes[2].translation_z = '';
-                        miniParseqConfig.keyframes[3].translation_z = '';
-                        miniParseqConfig.keyframes[4].translation_z = '';
-                        return <MiniParseq {...miniParseqConfig} />;
-                    })
-                }           
-                
-                </>      
+                <SmallTextField
+                    label="fps"
+                    type="number"
+                    value={fps}
+                    onChange={(e) => setFps(parseFloat(e.target.value))}
+                />
+                <SmallTextField
+                    label="bpm"
+                    type="number"
+                    value={bpm}
+                    onChange={(e) => setBpm(parseFloat(e.target.value))}
+                />
+                <SmallTextField
+                    label="startFrame"
+                    type="number"
+                    value={startFrame}
+                    onChange={(e) => setStartFrame(parseInt(e.target.value))}
+                />
+                <SmallTextField
+                    label="endFrame"
+                    type="number"
+                    value={endFrame}
+                    onChange={(e) => setEndFrame(parseInt(e.target.value))}
+                />
+                <TextField
+                    select
+                    fullWidth={false}
+                    size="small"
+                    style={{ width: '8em', marginLeft: '5px' }}
+                    label={"Show time as: "}
+                    InputLabelProps={{ shrink: true, }}
+                    InputProps={{ style: { fontSize: '0.75em' } }}
+                    value={xaxisType}
+                    onChange={(e) => setXaxisType(e.target.value as "frames" | "seconds" | "beats")}
+                >
+                    <MenuItem value={"frames"}>Frames</MenuItem>
+                    <MenuItem value={"seconds"}>Seconds</MenuItem>
+                    <MenuItem value={"beats"}>Beats</MenuItem>
+                </TextField>
+
+            </Grid>
+            <Grid padding={2} xs={12}>
+            {audioBuffer && <BiquadFilter
+                unfilteredAudioBuffer={audioBuffer}
+                updateAudioBuffer={(updatedAudioBuffer) => {
+                    const wavBytes = getWavBytes(updatedAudioBuffer.getChannelData(0).buffer, {
+                        isFloat: true,       // floating point or 16-bit integer
+                        numChannels: 1,
+                        sampleRate: updatedAudioBuffer.sampleRate,
+                      })
+                    const blob = new Blob([wavBytes], { type: 'audio/wav' })
+                    setAudioFile(blob);
+                    //TODO - there's some kind of memory leak after running this a few times.
+                }}
+            /> }
+            </Grid>
+            <Grid padding={2} xs={12}>
+                <Box>
+                    <strong>File:</strong><input
+                        onClick={
+                            //@ts-ignore
+                            e => e.target.value = null // Ensures onChange fires even if same file is re-selected.
+                        }
+                        type="file" accept=".mp3,.wav,.flac,.flc,.wma,.aac,.ogg,.aiff,.alac"
+                        ref={fileInput}
+                        onChange={loadFile} />
+                </Box>
+                <WaveSurferPlayer
+                    audioFile={audioFile}
+                />
+                {}
+
 
             </Grid>
         </Grid>

@@ -4,9 +4,9 @@ if (process.env.NODE_ENV === 'development') {
   const whyDidYouRender = require('@welldone-software/why-did-you-render');
   //@ts-ignore
   whyDidYouRender(React, {
-    trackAllPureComponents: false,
+    trackAllPureComponents: true,
     //include: [/Editable/, /ParseqUI/]
-    //include: [/AgGridReact/]
-    include: []
+    //include: [/Labs/, /WaveSurferComponent/]
+    //include: []
   });
 }

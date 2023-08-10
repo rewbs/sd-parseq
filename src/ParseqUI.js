@@ -841,14 +841,14 @@ const ParseqUI = (props) => {
             size="small"
             variant="outlined" />
         </Tooltip2>
-        <Typography fontSize={'0.6em'} style={{transform:'translate(0px, -2em)', margin:0}}> 
+        <div  style={{transform:'translate(0px, -2em)', margin:0}}>
             <ul>
-              <li>Total duration: {lastFrame+1} frames = {frameToSec(lastFrame+1, options.output_fps).toFixed(4)} seconds = {frameToBeat(lastFrame+1, options.output_fps, options.bpm).toFixed(4)} beats </li>
-              <li>1 frame: {frameToSec(1, options.output_fps).toFixed(4)} seconds = {frameToBeat(1, options.output_fps, options.bpm).toFixed(4)} beats</li>
-              <li>1 second: {secToFrame(1, options.output_fps).toFixed(4)} frames = {secToBeat( 1, options.bpm).toFixed(4)} beats</li>
-              <li>1 beat: {beatToFrame(1, options.output_fps, options.bpm).toFixed(4)} frames = {beatToSec( 1, options.bpm).toFixed(4)} seconds</li>
+              <li><Typography fontSize={'0.6em'}>Total duration: {lastFrame+1} frames = {frameToSec(lastFrame+1, options.output_fps).toFixed(4)} seconds = {frameToBeat(lastFrame+1, options.output_fps, options.bpm).toFixed(4)} beats</Typography></li>
+              <li><Typography fontSize={'0.6em'}>1 frame: {frameToSec(1, options.output_fps).toFixed(4)} seconds = {frameToBeat(1, options.output_fps, options.bpm).toFixed(4)} beats</Typography></li>
+              <li><Typography fontSize={'0.6em'}>1 second: {secToFrame(1, options.output_fps).toFixed(4)} frames = {secToBeat( 1, options.bpm).toFixed(4)} beats</Typography></li>
+              <li><Typography fontSize={'0.6em'}>1 beat: {beatToFrame(1, options.output_fps, options.bpm).toFixed(4)} frames = {beatToSec( 1, options.bpm).toFixed(4)} seconds</Typography></li>
             </ul>
-        </Typography>
+        </div>
       </Stack>
       <Stack
         direction="column"
@@ -1503,7 +1503,9 @@ const ParseqUI = (props) => {
           borderBottom: 'var(--Grid-borderWidth) solid',
           borderColor: 'divider',
         }}>
-        <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow' fullWidth flexGrow={4} alignItems={'flex-start'}>
+        <Stack width={'100%'} direction="row" spacing={1} flex='flex-grow'
+          //fullWidth
+          flexGrow={4} alignItems={'flex-start'}>
           <SupportParseq />
         </Stack>
       </Grid>
@@ -1542,13 +1544,19 @@ const ParseqUI = (props) => {
           // TODO: we always have to render the grid currently, else we lose keyframes because they reference grid data.
           renderChildrenWhenCollapsed={true}
           title="Keyframe grid">
-          <Stack direction='row' justifyContent={'space-between'} fullWidth>
+          <Stack direction='row' justifyContent={'space-between'}
+            fullWidth
+            >
             {displayedFieldSelector}
             {gridHeightToggle}
           </Stack>
           {grid}
-          <Stack direction='row' justifyContent={'space-between'} fullWidth>
-            <Stack direction='row' gap={1} id='gridControls' fullWidth>
+          <Stack direction='row' justifyContent={'space-between'}
+            fullWidth
+            >
+            <Stack direction='row' gap={1} id='gridControls'
+              fullWidth
+              >
               {addRowDialog}
               {bulkEditDialog}
               {mergeKeyframesDialog}

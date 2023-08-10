@@ -128,7 +128,6 @@
     "@types/react-copy-to-clipboard": "^5.0.4",
     "@types/seedrandom": "^3.0.5",
     "@types/uuid": "^9.0.2",
-    "@types/wavesurfer.js": "^6.0.6",
     "@welldone-software/why-did-you-render": "^7.0.1",
     "buffer": "npm:buffer@6.0.3",
     "crypto": "npm:crypto-browserify@3.12.0",

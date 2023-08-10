@@ -25,6 +25,8 @@ import { frameToXAxisType, xAxisTypeToFrame } from '../utils/maths';
 import * as _ from 'lodash';
 import { parse } from '../parseq-lang/parseq-lang-parser';
 import { InvocationContext } from '../parseq-lang/parseq-lang-ast';
+import { SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
+import { themeFactory } from '../theme';
 
 interface AddKeyframesDialogProps {
     keyframes: ParseqKeyframe[];
@@ -52,6 +54,11 @@ export const AddKeyframesDialog: FC<AddKeyframesDialogProps> = ({
     const [interval, setInterval] = useState(String(Math.round(lastFrame / 10)));
     const [start, setStart] = useState("0");
     const [end, setEnd] = useState(String(lastFrame));
+
+    const theme = extendTheme(themeFactory());
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {colorScheme, setColorScheme }  = useColorScheme();
+    const palette = theme.colorSchemes[(colorScheme||'light') as SupportedColorScheme].palette;
 
     function handleCloseAddKeyframesDialog(event: any): void {
         setOpenAddKeyframesDialog(false);
@@ -181,17 +188,17 @@ export const AddKeyframesDialog: FC<AddKeyframesDialogProps> = ({
                 </TabPanel>
                 <DialogContentText overflow={"wrap"}>
                     {framesToAdd.length > 0 && <>
-                        <Typography fontSize={"0.75em"} fontStyle={{ color: "darkgreen" }}>
+                        <Typography fontSize={"0.75em"} fontStyle={{ color:  palette.success.main }}>
                             Will add {framesToAdd.length} keyframe(s):
                         </Typography>
-                        <Typography fontFamily={"monospace"} fontSize={"0.75em"} fontStyle={{ color: "darkgreen" }}>
+                        <Typography fontFamily={"monospace"} fontSize={"0.75em"} fontStyle={{ color:  palette.success.main }}>
                             • Frames: {framesToAdd.sort((a, b) => a - b).join(', ')}<br />
                             • Seconds: {framesToAdd.sort((a, b) => a - b).map(f => frameToXAxisType(f, "seconds", fps, bpm)).join(', ')}<br />
                             • Beats: {framesToAdd.sort((a, b) => a - b).map(f => frameToXAxisType(f, "beats", fps, bpm)).join(', ')}<br />
                         </Typography>
                     </>}
                     {framesToAdd.length <= 0 &&
-                        <Typography fontSize={"0.75em"} fontStyle={{ color: "darkgreen" }}>
+                        <Typography fontSize={"0.75em"} fontStyle={{ color:  palette.success.main }}>
                             No frames to add.
                         </Typography>
                     }
@@ -239,6 +246,12 @@ export const DeleteKeyframesDialog: FC<DeleteKeyframesDialogProps> = ({
     const [deleteMatchMethod, setDeleteMatchMethod] = useState<'is' | 'regex'>('is');
     const [deleteMatchRegex, setDeleteMatchRegex] = useState('');
     const [deleteMatchFieldType, setDeleteMatchFieldType] = useState<'value' | 'interpolation'>('value');
+
+    const theme = extendTheme(themeFactory());
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {colorScheme, setColorScheme }  = useColorScheme();
+    const palette = theme.colorSchemes[(colorScheme||'light') as SupportedColorScheme].palette;
+
 
     useEffect(() => {
         setFramesToDeleteList(initialFramesToDelete.join(', '));
@@ -359,10 +372,10 @@ export const DeleteKeyframesDialog: FC<DeleteKeyframesDialogProps> = ({
                 </TabPanel>
                 <DialogContentText overflow={"wrap"}>
                     {framesToDelete.length > 0 && <>
-                        <Typography fontSize={"0.75em"} fontStyle={{ color: "firebrick" }}>
+                        <Typography fontSize={"0.75em"} fontStyle={{ color: palette.warning.dark }}>
                             Will delete {framesToDelete.length} keyframe(s):
                         </Typography>
-                        <Typography fontFamily={"monospace"} fontSize={"0.75em"} fontStyle={{ color: "firebrick" }}>
+                        <Typography fontFamily={"monospace"} fontSize={"0.75em"} fontStyle={{ color: palette.warning.dark }}>
                             • Frames: {framesToDelete.sort((a, b) => a - b).join(', ')}<br />
                             • Seconds: {framesToDelete.sort((a, b) => a - b).map(f => frameToXAxisType(f, "seconds", fps, bpm)).join(', ')}<br />
                             • Beats: {framesToDelete.sort((a, b) => a - b).map(f => frameToXAxisType(f, "beats", fps, bpm)).join(', ')}<br />
@@ -417,6 +430,11 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
     const [fieldToUpdate, setFieldToUpdate] = useState('info');
     const [fieldTypeToUpdate, setFieldTypeToUpdate] = useState<'value' | 'interpolation'>('value');
     const [newValue, setNewValue] = useState('');
+
+    const theme = extendTheme(themeFactory());
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {colorScheme, setColorScheme }  = useColorScheme();
+    const palette = theme.colorSchemes[(colorScheme||'light') as SupportedColorScheme].palette;
 
     const framesToEdit = useMemo(() => {
         if (matchRegex) {
@@ -565,17 +583,17 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
                 </Stack>
                 <DialogContentText>
                     {framesToEdit.length > 0 && <>
-                        <Typography fontSize={"0.75em"} fontStyle={{ color: "darkgreen" }}>
+                        <Typography fontSize={"0.75em"} fontStyle={{ color:  palette.success.main }}>
                             Will edit {framesToEdit.length} keyframe(s):
                         </Typography>
-                        <Typography fontFamily={"monospace"} fontSize={"0.75em"} fontStyle={{ color: "darkgreen" }}>
+                        <Typography fontFamily={"monospace"} fontSize={"0.75em"} fontStyle={{ color:  palette.success.main }}>
                             • Frames: {framesToEdit.sort((a, b) => a - b).join(', ')}<br />
                             • Seconds: {framesToEdit.sort((a, b) => a - b).map(f => frameToXAxisType(f, "seconds", fps, bpm)).join(', ')}<br />
                             • Beats: {framesToEdit.sort((a, b) => a - b).map(f => frameToXAxisType(f, "beats", fps, bpm)).join(', ')}<br />
                         </Typography>
                     </>}
                     {framesToEdit.length <= 0 &&
-                        <Typography fontSize={"0.75em"} fontStyle={{ color: "darkgreen" }}>
+                        <Typography fontSize={"0.75em"} fontStyle={{ color: palette.success.main }}>
                             No frames to edit.
                         </Typography>
                     }
@@ -587,7 +605,7 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
                     Cancel
                 </Button>
                 <Button disabled={framesToEdit.length === 0} variant="contained" id="edit" onClick={handleCloseDialog}>
-                    🖌️ Bulk Edit
+                    🖌️ Apply
                 </Button>
             </DialogActions>
         </Dialog>

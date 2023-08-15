@@ -71,3 +71,22 @@ export function remapFrameCount(frame:number, keyframeLock: "frames" | "seconds"
     const newFramePosition = xAxisTypeToFrame(lockedPosition, keyframeLock, newFps, newBpm);
     return newFramePosition;
   }
+
+  
+export function calculateNiceStepSize(roughStepSize : number) : number {
+    const exponent = Math.floor(Math.log10(roughStepSize));
+    const normalizedStepSize = roughStepSize / Math.pow(10, exponent);
+  
+    let niceStepSize;
+    if (normalizedStepSize < 1.5) {
+      niceStepSize = 1;
+    } else if (normalizedStepSize < 3) {
+      niceStepSize = 2;
+    } else if (normalizedStepSize < 7) {
+      niceStepSize = 5;
+    } else {
+      niceStepSize = 10;
+    }
+  
+    return niceStepSize * Math.pow(10, exponent);
+  }

@@ -109,6 +109,10 @@ const WavesurferAudioWaveform = ({ audioBuffer, initialSelection, onSelectionCha
 
       
       wavesurfer.load("", [audioBuffer.getChannelData(0)]);
+
+      return () => {
+        waveSurferRef.current?.destroy();
+      }
   
 
     }

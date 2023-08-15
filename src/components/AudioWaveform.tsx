@@ -3,18 +3,16 @@ import Tooltip from './PatchedToolTip';
 import Fade from '@mui/material/Fade';
 import Grid from '@mui/material/Unstable_Grid2';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import WaveSurfer from "wavesurfer.js";
-import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.js";
-
-import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js';
-import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram.js";
-import Minimap from "wavesurfer.js/dist/plugins/minimap.js";
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions';
+import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram";
+import MinimapPlugin from "wavesurfer.js/dist/plugins/minimap";
+import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline";
 import colormap from '../data/hot-colormap.json';
 
 //@ts-ignore
 import debounce from 'lodash.debounce';
 import { frameToBeat, secToFrame, secToBeat, frameToSec, beatToSec } from "../utils/maths";
-import { createAudioBufferCopy } from "../utils/utils";
+import { createAudioBufferCopy, getWavBytes } from "../utils/utils";
 import { SmallTextField } from "./SmallTextField";
 import { TabPanel } from "./TabPanel";
 import { BiquadFilter } from "./BiquadFilter";
@@ -22,13 +20,14 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { CssVarsPalette, Palette, SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
 import { themeFactory } from "../theme";
 import _ from "lodash";
+import WaveSurferPlayer, { TimelineOptions, ViewportOptions } from "./WaveSurferPlayer";
 
 
 type AudioWaveformProps = {
     fps: number,
     bpm: number,
     xaxisType: "frames" | "seconds" | "beats",
-    viewport: { startFrame: number, endFrame: number },
+    viewport: ViewportOptions,
     keyframesPositions: number[],
     gridCursorPos: number,
     beatMarkerInterval: number,
@@ -39,57 +38,28 @@ type AudioWaveformProps = {
 }
 
 
-// TODO move to Utils
-function calculateNiceStepSize(roughStepSize : number) : number {
-    const exponent = Math.floor(Math.log10(roughStepSize));
-    const normalizedStepSize = roughStepSize / Math.pow(10, exponent);
-  
-    let niceStepSize;
-    if (normalizedStepSize < 1.5) {
-      niceStepSize = 1;
-    } else if (normalizedStepSize < 3) {
-      niceStepSize = 2;
-    } else if (normalizedStepSize < 7) {
-      niceStepSize = 5;
-    } else {
-      niceStepSize = 10;
-    }
-  
-    return niceStepSize * Math.pow(10, exponent);
-  }
-
-// Used by the audio reference view in the Main UI.
-// TODO: extract shared component with WavesurferWaveform.tsx
+// The parent component on the main view that includes the waveform, the controls, the analysis tabs etc...
 export function AudioWaveform(props: AudioWaveformProps) {
+    //console.log("Initialising AudioReference with props: ", props);
 
-    //console.log("Initialising Waveform with props: ", props);
 
     const analysisBufferSize = 4096;
     const analysisHopSize = 256;
 
-    const wavesurferRef = useRef<WaveSurfer>();
-    const [timelinePlugin, setTimelinePlugin] = useState<TimelinePlugin>();
-
     const fileInput = useRef<HTMLInputElement>("" as any);
     const waveformRef = useRef<HTMLDivElement>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [playbackPos, setPlaybackPos] = useState<string>();
-    const [trackLength, setTrackLength] = useState(0);
     const [statusMessage, setStatusMessage] = useState(<></>);
     const [lastPxPerSec, setLastPxPerSec] = useState(0);
     const [lastViewport, setLastViewport] = useState({ startFrame: 0, endFrame: 0 });
-    const [prevXaxisType, setPrevXaxisType] = useState<"frames" | "seconds" | "beats" |  undefined>();
+    const [timelineOptions, setTimelineOptions] = useState<TimelineOptions>({ fps: props.fps, bpm: props.bpm, xaxisType: props.xaxisType });
+    const [viewport, setViewport] = useState<ViewportOptions>(props.viewport);
 
     const [prevTimelineOptions, setPrevTimelineOptions] = useState<object>();
     const [tab, setTab] = useState(1);
 
-    // if the user clicks on the waveform or pauses the track, we capture the position
-    // so that we can repeatedly play back from that position with ctrl+space
-    const [capturedPos, setCapturedPos] = useState<number>(0);
-
     const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
-    const [prevAudioBuffer, setPrevAudioBuffer] = useState<AudioBuffer | undefined>();
-    const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
+    const [audioFile, setAudioFile] = useState<Blob>();
+    //const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
     const [isAnalysing, setIsAnalysing] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -117,231 +87,38 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const palette = theme.colorSchemes[(colorScheme || 'light') as SupportedColorScheme].palette;
     const [prevPalette, setPrevPalette] = useState<Palette & CssVarsPalette>();
 
-    // Triggered when user makes viewport changes outside of wavesurfer, and we need to update wavesurfer.
-    const scrollToPosition = useCallback((startFrame: number) => {
-        if (!trackLength) {
-            //console.log('No track loaded');
-            return;
-        }
-        if (!wavesurferRef.current) {
-            console.log('WaveSurfer not yet initialised.');
-            return;
-        }
-
-        // Convert the frame position to pixels
-        const pxPerSec = wavesurferRef.current.options.minPxPerSec;
-        const startSec = startFrame / props.fps;
-        const startPx = startSec * pxPerSec;
-
-        // Update the scroll position
-        // TODO – how to SET scrollposition with wavesurfer 7?
-        // wavesurferRef.current.drawer.wrapper.scrollLeft = startPx;
-    }, [trackLength, props.fps]);
-
-
-    // Triggered when user scrolls wavesurfer itself
-    const onScroll = debounce(useCallback(() => {
-        if (!trackLength) {
-            //console.log('No track loaded');
-            return;
-        }
-
-        //console.log("Scrolling. Old viewport:", lastViewport);
-        if (!wavesurferRef.current || !waveformRef.current) {
-            return;
-        }
-        const pxPerSec = wavesurferRef.current.options.minPxPerSec;
-        const startFrame = Math.round(wavesurferRef.current.getScroll() / pxPerSec * props.fps);
-        const endFrame = Math.round((wavesurferRef.current.getScroll() + waveformRef.current.clientWidth) / pxPerSec * props.fps);
-
-        // Check both start and end frame because of elastic scroll 
-        // at full right scroll mistakenly triggering a zoom-in.
-        if (startFrame === lastViewport.startFrame
-            || endFrame === lastViewport.endFrame) {
-            //console.log("no scrolling required");
-            return;
-        }
-        const newViewport = { startFrame, endFrame };
-        //console.log("New viewport:", newViewport);        
-        if ((newViewport.startFrame !== lastViewport.startFrame
-            || newViewport.endFrame !== lastViewport.endFrame)
-            && newViewport.startFrame < newViewport.endFrame
-            && newViewport.startFrame >= 0) {
-
-            setLastViewport(newViewport);
-
-            // Communicate the new viewport to the parent component
-            props.onScroll(newViewport);
-            //console.log("Scrolled viewport to:", newViewport);         
-        }
-
-    }, [props, lastViewport, trackLength]), 1);
-
-    const debouncedOnCursorMove = useMemo(() => debounce(props.onCursorMove, 1), [props]);
-
-
-    const formatTimeCallback = useCallback((sec: number) => {
-        switch (props.xaxisType) {
-            case "frames":
-                return `${(sec * props.fps).toFixed(0)}`;
-            case "seconds":
-                return `${sec.toFixed(2)}`;
-            case "beats":
-                return `${(sec * props.bpm / 60).toFixed(2)}`;
-        }
-    }, [props]);
-
-
-    // Rebuild & re-register the timeline plugin when necessary, e.g.:
-    // - on zoom, because intervals may change
-    // - on xaxis unit change, because we need to relabel everything
-    // - on bpm/fps change, because the label position may change    
-    // - on screen resize, because we need to recalculate the number of labels
-    const registerNewTimeline = useCallback(() => {
-        const startTime = window.performance.now();
-
-        if (!wavesurferRef.current) {
-            return
-        }
-
-        // Establish how many pixels are currently used to show each second of audio (i.e. zoom level)
-        const pxPerSec = wavesurferRef.current.options.minPxPerSec;
-
-        // Get pixels available in the waveform viewport
-        const wsWidth = wavesurferRef.current.getWrapper().clientWidth;
-
-        // Calculate the number of units that can be displayed in the viewport
-        const secondsInView = wsWidth / pxPerSec;
-        let unitsInView : number;
-        switch (props.xaxisType) {
-            case "seconds":
-                unitsInView = secondsInView;
-                break;            
-            case "frames":
-                unitsInView = secToFrame(secondsInView, props.fps);
-                break;                
-            case "beats":
-                unitsInView = secToBeat(secondsInView, props.bpm);
-                break;
-        }
-
-        // Max number of ticks to display is 10 per 100px, rounded to the closest 10.
-        const maxTicks = Math.floor(wsWidth / 100) * 10;
-
-        // Units per tick should be a power of 10, so that we can label the ticks with sensible numbers.
-        // We also want to avoid having too many ticks, so we round up to the nearest power of 10.
-        //const unitsPerTick = Math.pow(10, Math.ceil(Math.log10(unitsInView / maxTicks)));
-
-        const roughStepSize = unitsInView / maxTicks;
-        const niceStepSize = calculateNiceStepSize(roughStepSize);
-        
-        let secondsPerTick : number;
-        switch (props.xaxisType) {
-            case "seconds":
-                secondsPerTick = niceStepSize;
-                break;
-            case "frames":
-                secondsPerTick = frameToSec(niceStepSize, props.fps);
-                break;
-            case "beats":
-                secondsPerTick = beatToSec(niceStepSize, props.bpm);
-                break;
-        }
-
-        const newTimelineOptions = {
-            formatTimeCallback: formatTimeCallback,
-            timeInterval: secondsPerTick,
-            //primaryLabelInterval: secondsPerTick*2,
-            //secondaryLabelInterval: secondsPerTick*5,
-        };
-
-        // Check whether a new timeline is needed
-        if (! _.isEqual(newTimelineOptions, prevTimelineOptions)) {
-            console.log(newTimelineOptions, prevTimelineOptions);
-            
-            // Remove the previous timeline
-            if (timelinePlugin) {
-                console.log("Destroying plugin")
-                timelinePlugin.destroy();
-            }
-            const newtimelinePlugin = TimelinePlugin.create(newTimelineOptions)
+    const wsOptions = useMemo(() => ({
+        barWidth: 0,
+        normalize: true,
+        fillParent: true,
+        minPxPerSec: 10,
+        autoCenter: false,
+        interact: true,
+        cursorColor: palette.success.light,
+        waveColor: [palette.waveformStart.main, palette.waveformEnd.main],
+        progressColor: [palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main],
+        cursorWidth: 1,
+        plugins: [
             //@ts-ignore
-            wavesurferRef.current.registerPlugin(newtimelinePlugin);
-            setTimelinePlugin(newtimelinePlugin);
-            setPrevTimelineOptions(newTimelineOptions);
-
-        } else {
-            console.log(`Unnecessarily computed new timeline options in ${(window.performance.now() - startTime)/1000}ms`);
-        }
-        
-    }, [formatTimeCallback, props.bpm, props.fps, props.xaxisType, timelinePlugin, prevTimelineOptions]);
-
-
-
-    useEffect(() => {
-
-        let wavesurfer: WaveSurfer;
-
-        // Recreate wavesurfer iff the audio buffer or color scheme has changed
-        // TODO  - when do we need to expliclty destroy?
-        // if (audioBuffer !== prevAudioBuffer || palette.mode !== prevPalette?.mode) {
-        //     if (wavesurferRef.current) {
-        //         wavesurferRef.current.destroy();
-        //         wavesurferRef.current = undefined;
-        //     }
-        //     setPrevAudioBuffer(audioBuffer);
-        //     setPrevPalette(palette);
-        // }
-
-        if (waveformRef.current && !wavesurferRef.current) {
-            console.log("Preparing wavesurfer.")
-            wavesurfer = WaveSurfer.create({
-                container: waveformRef.current,
-                normalize: true,
-                //scrollParent: true,
-                fillParent: false,
-                minPxPerSec: 10,
-                autoCenter: false,
-                interact: true,
-
-                cursorColor: palette.success.light,
+            //RegionsPlugin.create(),
+            SpectrogramPlugin.create({
+                labels: true,
+                height: 75,
+                colorMap: colormap
+            }),
+            //@ts-ignore           
+            MinimapPlugin.create({
+                //container: "#minimap",
+                height: 20,
                 waveColor: [palette.waveformStart.main, palette.waveformEnd.main],
                 progressColor: [palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main],
-                cursorWidth: 1,
-                plugins: [
-                    //@ts-ignore
-                    RegionsPlugin.create(),
-                    // SpectrogramPlugin.create({
-                    //     container: "#spectrogram",
-                    //     labels: true,
-                    //     height: 75,
-                    //     colorMap: colormap
-                    // }),                    
-                    // Minimap.create({
-                    //     container: "#minimap",
-                    //     height: 20,
-                    //     waveColor: '#ddd',
-                    //     progressColor: '#999',
-                    // })  
-                ],
-            });
+            })
+        ],
+    }), [palette]);
 
-            wavesurfer.on("ready", () => {
-                //console.log("WaveSurfer7 is ready.")
-            });
-
-            // TODO - I think this should be valid but currently breaks things
-            // return () => {
-            //     wavesurfer?.destroy();
-            // }
-
-            wavesurferRef.current = wavesurfer;
-
-        } else {
-            console.log("NOT preparing wavesurfer.", wavesurferRef.current)
-        }
-
-    }, [audioBuffer, formatTimeCallback, palette, prevAudioBuffer, prevPalette?.mode, registerNewTimeline]);
+    useEffect(() => {
+        setTimelineOptions({ fps: props.fps, bpm: props.bpm, xaxisType: props.xaxisType });
+    }, [props.fps, props.bpm, props.xaxisType])
 
     // // Update the colours manually on palette change.
     // // This is necessary because we are not recreating wavesurfer that often
@@ -356,21 +133,14 @@ export function AudioWaveform(props: AudioWaveformProps) {
     // }, [palette]);
 
 
+    // const handleDoubleClick = useCallback((event: any) => {
+    //     const time = wavesurferRef.current?.getCurrentTime();
+    //     //@ts-ignore
+    //     const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
+    //     //@ts-ignore
+    //     setManualEvents(newMarkers);
+    // }, [manualEvents]);
 
-
-
-    const handleDoubleClick = useCallback((event: any) => {
-        const time = wavesurferRef.current?.getCurrentTime();
-        //@ts-ignore
-        const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
-        //@ts-ignore
-        setManualEvents(newMarkers);
-    }, [manualEvents]);
-
-    const handleClick = useCallback((event: any) => {
-        const time = wavesurferRef.current?.getCurrentTime();
-        setCapturedPos(time || 0);
-    }, []);
 
     // const handleMarkerDrop = useCallback((marker: Marker) => {
     //     //console.log("In handleMarkerDrop", marker);
@@ -413,35 +183,6 @@ export function AudioWaveform(props: AudioWaveformProps) {
     //     return "unknown";
     // };
 
-    const updatePlaybackPos = useCallback(() => {
-        const lengthFrames = trackLength * props.fps;
-        const curPosSeconds = wavesurferRef.current?.getCurrentTime() || 0;
-        const curPosFrames = curPosSeconds * props.fps;
-        setPlaybackPos(`${curPosSeconds.toFixed(3)}/${trackLength.toFixed(3)}s
-            (frame: ${curPosFrames.toFixed(0)}/${lengthFrames.toFixed(0)})
-    (beat: ${frameToBeat(curPosFrames, props.fps, props.bpm).toFixed(2)}/${frameToBeat(lengthFrames, props.fps, props.bpm).toFixed(2)})`);
-
-        debouncedOnCursorMove(curPosFrames);
-
-    }, [trackLength, debouncedOnCursorMove, props]);
-
-    //Update wavesurfer's seek callback on track length change and fps change
-    useEffect(() => {
-        updatePlaybackPos();
-        wavesurferRef.current?.on("seeking", updatePlaybackPos);
-        return () => {
-            wavesurferRef.current?.un("seeking", updatePlaybackPos);
-        }
-    }, [updatePlaybackPos]);
-
-    //Update wavesurfer's scroll callback when the viewport changes
-    useEffect(() => {
-        onScroll();
-        wavesurferRef.current?.on("scroll", onScroll);
-        return () => {
-            wavesurferRef.current?.un("scroll", onScroll);
-        }
-    }, [onScroll]);
 
     // Update wavesurfer's double-click callback when manual events change
     // TODO: we have to explicitly register the event handler on the drawer element. 
@@ -481,62 +222,19 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
 
 
-    // Update position, zoom and timeline if the viewport has changed.
-    if (props.viewport) {
-
-        //TODO we could get pxPerSec from the wavesurfer object - check whether everything still works if we do that.
-        const pxPerSec = (waveformRef.current?.clientWidth ?? 600) / ((props.viewport.endFrame - props.viewport.startFrame) / props.fps);
-
-        // console.log("duration", wavesurferRef.current?.getDuration());
-        // console.log("viewport", props.viewport);
-        // console.log("starting point in seconds", props.viewport.startFrame/props.fps);            
-        // console.log("seconds to display", (props.viewport.endFrame-props.viewport.startFrame)/props.fps);
-        // console.log("width in px", waveformRef.current?.clientWidth);        
-        // console.log("pxPerSec", pxPerSec);
-
-        ;
-
-        if (lastPxPerSec !== pxPerSec && (wavesurferRef.current?.getDuration()||0)>0) {
-            setLastPxPerSec(pxPerSec);
-            wavesurferRef.current?.zoom(pxPerSec);
-            scrollToPosition(props.viewport.startFrame);
-        }
-        if (props.viewport.startFrame !== lastViewport.startFrame || props.viewport.endFrame !== lastViewport.endFrame) {
-            setLastViewport({ ...props.viewport })
-        }
-        if (props.viewport.startFrame !== lastViewport.startFrame) {
-            scrollToPosition(props.viewport.startFrame);
-        }
-    }
-
-    if (props.xaxisType !== prevXaxisType) {
-        setPrevXaxisType(props.xaxisType);
-    }
-
-    registerNewTimeline();
-
-    
-
     const loadFile = async (event: any) => {
         try {
             const selectedFiles = fileInput.current.files;
             if (!selectedFiles || selectedFiles.length < 1) {
-                setStatusMessage(<Alert severity="error">Select an audio file above.</Alert>);
                 return;
             }
-            setIsLoaded(true);
-
-            // Prepare audio buffer for analysis.
             const selectedFile = selectedFiles[0];
             const arrayBuffer = await selectedFile.arrayBuffer();
             const audioContext = new AudioContext();
             const newAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            setTrackLength(newAudioBuffer.duration);
             setAudioBuffer(newAudioBuffer);
-            setUnfilteredAudioBuffer(createAudioBufferCopy(newAudioBuffer));
-
-            // Load audio file into wavesurfer visualisation
-            wavesurferRef.current?.loadBlob(selectedFile);
+            setAudioFile(selectedFile);
+            setViewport({ ...viewport }); // Force scroll and zoom back to same position after load.
             //updateMarkers();
             event.target.blur(); // Remove focus from the file input so that spacebar doesn't trigger it again (and can be used for immediate playback)
 
@@ -544,22 +242,6 @@ export function AudioWaveform(props: AudioWaveformProps) {
             setStatusMessage(<Alert severity="error">Error loading file: {e.message}</Alert>)
             console.error(e);
         }
-    }
-
-    function playPause(from: number = -1, pauseIfPlaying = true) {
-        if (isPlaying && pauseIfPlaying) {
-            wavesurferRef.current?.pause();
-            setIsPlaying(false);
-        } else {
-            if (from >= 0) {
-                wavesurferRef.current?.setTime(from);
-            } if (!isPlaying) {
-                setCapturedPos(wavesurferRef.current?.getCurrentTime() || 0);
-                wavesurferRef.current?.play();
-                setIsPlaying(true);
-            }
-        }
-        updatePlaybackPos();
     }
 
     // const updateMarkers = useCallback(() => {
@@ -649,55 +331,6 @@ export function AudioWaveform(props: AudioWaveformProps) {
     // }, [updateMarkers]);
 
 
-    function timeInterval(pxPerSec: number) {
-        var retval = 1;
-        if (pxPerSec >= 25 * 100) {
-            retval = 0.01;
-        } else if (pxPerSec >= 25 * 40) {
-            retval = 0.025;
-        } else if (pxPerSec >= 25 * 10) {
-            retval = 0.1;
-        } else if (pxPerSec >= 25 * 4) {
-            retval = 0.25;
-        } else if (pxPerSec >= 25) {
-            retval = 1;
-        } else if (pxPerSec * 5 >= 25) {
-            retval = 5;
-        } else if (pxPerSec * 15 >= 25) {
-            retval = 15;
-        } else {
-            retval = Math.ceil(0.5 / pxPerSec) * 60;
-        }
-        return retval;
-    }
-
-    // Force timeline to pick up new drawing method and 
-    // to redraw when formatTimeCallback changes
-    // TODO this is being called way too often. Every click triggers it.
-    useEffect(() => {
-        if (wavesurferRef.current) {
-            // Destroy the existing timeline instance
-            //wavesurferRef.current.getActivePlugins().find((plugin) => plugin.  .name === "timeline")?.destroy();
-
-            // Re-create the timeline instance with 
-
-
-            //wavesurferRef.current.initPlugin('timeline');
-            // HACK to force the timeline position to update.
-            // if (props.viewport.startFrame > 0) {
-            //     scrollToPosition(props.viewport.startFrame - 1);
-            //     scrollToPosition(props.viewport.startFrame);
-            // }
-
-            // Force the wavesurfer to redraw the timeline
-            if (wavesurferRef.current.getDuration() > 0) {
-                wavesurferRef.current.zoom(wavesurferRef.current.options.minPxPerSec);
-            }
-
-        }
-    }, [formatTimeCallback, props.viewport.startFrame, scrollToPosition, palette, registerNewTimeline]);
-
-
     const estimateBPM = (): void => {
         if (!audioBuffer) {
             console.log("No buffer to analyse.");
@@ -745,7 +378,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
         const newDetectedEvents: number[] = [];
         onsetDetectionWorker.onmessage = (e: any) => {
-            if (onsetRef.current && wavesurferRef.current && e.data.eventS) {
+            if (onsetRef.current && e.data.eventS) {
                 newDetectedEvents.push(e.data.eventS);
                 onsetRef.current.innerText = `${newDetectedEvents.length} events detected`;
             }
@@ -796,31 +429,19 @@ export function AudioWaveform(props: AudioWaveformProps) {
         props.onAddKeyframes(frames, infoLabel);
     }
 
-    useHotkeys('space',
-        () => playPause(),
-        { preventDefault: true, scopes: ['main'] },
-        [playPause]);
+    // useHotkeys('shift+a',
+    //     () => {
+    //         // TODO might need to pass a custom handler down from here to the player
+    //         //const time = wavesurferRef.current?.getCurrentTime();
+    //         //@ts-ignore
+    //         const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
+    //         //@ts-ignore
+    //         setManualEvents(newMarkers);
+    //     },
+    //     { preventDefault: true, scopes: ['main'] },
+    //     [manualEvents])
 
-    useHotkeys('shift+space',
-        () => playPause(0, false),
-        { preventDefault: true, scopes: ['main'] },
-        [playPause]);
 
-    useHotkeys('ctrl+space',
-        () => playPause(capturedPos, false),
-        { preventDefault: true, scopes: ['main'] },
-        [playPause, capturedPos]);
-
-    useHotkeys('shift+a',
-        () => {
-            const time = wavesurferRef.current?.getCurrentTime();
-            //@ts-ignore
-            const newMarkers = [...manualEvents, time].sort((a, b) => a - b)
-            //@ts-ignore
-            setManualEvents(newMarkers);
-        },
-        { preventDefault: true, scopes: ['main'] },
-        [manualEvents])
 
     return <>
         <Grid container>
@@ -829,27 +450,30 @@ export function AudioWaveform(props: AudioWaveformProps) {
                     <Stack direction="row" alignContent={"center"} justifyContent="space-between">
                         <Box>
                             <strong>File:</strong><input
-                                onClick={
-                                    //@ts-ignore
-                                    e => e.target.value = null // Ensures onChange fires even if same file is re-selected.
+                                onClick={ e => {
+                                        //@ts-ignore
+                                        e.target.value = null;
+                                    }
                                 }
                                 type="file" accept=".mp3,.wav,.flac,.flc,.wma,.aac,.ogg,.aiff,.alac"
                                 ref={fileInput}
-                                onChange={loadFile} />
+                                onChange={(e) => {
+                                    setIsLoaded(true);
+                                    loadFile(e);
+                                }} />
                         </Box>
-                        {unfilteredAudioBuffer &&
-                            <BiquadFilter
-                                unfilteredAudioBuffer={unfilteredAudioBuffer}
-                                updateAudioBuffer={(updatedAudio) => {
-                                    setAudioBuffer(updatedAudio);
-                                    //TODO: neither of these work yet:
-                                    //wavesurferRef.current?.loadAudio("blob", undefined, [updatedAudio.getChannelData(0)]);
-                                    // wavesurferRef.current?.setOptions({
-                                    //     peaks: [updatedAudio.getChannelData(0)],
-                                    // });
-                                }}
-                            />
-                        }
+                        {audioBuffer && <BiquadFilter
+                            unfilteredAudioBuffer={audioBuffer}
+                            updateAudioBuffer={(updatedAudioBuffer) => {
+                                const wavBytes = getWavBytes(updatedAudioBuffer.getChannelData(0).buffer, {
+                                    isFloat: true,       // floating point or 16-bit integer
+                                    numChannels: 1,
+                                    sampleRate: updatedAudioBuffer.sampleRate,
+                                })
+                                const blob = new Blob([wavBytes], { type: 'audio/wav' })
+                                setAudioFile(blob);
+                            }}
+                        />}
                     </Stack>
                     <Typography fontSize="0.75em">
                         Note: audio data is not saved with Parseq documents. You will need to reload your reference audio file when you reload your Parseq document.
@@ -857,23 +481,30 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 </Box>
             </Grid>
 
-            <Box 
-                display={isLoaded ? 'inline-block' : 'none'} 
+            <Box
+                display={isLoaded ? 'inline-block' : 'none'}
                 width={'100%'} >
                 <Grid xs={12}>
-                    <div ref={waveformRef} id="waveform" />
-                    <div id="spectrogram" />
-                    <div id="minimap" />
+                    <WaveSurferPlayer
+                        audioFile={audioFile}
+                        wsOptions={wsOptions}
+                        timelineOptions={timelineOptions}
+                        viewport={viewport}
+                        onscroll={(startFrame, endFrame) => {
+                            const newViewPort = {startFrame: Math.round(startFrame), endFrame: Math.round(endFrame)};
+                            if (!_.isEqual(viewport, newViewPort)) {
+                                props.onScroll(newViewPort);                                
+                            }
+                            //setStartVisibleFrame(startFrame);
+                            //setEndVisibleFrame(endFrame);
+                        }}
+                        onready={() => {
+                            setIsLoaded(true);
+                        }}
+                    />
+
                 </Grid>
-                <Grid xs={12}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Button size="small" disabled={!wavesurferRef.current} variant='outlined' onClick={(e) => playPause()}>
-                            {isPlaying ? "⏸️ Pause" : "▶️ Play"}
-                        </Button>
-                        <Typography fontSize={"0.75em"}>{playbackPos}</Typography>
-                        <Button onClick={(e) => setShowSpectrogram(showSpectrogram => !showSpectrogram)} >{showSpectrogram ? 'Hide' : 'Show'} spectrogram</Button>
-                    </Stack>
-                </Grid>
+
                 <Grid xs={12}>
                     <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                         <Tabs value={tab} onChange={(event: React.SyntheticEvent, newValue: number) => setTab(newValue)}>
@@ -884,7 +515,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                     </Box>
                     <TabPanel index={1} activeTab={tab}>
                         <Stack direction="row" spacing={1} alignItems="center" >
-                            <Button size="small" disabled={isAnalysing || !wavesurferRef.current} onClick={estimateBPM} variant='outlined'>
+                            <Button size="small" disabled={isAnalysing} onClick={estimateBPM} variant='outlined'>
                                 Estimate BPM &nbsp;
                                 {(isAnalysing) &&
                                     <Fade in={isAnalysing}>
@@ -940,7 +571,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                                         disabled={isAnalysing}
                                     />
                                 </Tooltip>
-                                <Button size="small" disabled={isAnalysing || !wavesurferRef.current} onClick={detectEvents} variant='outlined'>
+                                <Button size="small" disabled={isAnalysing} onClick={detectEvents} variant='outlined'>
                                     Detect Events &nbsp;
                                     {(isAnalysing) &&
                                         <Fade in={isAnalysing}>
@@ -950,7 +581,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                                 <Typography fontFamily={"monospace"} fontWeight={"bold"} ref={onsetRef}></Typography>
                             </Stack>
                             <Box>
-                                <Button size="small" disabled={!wavesurferRef.current} onClick={() => clearEvents(true)} variant='outlined'>❌ Clear events</Button>
+                                <Button size="small" onClick={() => clearEvents(true)} variant='outlined'>❌ Clear events</Button>
                             </Box>
                         </Stack>
 
@@ -969,7 +600,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                                     disabled={isAnalysing}
                                 />
                             </Tooltip>
-                            <Button size="small" disabled={!wavesurferRef.current} onClick={generateKeyframes} variant='outlined'>Generate {manualEvents.length + detectedEvents.length} keyframes</Button>
+                            <Button size="small" onClick={generateKeyframes} variant='outlined'>Generate {manualEvents.length + detectedEvents.length} keyframes</Button>
                         </Stack>
                     </TabPanel>
 

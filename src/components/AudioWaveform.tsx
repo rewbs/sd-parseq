@@ -7,9 +7,6 @@ import { WaveForm, WaveSurfer } from "wavesurfer-react"; // TODO: react wrapper 
 import TimelinePlugin from "wavesurfer.js/dist/plugin/wavesurfer.timeline.min";
 //@ts-ignore
 import MarkersPlugin, { Marker } from "wavesurfer.js/src/plugin/markers";
-//@ts-ignore
-import SpectrogramPlugin from "wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min";
-import colormap from '../data/hot-colormap.json';
 
 //@ts-ignore
 import debounce from 'lodash.debounce';
@@ -540,15 +537,6 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 container: "#timeline",
                 formatTimeCallback: formatTimeCallback,
                 timeInterval: timeInterval,
-            }
-        },
-        {
-            plugin: SpectrogramPlugin,
-            options: {
-                container: "#spectrogram",
-                labels: true,
-                height: 75,
-                colorMap: colormap
             }
         },
         {

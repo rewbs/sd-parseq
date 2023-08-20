@@ -1,18 +1,8 @@
-import { Box, Button, MenuItem, TextField } from "@mui/material";
-import Grid from '@mui/material/Unstable_Grid2';
-import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
+import { useHotkeys } from 'react-hotkeys-hook';
 import WaveSurfer, { WaveSurferEvents, WaveSurferOptions } from "wavesurfer.js";
-import { SmallTextField } from "./SmallTextField";
-import { BiquadFilter } from "./BiquadFilter";
-import { getWavBytes } from "../utils/utils";
-import { CssVarsPalette, Palette, SupportedColorScheme, experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
-import { themeFactory } from "../theme";
-import { Viewport } from "./Viewport";
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline";
-import MinimapPlugin from "wavesurfer.js/dist/plugins/minimap";
-import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram";
-import { useHotkeys } from 'react-hotkeys-hook'
-import { beatToSec, frameToSec, secToBeat, secToFrame, calculateNiceStepSize } from "../utils/maths";
+import { beatToSec, calculateNiceStepSize, frameToSec, secToBeat, secToFrame } from "../utils/maths";
 
 
 export type TimelineOptions = {
@@ -31,6 +21,7 @@ type WaveSurferPlayerProps = {
     wsOptions: Partial<WaveSurferOptions>;
     timelineOptions: TimelineOptions;
     viewport: ViewportOptions;
+    hotkeyScopes?: string[];
     onscroll: (startX: number, endX: number) => void;
     onready: () => void;
 }
@@ -45,8 +36,8 @@ const resetHandler = (wavesurferRef: MutableRefObject<WaveSurfer | null>, event 
     eventHandlerRef.current = wavesurferRef.current.on(event, logic);
 }
 
-export const WaveSurferPlayer = ({ audioFile, wsOptions, timelineOptions, viewport, onscroll, onready }: WaveSurferPlayerProps) => {
-    console.log("Rendering WaveSurferPlayer: ", audioFile?.name || "no audio file");
+export const WaveSurferPlayer = ({ audioFile, wsOptions, timelineOptions, viewport, hotkeyScopes, onscroll, onready }: WaveSurferPlayerProps) => {
+    //console.log("Rendering WaveSurferPlayer: ", audioFile?.name || "no audio file");
 
     const containerRef = useRef<HTMLDivElement>();
     const [isPlaying, setIsPlaying] = useState(false);
@@ -263,17 +254,17 @@ export const WaveSurferPlayer = ({ audioFile, wsOptions, timelineOptions, viewpo
 
     useHotkeys('space',
         () => playPause(),
-        { preventDefault: true, scopes: ['main'], description: 'Play from cursor position / pause.' },
+        { preventDefault: true, scopes: hotkeyScopes??['main'], description: 'Play from cursor position / pause.' },
         [playPause]);
 
     useHotkeys('shift+space',
         () => playPause(0, false),
-        { preventDefault: true, scopes: ['main'], description: 'Play from start.' },
+        { preventDefault: true, scopes: hotkeyScopes??['main'], description: 'Play from start.' },
         [playPause]);
 
     useHotkeys('ctrl+space',
         () => playPause(lastSeekedPos, false),
-        { preventDefault: true, scopes: ['main'], description: 'Play from the last seek position.' },
+        { preventDefault: true, scopes: hotkeyScopes??['main'], description: 'Play from the last seek position.' },
         [playPause, lastSeekedPos]);
 
     return (

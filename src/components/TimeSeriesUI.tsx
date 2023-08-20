@@ -30,15 +30,21 @@ import { InterpolationType, TimeSeries, TimestampType } from '../parseq-lang/par
 import { themeFactory } from "../theme";
 import { DECIMATION_THRESHOLD } from '../utils/consts';
 import { frameToSec } from '../utils/maths';
-import { channelToRgba, createAudioBufferCopy } from '../utils/utils';
+import { channelToRgba, createAudioBufferCopy, getWavBytes } from '../utils/utils';
 import { SmallTextField } from './SmallTextField';
 import { TabPanel } from './TabPanel';
-import WavesurferAudioWaveform from './WavesurferWaveform';
+
 import { BiquadFilter } from './BiquadFilter';
+import WaveSurferPlayer from './WaveSurferPlayer';
+import SpectrogramPlugin from "wavesurfer.js/dist/plugins/spectrogram";
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions';
+import colormap from '../data/hot-colormap.json';
 
 type TimeSeriesUIProps = {
   lastFrame: number,
   fps: number,
+  bpm: number,
+  xaxisType: "frames" | "seconds" | "beats",
   allTimeSeries: {
     alias: string;
     ts: TimeSeries;
@@ -70,7 +76,7 @@ const defaultData = {
 
 export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
 
-  const { lastFrame, fps, onChange, afterBlur, afterFocus } = props;
+  const { lastFrame, fps, bpm, xaxisType, onChange, afterBlur, afterFocus } = props;
 
   const [open, setOpen] = useState(false);
   const [allTimeSeries, setAllTimeSeries] = useState(props.allTimeSeries);
@@ -94,13 +100,14 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   const [showValuesAtFrames, setShowValuesAtFrames] = useState(false);
 
   const [selectionStartMs, setSelectionStartMs] = useState(0);
-  const [selectionEndMs, setSelectionEndMs] = useState(0);
+  const [selectionEndMs, setSelectionEndMs] = useState(frameToSec(lastFrame, fps)*1000);
 
   const [pitchMethod, setPitchMethod] = useState("default");
   const pitchProgressRef = useRef<HTMLInputElement>(null);
 
-  const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer>();
+  const [unfilteredAudioBuffer, setUnfilteredAudioBuffer] = useState<AudioBuffer>();
+  const [audioFile, setAudioFile] = useState<Blob>();
 
   const [status, setStatus] = useState(<></>);
 
@@ -110,6 +117,41 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
   const palette = theme.colorSchemes[(colorScheme || 'light') as SupportedColorScheme].palette;
 
   const { disableScope: disableHotkeyScope, enableScope: enableHotkeyScope } = useHotkeysContext();
+
+
+  const regionsPlugin = useMemo(() => {
+    console.log("!!!! creating new regions plugin")
+    const wsRegions = RegionsPlugin.create();
+    wsRegions.on('region-updated', (region: any) => {
+      setSelectionStartMs(region.start*1000);
+      setSelectionEndMs(region.end*1000);
+    });
+    return wsRegions;
+  }, []);
+
+  const wsOptions = useMemo(() => ({
+    barWidth: 0,
+    normalize: true,
+    fillParent: true,
+    minPxPerSec: 10,
+    autoCenter: false,
+    interact: true,
+    cursorColor: palette.success.light,
+    waveColor: [palette.waveformStart.main, palette.waveformEnd.main],
+    progressColor: [palette.waveformProgressMaskStart.main, palette.waveformProgressMaskEnd.main],
+    cursorWidth: 1,
+    plugins: [
+        regionsPlugin,
+        //@ts-ignore        
+        SpectrogramPlugin.create({
+            labels: true,
+            height: 75,
+            colorMap: colormap
+        })
+    ],
+}), [palette.success.light, palette.waveformEnd.main, palette.waveformProgressMaskEnd.main, palette.waveformProgressMaskStart.main, palette.waveformStart.main, regionsPlugin]);
+
+
 
   const handleTimestampTypeChange = (event: any) => {
     setTimestampType(event.target.value);
@@ -221,8 +263,10 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
       const arrayBuffer = await file.arrayBuffer();
       const audioContext = new AudioContext();
       const newAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      setUnfilteredAudioBuffer(createAudioBufferCopy(newAudioBuffer));
       setAudioBuffer(newAudioBuffer);
+      setUnfilteredAudioBuffer(createAudioBufferCopy(newAudioBuffer))
+      setAudioFile(file);
+
       event.target.blur(); // Remove focus from the file input so that spacebar doesn't trigger it again (and can be used for immediate playback)
     } catch (e: any) {
       console.error(e);
@@ -406,14 +450,36 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
     </Stack>
   </>), [allTimeSeries, handleDeleteTimeSeries, onChange, afterBlur, afterFocus, palette]);
 
-  const waveSuferWaveform = useMemo(() => audioBuffer &&
-    <WavesurferAudioWaveform
-      audioBuffer={audioBuffer}
-      initialSelection={{ start: 0, end: frameToSec(lastFrame, fps) * 1000 }}
-      onSelectionChange={(start, end) => {
-        setSelectionStartMs(start);
-        setSelectionEndMs(end);
-      }} />, [audioBuffer, fps, lastFrame]);
+  const waveSuferWaveform = useMemo(() => audioFile &&
+    <WaveSurferPlayer
+      audioFile={audioFile}
+      wsOptions={wsOptions}
+      timelineOptions={{fps:fps, bpm:bpm, xaxisType:xaxisType }}
+      viewport={{startFrame:0, endFrame:lastFrame}}
+      hotkeyScopes={['timeseries']}
+      onscroll={(startFrame, endFrame) => {
+        //console.log(regionsPlugin.getRegions());
+      }}
+      onready={() => {
+        regionsPlugin.clearRegions();
+        const durationSec = audioBuffer ?  audioBuffer.length / audioBuffer.sampleRate : 1;
+        regionsPlugin.addRegion({
+          start: selectionStartMs/1000,         
+          end: Math.min(selectionEndMs/1000, durationSec),
+          //loop: false,
+          drag: true,
+          resize: false,
+          color: channelToRgba(palette.primary.mainChannel, 0.3),
+        })
+ 
+      }}      
+
+      // onSelectionChange={(start, end) => {
+      //   setSelectionStartMs(start);
+      //   setSelectionEndMs(end);
+      // }}
+      
+      />, [audioBuffer, audioFile, fps, lastFrame, xaxisType, regionsPlugin, selectionEndMs, selectionStartMs, wsOptions, bpm, palette.primary.mainChannel]);  
 
   return <>
     <p><small>Custom time series are arbitrary sequences of numbers that can be referenced from you Parseq formula. You can import them from audio data, or from a CSV file.</small></p>
@@ -444,10 +510,19 @@ export const TimeSeriesUI = (props: TimeSeriesUIProps) => {
                 }
                 onChange={handleLoadFromAudio} />
             </Box>
-            {audioBuffer && <>
+            {unfilteredAudioBuffer && <>
               <BiquadFilter
-                  unfilteredAudioBuffer={unfilteredAudioBuffer||audioBuffer}
-                  updateAudioBuffer={newAudioBuffer => setAudioBuffer(newAudioBuffer)}
+                unfilteredAudioBuffer={unfilteredAudioBuffer}
+                updateAudioBuffer={(updatedAudioBuffer) => {
+                    const wavBytes = getWavBytes(updatedAudioBuffer.getChannelData(0).buffer, {
+                        isFloat: true,       // floating point or 16-bit integer
+                        numChannels: 1,
+                        sampleRate: updatedAudioBuffer.sampleRate,
+                    })
+                    const blob = new Blob([wavBytes], { type: 'audio/wav' })
+                    setAudioFile(blob);
+                    setAudioBuffer(updatedAudioBuffer);
+                }}
                 />
             </>}
           </Stack>

@@ -1529,6 +1529,8 @@ const ParseqUI = (props) => {
           {options && lastFrame && <TimeSeriesUI
             lastFrame={lastFrame}
             fps={options.output_fps}
+            bpm={options.bpm}
+            xaxisType={{xaxisType}}
             allTimeSeries={timeSeries}
             onChange={(allTimeSeries) =>
               setTimeSeries([...allTimeSeries])

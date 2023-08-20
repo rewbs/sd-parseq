@@ -79,7 +79,7 @@
     "use-debounced-effect": "^2.0.1",
     "util": "^0.12.5",
     "uuid": "^9.0.0",
-    "wavesurfer.js": "file:///Users/rewbs/code/wavesurfer.js",
+    "wavesurfer.js": "7.1.5",
     "web-vitals": "^3.4.0"
   },
   "scripts": {

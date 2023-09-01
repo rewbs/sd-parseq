@@ -116,6 +116,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         },
         pinned: 'left',
         suppressMovable: true,
+        cellEditor: 'agTextCellEditor',
         cellEditorParams: {
           useFormatter: true,
         },

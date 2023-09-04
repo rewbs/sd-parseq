@@ -1468,12 +1468,13 @@ const ParseqUI = (props) => {
   useHotkeys('mod+z', () => {
     undoManager.undo((recovered => setPersistableState(recovered)));
     setDebugUndoStack(undoManager.confessUndoStack());
-  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager])
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager]);
 
   useHotkeys('shift+mod+z', () => {
     undoManager.redo((recovered => setPersistableState(recovered)));
     setDebugUndoStack(undoManager.confessUndoStack());
-  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager])
+  }, {preventDefault:true, scopes:['main']}, [loadVersion, setPersistableState, undoManager]);
+
 
   //////////////////////////////////////////
   // Main layout

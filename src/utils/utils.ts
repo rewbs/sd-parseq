@@ -167,3 +167,12 @@ export const compareParseqDocState = (a: ParseqPersistableState, b: ParseqPersis
           .filter((k) => !['meta', 'timestamp', 'versionId', 'changes', 'docId'].includes(k)) // exclude these fields they are expected to change.
           .flatMap((k) => _.isEqual(a[k as keyof ParseqPersistableState], b[k as keyof ParseqPersistableState]) ? [] : [k]);
   } 
+
+export const getModifierKey = () : string => {
+    const platform = window.navigator.platform;
+    if (platform.indexOf("Mac") === 0 || platform === "iPhone") {
+      return "⌘";
+    } else {
+      return 'ctrl';
+    }
+  }

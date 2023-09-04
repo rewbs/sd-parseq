@@ -259,7 +259,17 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
     useEffect(() => {
         //wavesurferRef.current?.on("dblclick", handleDoubleClick);
-        wavesurferRef.current?.drawer?.on("lick", handleClick);
+        wavesurferRef.current?.drawer?.on("click", handleClick);
+
+        //HACK - find a better place for this.
+        if (wavesurferRef.current?.drawer?.wrapper) {
+            wavesurferRef.current.drawer.wrapper.onmousemove = (e: MouseEvent) => {
+                if (e.buttons === 1 && wavesurferRef.current) {
+                    wavesurferRef.current.drawer.wrapper.scrollLeft -= e.movementX;
+                }
+            }
+        }
+
         return () => {
             //wavesurferRef.current?.un("dblclick", handleDoubleClick);
             wavesurferRef.current?.drawer?.un("click", handleClick);
@@ -326,6 +336,10 @@ export function AudioWaveform(props: AudioWaveformProps) {
             wavesurferRef.current.on("finish", (data) => {
                 setIsPlaying(false);
             });
+            wavesurferRef.current.on('drag', (relativeX) => {
+                console.log('Drag', relativeX)
+            })
+                          
    
             if (window) {
                 //@ts-ignore
@@ -647,17 +661,17 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
     useHotkeys('space',
         () => playPause(),
-        {preventDefault:true, scopes: ['main']},
+        {preventDefault:true, scopes: ['main', 'grid']},
         [playPause]);
 
     useHotkeys('shift+space',
         () => playPause(0, false),
-        {preventDefault:true, scopes: ['main']},
+        {preventDefault:true, scopes: ['main', 'grid']},
         [playPause]);
 
     useHotkeys('ctrl+space',
         () => playPause(capturedPos, false),
-        {preventDefault:true, scopes: ['main']},
+        {preventDefault:true, scopes: ['main', 'grid']},
         [playPause, capturedPos]);    
 
     useHotkeys('shift+a', 
@@ -668,7 +682,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
             //@ts-ignore
             setManualEvents(newMarkers);
         },
-        {preventDefault:true, scopes: ['main']},
+        {preventDefault:true, scopes: ['main', 'grid']},
         [manualEvents])
 
     return <>
@@ -715,6 +729,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                             minPxPerSec={10}
                             autoCenter={false}
                             interact={true}
+                            dragSelection={false}
                             cursorColor={palette.success.light}
                             // @ts-ignore - type definition is wrong?
                             waveColor={[palette.waveformStart.main, palette.waveformEnd.main]}
@@ -728,9 +743,11 @@ export function AudioWaveform(props: AudioWaveformProps) {
                 </Grid>
                 <Grid xs={12}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined' onClick={(e) => playPause()}>
-                            {isPlaying ? "⏸️ Pause" : "▶️ Play"}
-                        </Button>
+                        <Tooltip title="Play/pause (space)">
+                            <span><Button size="small" disabled={!wavesurferRef.current?.isReady} variant='outlined' onClick={(e) => playPause()}>
+                                {isPlaying ? "⏸️ Pause" : "▶️ Play"}
+                            </Button></span>
+                        </Tooltip>
                         <Typography fontSize={"0.75em"}>{playbackPos}</Typography>
                         {/* <Button onClick={(e) => setShowSpectrogram(showSpectrogram => !showSpectrogram)} >{showSpectrogram? 'Hide' : 'Show'} spectrogram</Button> */}
                     </Stack>

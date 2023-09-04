@@ -13,5 +13,9 @@ export const supporterList = [
     { name: 'Andreas Lewitzki', link: 'https://www.youtube.com/@ro0otz' }, 
     { name: 'veryVANYA', link: 'https://twitter.com/veryVANYA'},
     { name: 'Nenad Kuzmanovic', link: '' },
-    { name: 'Stash', link: ''}  
+    { name: 'Stash', link: ''},
+    { name: 'Sani', link: ''},
+    { name: 'Lottery Discountz', link: ''},
+    { name: 'Sinneys', link: ''},
+    { name: 'Ronny Khalil', link: 'https://ronnykhalil.com/'},
 ] 

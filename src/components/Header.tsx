@@ -1,17 +1,18 @@
 import { faDiscord, faGithub } from '@fortawesome/free-brands-svg-icons';
-import { faBook, faBug, faFilm, faWaveSquare, faMoon, faLightbulb } from '@fortawesome/free-solid-svg-icons';
+import { faBook, faBug, faFilm, faWaveSquare, faMoon, faLightbulb, faKeyboard } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Box, Chip, Link, Stack, SupportedColorScheme, Typography, useColorScheme, useMediaQuery } from '@mui/material';
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Link, Stack, SupportedColorScheme, Typography, useColorScheme, useMediaQuery } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { getAnalytics, isSupported } from "firebase/analytics";
 import GitInfo from 'react-git-info/macro';
 import Login from "../Login";
 import { UserAuthContextProvider } from "../UserAuthContext";
 import { app, auth } from '../firebase-config';
-import { getVersionNumber } from '../utils/utils';
+import { getVersionNumber, getModifierKey } from '../utils/utils';
 import { useLocation } from 'react-router-dom';
 import { UserSettings } from '../UserSettings';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { KeyBadge } from './KeyBadge';
 
 var analytics: any;
 isSupported().then((isSupported) => { 
@@ -36,6 +37,8 @@ export default function Header() {
     const commitLink = <Link href={"https://github.com/rewbs/sd-parseq/commit/" + GIT_COMMIT_HASH}>{GIT_COMMIT_SHORTHASH}</Link>
     const changeLogLink = <Link href={"https://github.com/rewbs/sd-parseq/commits/" + (GIT_BRANCH ?? '')}>all changes</Link>
     const environment = (process.env.NODE_ENV === 'development' ? 'dev' : getEnvFromHostname()) ;
+
+    const [openHotkeysDialog, setOpenHotkeysDialog] = useState(false);
 
     function getEnvFromHostname() {
         const hostname = window.location.hostname;
@@ -74,7 +77,7 @@ export default function Header() {
     // Don't render a header in raw view.
     if (location.pathname === '/raw') {
         return <></>
-    }    
+    }
 
     return (
         <Grid container paddingLeft={5} paddingRight={5} paddingBottom={1}>
@@ -104,6 +107,10 @@ export default function Header() {
                             UserSettings.setColorScheme(newColorScheme);
                         }} 
                     /> 
+                    <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" clickable icon={<FontAwesomeIcon  size='2xs' icon={faKeyboard} />} label="Hotkeys"
+                        onClick={() => setOpenHotkeysDialog(true)}
+                    />
+
                     <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://www.youtube.com/playlist?list=PLXbx1PHKHwIHsYFfb5lq2wS8g1FKz6aP8" clickable icon={<FontAwesomeIcon  size='2xs' icon={faFilm} />} label="Tutorial" />
                     <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="https://github.com/rewbs/sd-parseq#readme" clickable icon={<FontAwesomeIcon size='2xs' icon={faBook} />} label="Docs" />
                     <Chip style={{paddingLeft:'2px'}} size='small' variant="outlined" component="a" href="/functionDocs" clickable icon={<FontAwesomeIcon size='2xs' icon={faWaveSquare} />} label="Reference" />
@@ -114,6 +121,33 @@ export default function Header() {
                         <Login />
                     </UserAuthContextProvider>
                 </Stack>
+                <Dialog maxWidth='md' fullWidth={true} open={openHotkeysDialog} onClose={() => setOpenHotkeysDialog(false)}>
+                    <DialogTitle><FontAwesomeIcon  size='2xs' icon={faKeyboard} /> Keyboard shortcuts</DialogTitle>
+                    <DialogContent>
+                        <h3>Editing</h3>
+                        <ul>
+                            <li><KeyBadge>{getModifierKey()}</KeyBadge>+<KeyBadge>z</KeyBadge>: Undo</li>
+                            <li><KeyBadge>{getModifierKey()}</KeyBadge>+<KeyBadge>shift</KeyBadge>+<KeyBadge>z</KeyBadge>: Undo</li>
+                        </ul>
+                        <h3>Audio playback</h3>
+                        <ul>
+                            <li><KeyBadge>space</KeyBadge>: Play/pause</li>
+                            <li><KeyBadge>shift</KeyBadge>+<KeyBadge>space</KeyBadge>: Play from start</li>
+                            <li><KeyBadge>ctrl</KeyBadge>+<KeyBadge>space</KeyBadge>: Play from cursor</li>
+                            <li><KeyBadge>ctrl</KeyBadge>+<KeyBadge>a</KeyBadge>: Add event marker at cursor position</li>
+                        </ul>
+                        <h3>Graph & audio views</h3>
+                        <ul>
+                            <li><KeyBadge>shift</KeyBadge>+<KeyBadge>↑</KeyBadge>: Zoom in</li>
+                            <li><KeyBadge>shift</KeyBadge>+<KeyBadge>↓</KeyBadge>: Zoom out</li>
+                            <li><KeyBadge>shift</KeyBadge>+<KeyBadge>←</KeyBadge>: Scroll left</li>
+                            <li><KeyBadge>shift</KeyBadge>+<KeyBadge>→</KeyBadge>: Scroll right</li>
+                        </ul>
+                        <DialogActions>
+                            <Button variant='contained' onClick={()=>setOpenHotkeysDialog(false)}>Close</Button>
+                        </DialogActions>
+                    </DialogContent>
+                </Dialog>
             </Grid>
         </Grid>
     );

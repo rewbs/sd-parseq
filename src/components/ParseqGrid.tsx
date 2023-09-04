@@ -8,6 +8,7 @@ import { GridTooltip } from './GridToolTip';
 import { ValueParserParams, ValueSetterParams } from 'ag-grid-community';
 import { experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
 import { themeFactory } from "../theme";
+import { useHotkeysContext } from 'react-hotkeys-hook';
 
 const config = {}
 const mathjs = create(all, config)
@@ -42,6 +43,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const {colorScheme, setColorScheme }  = useColorScheme();
   
+  const { disableScope: disableHotkeyScope, enableScope: enableHotkeyScope } = useHotkeysContext();
 
   if (!rangeSelection) {
     rangeSelection = {};
@@ -247,7 +249,17 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
   }), [fps, bpm]);
 
   
-  return <div id='grid-container' className={colorScheme==='dark'?"ag-theme-alpine-dark":"ag-theme-alpine"} style={agGridStyle}>
+  return <div id='grid-container'
+    onFocus={() => {
+      disableHotkeyScope('main');
+      enableHotkeyScope('grid');
+    }}
+    onBlur={() => {
+      disableHotkeyScope('grid');
+      enableHotkeyScope('main');
+    }}      
+    className={colorScheme==='dark'?"ag-theme-alpine-dark":"ag-theme-alpine"}
+    style={agGridStyle}>
     {/* @ts-ignore  */}
     <AgGridReact
       {...agGridProps}

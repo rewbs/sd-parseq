@@ -9340,3 +9340,64 @@ test('reverse_render_reversed', async () => {
   await loadAndRender(fixture);
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
+
+test('Cadence', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPromptPos": "append",
+      "commonPrompt": {
+        "name": "Common",
+        "positive": "",
+        "negative": "",
+        "allFrames": true,
+        "from": 0,
+        "to": 119,
+        "overlap": {
+            "inFrames": 0,
+            "outFrames": 0,
+            "type": "none",
+            "custom": "prompt_weight_1"
+        }
+      },      
+      "promptList": [
+        {
+          "name": "Prompt 1",
+          "positive": "prompt",
+          "negative": "nega",
+          "allFrames": false,
+          "from": 0,
+          "to": 119,
+          "overlap": {
+            "inFrames": 0,
+            "outFrames": 0,
+            "type": "none",
+            "custom": "prompt_weight_1"
+          }
+        }
+      ]
+    },
+    "managedFields": [
+      "prompt_weight_1",
+      "prompt_weight_2"      
+    ],
+    "options":  {
+      "cadence": 3,
+    },
+    "keyframes": [
+      {
+        "frame": 0,
+        "prompt_weight_1": "",
+        "prompt_weight_1_i": "is_generation()",
+        "prompt_weight_2": "",
+        "prompt_weight_2_i": "pulse(p=2b, pw=cadence)"
+      },
+      {
+        "frame": 40,
+      }
+    ],
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});

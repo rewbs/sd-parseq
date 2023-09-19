@@ -855,7 +855,7 @@ const ParseqUI = (props) => {
                 e.preventDefault();
               } else if (e.key === 'Escape') {
                 setTimeout(() => e.target.blur());
-                setCandidateCadence(options.cadence)
+                setCandidateCadence(options.cadence);
                 e.preventDefault();
               }
             }}
@@ -939,7 +939,7 @@ const ParseqUI = (props) => {
           label={<Typography fontSize={"0.75em"}>Generate in reverse</Typography>} />
       </Tooltip2>
     </Stack>
-  </span>, [options, candidateBPM, candidateFPS, candidateLastFrame, lastFrame, keyframeLock, reverseRender, remapFrames, keyframes, theme])
+  </span>, [options, candidateBPM, candidateFPS, candidateLastFrame, candidateCadence, lastFrame, keyframeLock, reverseRender, remapFrames, keyframes, theme])
 
 
 

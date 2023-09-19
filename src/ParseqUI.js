@@ -111,6 +111,7 @@ const ParseqUI = (props) => {
   const [candidateLastFrame, setCandidateLastFrame] = useState();
   const [candidateBPM, setCandidateBPM] = useState()
   const [candidateFPS, setCandidateFPS] = useState()
+  const [candidateCadence, setCandidateCadence] = useState()
   const [xaxisType, setXaxisType] = useState("frames");
   const [keyframeLock, setKeyframeLock] = useState("frames");
   const [gridHeight, setGridHeight] = useState(0);
@@ -332,6 +333,7 @@ const ParseqUI = (props) => {
       setKeyframeLock(doc.keyframeLock);
       setCandidateBPM(doc.options.bpm);
       setCandidateFPS(doc.options.output_fps);
+      setCandidateCadence(doc.options.cadence);
       setReverseRender(doc.reverseRender);
 
       refreshGridFromKeyframes(doc.keyframes);
@@ -841,6 +843,42 @@ const ParseqUI = (props) => {
             size="small"
             variant="outlined" />
         </Tooltip2>
+        <Tooltip2 title="By setting your cadence here, you can reference it in your formulas to ensure, for example, that strength dips always occur during generated frames.">
+          <TextField
+            label={"Cadence"}
+            value={candidateCadence}
+            onChange={(e)=>setCandidateCadence(e.target.value)}
+            onKeyDown={(e) => {
+              setIsDocDirty(true);
+              if (e.key === 'Enter') {
+                setTimeout(() => e.target.blur());
+                e.preventDefault();
+              } else if (e.key === 'Escape') {
+                setTimeout(() => e.target.blur());
+                setCandidateCadence(options.cadence)
+                e.preventDefault();
+              }
+            }}
+            onBlur={(e) => {
+              setIsDocDirty(false);
+              let candidate = parseInt(e.target.value);
+              let fallBack = options.cadence;
+              if (!candidate || candidate < 0 || isNaN(candidate)) {
+                setCandidateCadence(fallBack);
+              } else {
+                setOptions({ ...options, cadence: candidate })
+              }
+            }}
+            InputLabelProps={{ shrink: true, }}
+            InputProps={{
+              style: { fontSize: '0.75em' },
+              sx: { background: Number(candidateLastFrame) !== Number(lastFrame) ? theme.vars.palette.unsavedbg.main : '', },
+              endAdornment: Number(candidateLastFrame) !== Number(lastFrame) ? '🖊️' : ''
+            }}
+            sx={{ minWidth: 70, maxWidth: 100, }}
+            size="small"
+            variant="outlined" />
+        </Tooltip2>        
         <Typography fontSize={'0.6em'} style={{transform:'translate(0px, -2em)', margin:0}}> 
             <ul>
               <li>Total duration: {lastFrame+1} frames = {frameToSec(lastFrame+1, options.output_fps).toFixed(4)} seconds = {frameToBeat(lastFrame+1, options.output_fps, options.bpm).toFixed(4)} beats </li>

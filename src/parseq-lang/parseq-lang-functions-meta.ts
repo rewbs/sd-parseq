@@ -87,7 +87,17 @@ const functionLibrary: { [key: string]: ParseqFunction } = {
       }
       
     }
-  }  
+  },
+  "is_generation": {
+    description: "Returns 1 if the supplied frame is a generation frame, and 0 if it's a cadence frame",
+    argDefs: [
+      { description: "frame", names: ["f"], type: "number", required: false, default: (ctx) => ctx.frame, defaultDescription: "current frame number" },
+    ],
+    call: (ctx, args) => {
+      const frame = Number(args[0]);
+      return frame%ctx.cadence === 0 ? 1 : 0;
+    }
+  },  
 }
 
 export default functionLibrary;

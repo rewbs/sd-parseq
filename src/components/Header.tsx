@@ -134,7 +134,7 @@ export default function Header() {
                             <li><KeyBadge>space</KeyBadge>: Play/pause</li>
                             <li><KeyBadge>shift</KeyBadge>+<KeyBadge>space</KeyBadge>: Play from start</li>
                             <li><KeyBadge>ctrl</KeyBadge>+<KeyBadge>space</KeyBadge>: Play from cursor</li>
-                            <li><KeyBadge>ctrl</KeyBadge>+<KeyBadge>a</KeyBadge>: Add event marker at cursor position</li>
+                            <li><KeyBadge>shift</KeyBadge>+<KeyBadge>a</KeyBadge>: Add event marker at cursor position</li>
                         </ul>
                         <h3>Graph & audio views</h3>
                         <ul>

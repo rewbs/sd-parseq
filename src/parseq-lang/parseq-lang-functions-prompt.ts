@@ -17,10 +17,13 @@ function posNegHelper(term: string, weight: number, pweight: number, nweight: nu
 
   const weightedTerm = `${prefix}${term}:${canonicalWeight.toFixed(4)}${suffix}`;
 
-  if (moveNegToPos || movePosToNeg) {
-    return `__PARSEQ_MOVE__${weightedTerm}__PARSEQ_END_MOVE__`
+  if (weight === 0) {
+    // Don't include 0-weight terms.
+    return '';
+  } else if (moveNegToPos || movePosToNeg) {
+    return `__PARSEQ_MOVE__${weightedTerm}__PARSEQ_END_MOVE__`;
   } else {
-    return weightedTerm
+    return weightedTerm;
   }
 }
 

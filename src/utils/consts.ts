@@ -6,5 +6,6 @@ export const DEFAULT_OPTIONS = {
     output_fps: 20,
     cc_window_width: 0,
     cc_window_slide_rate: 1,
-    cc_use_input: false
+    cc_use_input: false,
+    cadence: 1
   }

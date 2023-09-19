@@ -39,6 +39,7 @@ export type InvocationContext = {
   }] | [],
   promptType?: boolean;
   rendered_frames?: ParseqRenderedFrames;
+  cadence: number;
 }
 
 export function getNextKeyframe(ctx: InvocationContext): number {
@@ -233,6 +234,12 @@ export class VariableReferenceAst extends ParseqAstNode {
         return Math.floor(frameToBeat(ctx.frame, ctx.FPS, ctx.BPM));
       case 's':
         return frameToSec(ctx.frame, ctx.FPS);
+      case 'fps':
+        return ctx.FPS;
+      case 'bpm':
+          return ctx.BPM;
+      case 'cadence':
+          return ctx.cadence;
       case 'k': // offset since last active keyframe
         return ctx.frame - ctx.activeKeyframe;      
       case 'prev_keyframe': // deprecated, use 'active_keyframe', which is a more accurate name.

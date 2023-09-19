@@ -15,7 +15,8 @@ const basicContext: InvocationContext = {
   variableMap: new Map(),
   activeKeyframe: 0,
   frame: 0,
-  timeSeries: []
+  timeSeries: [],
+  cadence: 1
 };
 
 const runParseq = (formula: string) => {

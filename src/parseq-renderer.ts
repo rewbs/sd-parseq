@@ -145,6 +145,7 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
                     allKeyframes: keyframes,
                     FPS: options.output_fps,
                     BPM: options.bpm,
+                    cadence: options.cadence??1,
                     computed_values: prev_computed_values,
                     variableMap: new Map([["prev_computed_value", (frame>0) ? prev_computed_values[frame-1] : 0]]),
                     timeSeries: timeSeries,
@@ -193,7 +194,8 @@ export const parseqRender = (input: ParseqPersistableState): { renderedData: Ren
                 allKeyframes: keyframes,
                 variableMap: variableMap,
                 timeSeries: timeSeries,
-                computed_values: []
+                computed_values: [],
+                cadence: options.cadence??1,
             };
 
             try {

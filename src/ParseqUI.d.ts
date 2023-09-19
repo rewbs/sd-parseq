@@ -66,6 +66,7 @@ type ParseqOptions = {
     cc_window_width?: number;
     cc_window_slide_rate?: number;
     cc_use_input?: boolean;
+    cadence?: number;
 };
 
 type SimpleParseqPrompts = {

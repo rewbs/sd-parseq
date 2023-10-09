@@ -18,4 +18,9 @@ export const supporterList = [
     { name: 'Lottery Discountz', link: ''},
     { name: 'Sinneys', link: ''},
     { name: 'Ronny Khalil', link: 'https://ronnykhalil.com/'},
+    { name: 'k_nearest_neighbor', link: 'https://ai-breakout.com/'},
+    { name: 'Hybridizer', link: 'https://www.instagram.com/hybridizerart/'},
+    { name: 'Sithandwesson', link: ''},
+    
+
 ] 

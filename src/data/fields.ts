@@ -22,9 +22,17 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         type: "number",
         defaultValue: 0.08,
         description: "",
-        color: [136, 14, 79],
+        color: [150, 25, 90],
         labels: []
-    },
+    }, 
+    {
+        name: "noise_multiplier",
+        type: "number",
+        defaultValue: 1.05,
+        description: "",
+        color: [100, 0, 60],
+        labels: []
+    },      
     {
         name: "strength",
         type: "number",
@@ -33,6 +41,14 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         color: [49, 27, 146],
         labels: []
     },
+    {
+        name: "clipskip",
+        type: "number",
+        defaultValue: 0,
+        description: "",
+        color: [200, 10, 10],
+        labels: []
+    },    
     {
         name: "contrast",
         type: "number",
@@ -320,6 +336,22 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
         description: "",
         color: [200, 250, 250],
         labels: ['hybrid_video']
+    },
+    {
+        name: "cadence_flow_factor",
+        type: "number",
+        defaultValue: 1,
+        description: "If you have enabled optical flow estimation for your cadence frame, this ajusts how strongly that flow is applied",
+        color: [0, 250, 25],
+        labels: ['optical_flow']
+    },
+    {
+        name: "redo_flow_factor",
+        type: "number",
+        defaultValue: 1,
+        description: "If you have enabled optical flow redo generation, this adjusts how strongly that flow is applied",
+        color: [0, 125, 70],
+        labels: ['optical_flow']
     },
     {
         name: "cn_1_weight",

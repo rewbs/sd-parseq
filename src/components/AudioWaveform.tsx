@@ -69,6 +69,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
     const [onsetMethod, setOnsetMethod] = useState("default");
     const [onsetThreshold, setOnsetThreshold] = useState("1.1");
     const [onsetSilence, setOnsetSilence] = useState("-70");
+    const [eventOffset, setEventOffset] = useState("-50");
     const onsetRef = useRef<HTMLInputElement>(null);
     const onsetProgressRef = useRef<HTMLInputElement>(null);
 
@@ -654,6 +655,12 @@ export function AudioWaveform(props: AudioWaveformProps) {
         }
     }
 
+    function offsetEvents(): void {
+        const offset = Number.parseFloat(eventOffset)/1000;
+        setDetectedEvents(detectedEvents.map(e => e + offset));
+        setManualEvents(manualEvents.map(e => e + offset));
+    }
+
     function generateKeyframes(): void {
         const frames = manualEvents.concat(detectedEvents).map(s => Math.round(s * props.fps));
         props.onAddKeyframes(frames, infoLabel);
@@ -775,7 +782,7 @@ export function AudioWaveform(props: AudioWaveformProps) {
                         <Typography fontSize={"0.75em"}>Parseq uses <Link href="https://github.com/qiuxiang/aubiojs">Aubio.js</Link> to estimate your reference audio's BPM. The result is not always accurate, but can guide you towards a good overall BPM value for your Parseq document (which you set above the grid). Parseq does not yet support variable BPMs. </Typography>
                     </TabPanel>
                     <TabPanel index={2} activeTab={tab}>
-                        <Stack direction="row" alignItems="center" justifyContent="space-between">
+                        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
                             <Stack direction="row" flexGrow={1} gap={1} alignItems="center">
                                 <Tooltip arrow placement="top" title={"The algorithm used to detect audio events. Experiment with these, as they can produce vastly different results."} >
                                     <TextField
@@ -826,10 +833,24 @@ export function AudioWaveform(props: AudioWaveformProps) {
                                         </Fade>}
                                 </Button>
                                 <Typography fontFamily={"monospace"} fontWeight={"bold"} ref={onsetRef}></Typography>
+                             </Stack>
+                             <Stack  direction="row" flexGrow={1} gap={1} alignItems="center">
+                                <Tooltip arrow placement="top" title={"More all events by N milliseconds (negative means move left, positive move right)"} >
+                                    <>
+                                        <SmallTextField
+                                            label="Offset (ms)"
+                                            type="number"
+                                            value={eventOffset}
+                                            onChange={(e) => setEventOffset(e.target.value)}
+                                            disabled={isAnalysing}
+                                        />
+                                        <Button size="small" disabled={isAnalysing} onClick={() => offsetEvents()} variant='outlined'>↔️ Offset all events</Button>
+                                    </>
+                                </Tooltip>
                             </Stack>
-                            <Box>
-                                <Button size="small" disabled={!wavesurferRef.current?.isReady} onClick={() => clearEvents(true)} variant='outlined'>❌ Clear events</Button>
-                            </Box>
+                            <Stack  direction="row-reverse" flexGrow={1} gap={1} alignItems="flex-start">
+                                <Button size="small" disabled={isAnalysing} onClick={() => clearEvents(true)} variant='outlined'>❌ Clear all events</Button>
+                            </Stack>
                         </Stack>
 
                         <Typography fontSize={"0.75em"}>Parseq uses <Link href="https://github.com/qiuxiang/aubiojs">Aubio.js</Link> to detect events in your reference audio. You can move events by dragging them, add events by double-clicking, and delete events by shift-clicking. You can generate Parseq keyframes from audio events in the "Keyframe generation" tab.</Typography>
@@ -837,15 +858,15 @@ export function AudioWaveform(props: AudioWaveformProps) {
 
                     <TabPanel index={3} activeTab={tab}>
                     <Stack direction="row" flexGrow={1} gap={1} alignItems="center">
-                    <Tooltip arrow placement="top" title={"What you'd like to appear in the 'Info' field of the generated keyframes. By using a unique string here, you can easily bulk-edit or bulk-delete all keyframes generated in this pass."} >
-                        <SmallTextField
-                            label="Info label"
-                            type="string"
-                            value={infoLabel}
-                            onChange={(e) => setInfoLabel(e.target.value)}
-                            InputProps={{ style: { fontSize: "0.75em", fontFamily: "monospace", width: "18em" } }}
-                            disabled={isAnalysing}
-                        />
+                        <Tooltip arrow placement="top" title={"What you'd like to appear in the 'Info' field of the generated keyframes. By using a unique string here, you can easily bulk-edit or bulk-delete all keyframes generated in this pass."} >
+                            <SmallTextField
+                                label="Info label"
+                                type="string"
+                                value={infoLabel}
+                                onChange={(e) => setInfoLabel(e.target.value)}
+                                InputProps={{ style: { fontSize: "0.75em", fontFamily: "monospace", width: "18em" } }}
+                                disabled={isAnalysing}
+                            />
                         </Tooltip>
                         <Button size="small" disabled={!wavesurferRef.current?.isReady} onClick={generateKeyframes} variant='outlined'>Generate {manualEvents.length+detectedEvents.length} keyframes</Button>
                     </Stack>

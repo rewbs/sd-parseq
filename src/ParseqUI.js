@@ -75,6 +75,8 @@ const ParseqUI = (props) => {
   const [graphAsPercentages, setGraphAsPercentages] = useState(false);
   const [showPromptMarkers, setShowPromptMarkers] = useState(false);
   const [showCursors, setShowCursors] = useState(false);
+  const [showInterpolatedValues, setShowInterpolatedValues] = useState(true);  
+  const [showPrompts, setShowPrompts] = useState(true);    
   const [beatMarkerInterval, setBeatMarkerInterval] = useState(0);
   const [showFlatSparklines, setShowFlatSparklines] = useState(false);
   const [keyframes, setKeyframes] = useState();
@@ -253,7 +255,7 @@ const ParseqUI = (props) => {
       setTimeout(() => {
         gridRef.current.columnApi.setColumnsVisible(allColumnIds, false);
         gridRef.current.columnApi.setColumnsVisible(columnsToShow, true);
-        gridRef.current.columnApi.setColumnsVisible(['frame', 'info'], true);
+        gridRef.current.columnApi.setColumnsVisible(['frame', 'info', 'prompt'], true);
         gridRef.current.api.onSortChanged();
     });
 
@@ -944,6 +946,8 @@ const ParseqUI = (props) => {
 
 
 
+
+
   // Grid ------------------------
 
   const grid = useMemo(() => <ParseqGrid
@@ -961,7 +965,10 @@ const ParseqUI = (props) => {
     fps={options?.output_fps}
     bpm={options?.bpm}
     agGridStyle={{ width: '100%', minHeight: '150px', height: '150px', maxHeight: '1150px', }}
-  />, [rangeSelection, options, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields]);
+    renderedData={renderedData}
+    showPrompt={showPrompts}
+    showInterpolatedValues={showInterpolatedValues}
+  />, [rangeSelection, options, onCellValueChanged, onCellKeyPress, onGridReady, onFirstDataRendered, keyframeLock, showCursors, managedFields, renderedData, showInterpolatedValues, showPrompts]);
 
 
   const gridHeightToggle = useMemo(() =>  <Stack direction="row" alignItems="center" justifyContent={"flex-start"} gap={1}>
@@ -1026,6 +1033,52 @@ const ParseqUI = (props) => {
           <MenuItem key={field} value={field} style={{ fontSize: '1em' }}>{field}</MenuItem>
         ))}
       </Select></Stack>, [displayedFields, handleChangeDisplayedFields, managedFields])
+
+
+  const gridOptions = useMemo(
+    () => (
+      <Stack direction="row" justifyContent={"space-between"} fullWidth>
+        {displayedFieldSelector}
+        <FormControlLabel
+          control={
+            <Checkbox
+              padding={0}
+              margin={0}
+              checked={showPrompts}
+              onChange={(e) => setShowPrompts(e.target.checked)}
+            />
+          }
+          label={
+            <Box component="div" fontSize="0.75em">
+              Show computed prompts at keyframes
+            </Box>
+          }
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              padding={0}
+              margin={0}
+              checked={showInterpolatedValues}
+              onChange={(e) => setShowInterpolatedValues(e.target.checked)}
+            />
+          }
+          label={
+            <Box component="div" fontSize="0.75em">
+              Show interpolated values
+            </Box>
+          }
+        />
+        {gridHeightToggle}
+      </Stack>
+    ),
+    [
+      displayedFieldSelector,
+      showPrompts,
+      showInterpolatedValues,
+      gridHeightToggle,
+    ]
+  );
 
   // Editable Graph ------------------------
 
@@ -1329,7 +1382,7 @@ const ParseqUI = (props) => {
   // Footer ------------------------
 
   const debugStatus = useMemo(() => {
-    if (process.env.NODE_ENV === 'development' || debugMode) {
+    if (debugMode) {
       return <Alert severity="info">
         Active version: {activeVersionId?.split("-")[1]}
         <ul>
@@ -1581,10 +1634,7 @@ const ParseqUI = (props) => {
           // TODO: we always have to render the grid currently, else we lose keyframes because they reference grid data.
           renderChildrenWhenCollapsed={true}
           title="Keyframe grid">
-          <Stack direction='row' justifyContent={'space-between'} fullWidth>
-            {displayedFieldSelector}
-            {gridHeightToggle}
-          </Stack>
+          {gridOptions}
           {grid}
           <Stack direction='row' justifyContent={'space-between'} fullWidth>
             <Stack direction='row' gap={1} id='gridControls' fullWidth>

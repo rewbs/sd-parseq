@@ -11,6 +11,7 @@ declare module "@mui/material/styles" {
         graphBackground: PaletteColor;
         graphFont: PaletteColor;
         gridInfoField: PaletteColor;
+        gridPromptField: PaletteColor;
         gridColSeparatorMajor: PaletteColor;
         gridColSeparatorMinor: PaletteColor;
         codeBackground: PaletteColor;
@@ -18,6 +19,7 @@ declare module "@mui/material/styles" {
         waveformEnd: PaletteColor;
         waveformProgressMaskStart: PaletteColor;
         waveformProgressMaskEnd: PaletteColor;
+        greyedText: PaletteColor;
     }
     interface PaletteOptions {
         negative: PaletteColor;
@@ -29,6 +31,7 @@ declare module "@mui/material/styles" {
         graphBackground: PaletteColor;
         graphFont: PaletteColor;
         gridInfoField: PaletteColor;
+        gridPromptField: PaletteColor;
         gridColSeparatorMajor: PaletteColor;
         gridColSeparatorMinor: PaletteColor;
         codeBackground: PaletteColor;
@@ -36,6 +39,7 @@ declare module "@mui/material/styles" {
         waveformEnd: PaletteColor;
         waveformProgressMaskStart: PaletteColor;
         waveformProgressMaskEnd: PaletteColor;
+        greyedText: PaletteColor;
 
     }
 }
@@ -56,6 +60,7 @@ export const themeFactory = (): CssVarsThemeOptions => {
                     graphBackground: palette.augmentColor({ color: { main: 'rgba(0, 0, 0, 0.1)' } }),
                     graphFont: palette.augmentColor({ color: { main: '#666' } }),
                     gridInfoField: palette.augmentColor({ color: { main: '#e5e5e5' } }),
+                    gridPromptField: palette.augmentColor({ color: { main: '#f5f5f5' } }),
                     gridColSeparatorMajor: palette.augmentColor({ color: { main: '#000' } }),
                     gridColSeparatorMinor: palette.augmentColor({ color: { main: '#ccc' } }),
                     codeBackground: palette.augmentColor({ color: { main: '#ccc' } }),
@@ -63,6 +68,7 @@ export const themeFactory = (): CssVarsThemeOptions => {
                     waveformEnd: palette.augmentColor({ color: { main: '#aaa' } }),
                     waveformProgressMaskStart: palette.augmentColor({ color: { main: '#aaa' } }),
                     waveformProgressMaskEnd: palette.augmentColor({ color: { main: '#ccc' } }),
+                    greyedText: palette.augmentColor({ color: { main: 'rgba(0, 0, 0, 0.275)' } }),
                     
                 }
             },
@@ -78,6 +84,7 @@ export const themeFactory = (): CssVarsThemeOptions => {
                     graphBackground: palette.augmentColor({ color: { main: 'rgba(255, 255, 255, 0.1)' } }),
                     graphFont: palette.augmentColor({ color: { main: '#ddd' } }),
                     gridInfoField: palette.augmentColor({ color: { main: '#444' } }),
+                    gridPromptField: palette.augmentColor({ color: { main: '#222' } }),                    
                     gridColSeparatorMajor: palette.augmentColor({ color: { main: '#fff' } }),
                     gridColSeparatorMinor: palette.augmentColor({ color: { main: '#555' } }),
                     codeBackground: palette.augmentColor({ color: { main: '#666' } }),
@@ -85,6 +92,7 @@ export const themeFactory = (): CssVarsThemeOptions => {
                     waveformEnd: palette.augmentColor({ color: { main: '#aaa' } }),
                     waveformProgressMaskStart: palette.augmentColor({ color: { main: '#bbb' } }),
                     waveformProgressMaskEnd: palette.augmentColor({ color: { main: '#555' } }),
+                    greyedText: palette.augmentColor({ color: { main: 'rgba(255, 255, 255, 0.2)' } }),
                 }
             }
         }

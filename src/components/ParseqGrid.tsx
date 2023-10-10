@@ -1,14 +1,16 @@
+import { experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
+import { ValueFormatterParams, ValueGetterParams, ValueParserParams, ValueSetterParams } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import _ from 'lodash';
 import { all, create } from 'mathjs';
 import { forwardRef, useCallback, useMemo } from 'react';
-import { frameToXAxisType, xAxisTypeToFrame } from '../utils/maths';
+import { useHotkeysContext } from 'react-hotkeys-hook';
+import { RenderedData } from '../ParseqUI';
+import { themeFactory } from "../theme";
+import { frameToXAxisType, isValidNumber, xAxisTypeToFrame } from '../utils/maths';
 import { fieldNametoRGBa } from '../utils/utils';
 import { GridTooltip } from './GridToolTip';
-import { ValueParserParams, ValueSetterParams } from 'ag-grid-community';
-import { experimental_extendTheme as extendTheme, useColorScheme } from "@mui/material/styles";
-import { themeFactory } from "../theme";
-import { useHotkeysContext } from 'react-hotkeys-hook';
+import { PromptCellEditor } from './PromptCellEditor';
 
 const config = {}
 const mathjs = create(all, config)
@@ -32,12 +34,14 @@ type ParseqGridProps = {
   fps: number,
   bpm: number,
   managedFields: string[],
-  agGridProps: {}
-  agGridStyle: {}
-
+  agGridProps: {},
+  agGridStyle: {},
+  renderedData: RenderedData|null,
+  showPrompt: boolean,
+  showInterpolatedValues: boolean,
 };
 
-export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridReady, onCellValueChanged, onCellKeyPress, onFirstDataRendered, onChangeGridCursorPosition, showCursors, keyframeLock, fps, bpm, managedFields, agGridProps, agGridStyle }: ParseqGridProps, gridRef) => {
+export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridReady, onCellValueChanged, onCellKeyPress, onFirstDataRendered, onChangeGridCursorPosition, showCursors, keyframeLock, fps, bpm, managedFields, agGridProps, agGridStyle, renderedData, showPrompt, showInterpolatedValues }: ParseqGridProps, gridRef) => {
 
   const theme = extendTheme(themeFactory());
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -128,6 +132,42 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
         flex: 1,
 
       },
+      ...(renderedData && showPrompt ? [{
+        headerName: 'Prompt',
+        field: 'prompt',
+        valueGetter: (params: ValueGetterParams) => {
+           const frame = params.data['frame'];
+           if (renderedData && renderedData.rendered_frames && renderedData.rendered_frames[frame]) {
+            return renderedData.rendered_frames[frame].deforum_prompt || '⚠️ EMPTY prompt!! This is probably a mistake. Check the prompt section and make sure prompts cover the full duration of the animation.';
+           } else {
+            return '';
+           }
+        },
+        readOnly: true,
+        pinned: 'left',
+        suppressMovable: true,
+        cellEditor: PromptCellEditor,
+        cellEditorPopup: true,
+        cellEditorPopupPosition: 'under',
+        cellEditorParams: {
+        },        
+        cellStyle: (params: any): any => {
+          if (isInRangeSelection(params)) {
+            return {
+              color: theme.vars.palette.text.secondary,
+              backgroundColor: theme.vars.palette.gridPromptField.dark,
+              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMajor.main
+            }
+          } else {
+            return {
+              color: theme.vars.palette.text.secondary,
+              backgroundColor: theme.vars.palette.gridPromptField.light,
+              borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid '+ theme.vars.palette.gridColSeparatorMajor.main
+            }
+          }
+        },
+        flex: 2,
+      }] : []),      
       {
         headerName: 'Info',
         field: 'info',
@@ -162,6 +202,19 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       ...(managedFields ? managedFields.flatMap((field: string) => [
         {
           field: field,
+          valueFormatter: (params: ValueFormatterParams) => {
+            const frame = params.data['frame'];
+            if (showInterpolatedValues
+                  && !isValidNumber(params.data[field])
+                  && renderedData
+                  && renderedData.rendered_frames
+                  ) {
+              const renderedValue = renderedData.rendered_frames[frame][field];
+              return isValidNumber(renderedValue) ? `(${renderedValue})` : '';
+            } else {
+             return params.data[field];
+            }
+          },          
           valueSetter: (params: ValueSetterParams) => {
             if (!params.newValue) {
               params.data[field] = '';
@@ -185,11 +238,13 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
           cellStyle: (params: any) => {
             if (isInRangeSelection(params)) {
               return {
+                color: isValidNumber(params.data[field]) ? theme.vars.palette.text.primary : theme.vars.palette.greyedText.main,
                 backgroundColor: fieldNametoRGBa(field, 0.4),
                 borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMinor.main
               }
             } else {
               return {
+                color: isValidNumber(params.data[field]) ? theme.vars.palette.text.primary : theme.vars.palette.greyedText.main,
                 backgroundColor: fieldNametoRGBa(field, 0.1),
                 borderRight: isSameCellPosition(params, params.api.getFocusedCell()) ? '' : '1px solid ' + theme.vars.palette.gridColSeparatorMinor.main
               }
@@ -231,7 +286,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       ]) : [])
     ]
 
-  }, [managedFields, isInRangeSelection, keyframeLock, fps, bpm, theme]);
+  }, [managedFields, isInRangeSelection, keyframeLock, fps, bpm, theme, renderedData, showInterpolatedValues, showPrompt]);
 
   const defaultColDef = useMemo(() => ({
     editable: true,
@@ -277,6 +332,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
       navigateToNextCell={navigateToNextCell}
       suppressColumnVirtualisation={process.env?.NODE_ENV === "test"}
       suppressRowVirtualisation={process.env?.NODE_ENV === "test"}
+      stopEditingWhenCellsLoseFocus={true}
       onCellKeyDown={(e: any) => {
         if (e.event.keyCode === 46 || e.event.keyCode === 8) {
           if (rangeSelection.anchor && rangeSelection.tip) {

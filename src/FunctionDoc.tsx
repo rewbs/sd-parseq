@@ -123,7 +123,11 @@ const MiniParseq = ({ keyframes, fields }: MiniParseqProps) => {
         bpm={120}
         agGridStyle={{ width: '100%', minHeight: '50px', maxHeight: '500px', }}
         agGridProps={{ domLayout: 'autoHeight' }}
-        managedFields={fields} />
+        managedFields={fields}
+        renderedData={renderedData||null}
+        showPrompt={false}
+        showInterpolatedValues={true}
+        />
 
     const graph = graphableData && renderedData ? <ParseqGraph
         editingDisabled={true}

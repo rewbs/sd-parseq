@@ -56,3 +56,7 @@ p {
   font-size: 1em;
   line-height: .85em;
 }
+
+div.ag-popup-child:has(div.prompt-details) {
+  width: 50% !important
+}

@@ -653,6 +653,9 @@ export function AudioWaveform(props: AudioWaveformProps) {
         if (all) {
             setManualEvents([]);
         }
+        if (onsetRef.current) {
+            onsetRef.current.innerText = `${all ? 0 : manualEvents.length } events detected`;
+        }
     }
 
     function offsetEvents(): void {

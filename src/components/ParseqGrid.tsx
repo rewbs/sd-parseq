@@ -208,7 +208,7 @@ export const ParseqGrid = forwardRef(({ rangeSelection, onSelectRange, onGridRea
                   && !isValidNumber(params.data[field])
                   && renderedData
                   && renderedData.rendered_frames
-                  ) {
+                  && renderedData.rendered_frames[frame]) {
               const renderedValue = renderedData.rendered_frames[frame][field];
               return isValidNumber(renderedValue) ? `(${renderedValue})` : '';
             } else {

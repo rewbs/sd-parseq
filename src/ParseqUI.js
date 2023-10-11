@@ -29,6 +29,7 @@ import SupportParseq from './components/SupportParseq'
 import { UserAuthContextProvider } from "./UserAuthContext";
 import { AudioWaveform } from './components/AudioWaveform';
 import { ExpandableSection } from './components/ExpandableSection';
+import RawSchedules from './components/RawSchedules'
 import { FieldSelector } from "./components/FieldSelector";
 import { InitialisationStatus } from "./components/InitialisationStatus";
 import { AddKeyframesDialog, BulkEditDialog, DeleteKeyframesDialog, MergeKeyframesDialog } from './components/KeyframeDialogs';
@@ -1334,6 +1335,15 @@ const ParseqUI = (props) => {
   }, [displayedFields, showFlatSparklines, renderedData, managedFields, handleClickedSparkline, sparklineData, theme]);
 
 
+  // Raw Schedules ------------------------
+
+  const rawSchedules = useMemo(() => {
+    return renderedData
+      ? <RawSchedules  renderedData={renderedData} managedFields={managedFields} />
+      : <></>;
+
+  }, [renderedData, managedFields]);
+
 
   // Raw output ------------------------
 
@@ -1699,6 +1709,13 @@ const ParseqUI = (props) => {
         </ExpandableSection>
       </Grid>
       <React.StrictMode>
+      <Grid xs={12}>
+        <ExpandableSection title="Raw schedules">
+          <Box>
+            {rawSchedules}
+          </Box>
+        </ExpandableSection>
+      </Grid>        
       <Grid xs={12}>
         <ExpandableSection title="Output">
           <Box>

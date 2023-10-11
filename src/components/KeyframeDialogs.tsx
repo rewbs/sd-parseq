@@ -471,6 +471,7 @@ export const BulkEditDialog: FC<BulkEditDialogProps> = ({
                             timeSeries: timeSeries,
                             variableMap: new Map([['prev_computed_value', 0]]),
                             computed_values: [],
+                            cadence: 1,
                         }
                         parse(newValue).invoke(dummyContext);
                     } catch (e: any) {

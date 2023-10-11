@@ -372,7 +372,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "cn_1_guidance_end",
         type: "number",
-        defaultValue: 100,
+        defaultValue: 1,
         description: "",
         color: [200, 200, 250],
         labels: ['control_net']
@@ -396,7 +396,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "cn_2_guidance_end",
         type: "number",
-        defaultValue: 100,
+        defaultValue: 1,
         description: "",
         color: [200, 200, 150],
         labels: ['control_net']
@@ -420,7 +420,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "cn_3_guidance_end",
         type: "number",
-        defaultValue: 100,
+        defaultValue: 1,
         description: "",
         color: [250, 150, 150],
         labels: ['control_net']
@@ -444,7 +444,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "cn_4_guidance_end",
         type: "number",
-        defaultValue: 100,
+        defaultValue: 1,
         description: "",
         color: [200, 150, 250],
         labels: ['control_net']
@@ -468,7 +468,7 @@ export const defaultFields: InterpolatableFieldDefinition[] = [
     {
         name: "cn_5_guidance_end",
         type: "number",
-        defaultValue: 100,
+        defaultValue: 1,
         description: "",
         color: [150, 200, 250],
         labels: ['control_net']

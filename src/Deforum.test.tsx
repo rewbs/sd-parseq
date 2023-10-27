@@ -9401,3 +9401,88 @@ test('Cadence', async () => {
   await loadAndRender(fixture);
   expect(screen.getByTestId("output")).toMatchSnapshot();
 });
+
+
+test('Common prompt template', async () => {
+  const fixture = {
+    "prompts": {
+      "format": "v2",
+      "enabled": true,
+      "commonPrompt": {
+        "name": "Common",
+        "positive": "a [prompt] b c",
+        "negative": "",
+        "allFrames": true,
+        "from": 0,
+        "to": 119,
+        "overlap": {
+          "inFrames": 0,
+          "outFrames": 0,
+          "type": "none",
+          "custom": "prompt_weight_1"
+        }
+      },
+      "commonPromptPos": "template",
+      "promptList": [
+        {
+          "name": "Prompt 1",
+          "positive": "A lone (black cat:${prompt_weight_1})",
+          "negative": "(black cat:${prompt_weight_2})",
+          "allFrames": false,
+          "from": 0,
+          "to": 15,
+          "overlap": {
+            "inFrames": 0,
+            "outFrames": 5,
+            "type": "linear",
+            "custom": "prompt_weight_1"
+          }
+        },
+        {
+          "positive": "A lone (black duck:${prompt_weight_1})",
+          "negative": "nothing",
+          "from": 10,
+          "to": 20,
+          "allFrames": false,
+          "name": "Prompt 2",
+          "overlap": {
+            "inFrames": 5,
+            "outFrames": 0,
+            "type": "linear",
+            "custom": "prompt_weight_2"
+          }
+        }
+      ]
+    },
+    "options": {
+      "bpm": 140,
+      "output_fps": 20,
+      "cadence": 1
+    },
+    "managedFields": [
+      "prompt_weight_1",
+      "prompt_weight_2",
+    ],
+    "displayedFields": [
+      "prompt_weight_1",
+      "prompt_weight_2",
+    ],
+    "keyframes": [
+      {
+        "frame": 0,
+        "prompt_weight_1": 1,
+        "prompt_weight_1_i": "bez(0,0.6,1,0.4)",
+        "prompt_weight_2": 0,
+        "prompt_weight_2_i": "bez(0,0.6,1,0.4)"
+      },
+      {
+        "frame": 20,
+        "prompt_weight_1": 0,
+        "prompt_weight_2": 1
+      }
+    ],
+
+  };
+  await loadAndRender(fixture);
+  expect(screen.getByTestId("output")).toMatchSnapshot();
+});

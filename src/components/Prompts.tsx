@@ -106,6 +106,7 @@ export function Prompts(props: PromptsProps) {
     const [unsavedPrompts, setUnsavedPrompts] = useState<AdvancedParseqPromptsV2>(_.cloneDeep(props.initialPrompts));
     const [quickPreviewPosition, setQuickPreviewPosition] = useState(0);
     const [quickPreview, setQuickPreview] = useState("");
+    const [promptWarning, setPromptWarning] = useState<string|undefined>();
     const theme = extendTheme(themeFactory());
 
 
@@ -157,8 +158,9 @@ export function Prompts(props: PromptsProps) {
     const promptInput = useCallback((index: number, positive: boolean) => {
 
         const posNegStr = positive ? 'positive' : 'negative';
-        const unsavedPrompt = index >= 0 ? unsavedPrompts.promptList[index] : unsavedPrompts.commonPrompt;
-        const initPrompt = index >= 0 ? props.initialPrompts.promptList[index] : props.initialPrompts.commonPrompt;
+        const isCommonPrompt = index < 0;
+        const unsavedPrompt = isCommonPrompt ? unsavedPrompts.commonPrompt : unsavedPrompts.promptList[index];
+        const initPrompt = isCommonPrompt ?  props.initialPrompts.commonPrompt : props.initialPrompts.promptList[index];
 
         const hasUnsavedChanges = initPrompt && (unsavedPrompt[posNegStr] !== initPrompt[posNegStr]);
 
@@ -170,12 +172,13 @@ export function Prompts(props: PromptsProps) {
             style={{ paddingRight: '20px' }}
             label={(positive ? "Positive" : "Negative") + " " + unsavedPrompt?.name?.toLowerCase()}
             value={unsavedPrompt[posNegStr]}
+            placeholder={(isCommonPrompt && unsavedPrompts.commonPromptPos === 'template') ? "your prefix [prompt] your suffix" : ""}
             InputProps={{
                 style: { fontSize: '0.7em', fontFamily: 'Monospace', color: positive ? theme.vars.palette.positive.main : theme.vars.palette.negative.main },
                 sx: { background: hasUnsavedChanges ? theme.vars.palette.unsavedbg.main : '', },
                 endAdornment: hasUnsavedChanges ? '🖊️' : ''
             }}
-            onBlur={(e: any) => {
+            onBlur={(e: any) => {          
                 commitChanges(unsavedPrompts);
             }}
             onKeyDown={(e: any) => {
@@ -192,8 +195,16 @@ export function Prompts(props: PromptsProps) {
                 }
             }}
             onChange={(e: any) => {
+                if (isCommonPrompt
+                    && unsavedPrompts.commonPromptPos === 'template'
+                    && e.target.value.trim() !== ''
+                    && !e.target.value.includes('[prompt]')) {
+                        setPromptWarning("In template mode, common prompts must either be empty or contain '[prompt]'.");
+                } else {
+                    setPromptWarning(undefined);                  
+                }                     
                 unsavedPrompt[posNegStr] = e.target.value;
-                setUnsavedPrompts({ ...unsavedPrompts });
+                setUnsavedPrompts({ ...unsavedPrompts });  
             }}
             InputLabelProps={{ shrink: true, style: { fontSize: '0.9em' } }}
             size="small"
@@ -549,12 +560,13 @@ export function Prompts(props: PromptsProps) {
                                 InputProps={{ style: { fontSize: '0.75em' } }}
                                 value={advancedPrompts.commonPromptPos}
                                 onChange={(e: any) => {
-                                    advancedPrompts.commonPromptPos = (e.target.value as "append"|"prepend");
+                                    advancedPrompts.commonPromptPos = (e.target.value as "append"|"prepend"|"template");
                                     commitChanges({ ...unsavedPrompts });
                                 }}
                             >
                                     <MenuItem value={"append"}>Append to all prompts</MenuItem>
                                     <MenuItem value={"prepend"}>Prepend to all prompts</MenuItem>
+                                    <MenuItem value={"template"}>Template mode: insert all prompts at [prompt]</MenuItem>
                                 </TextField>
                             </Box>
                         
@@ -566,10 +578,11 @@ export function Prompts(props: PromptsProps) {
                             {promptInput(-1, false)}
                         </Grid>
                     </Grid>
+                    { promptWarning ? <Alert severity="warning">{promptWarning}</Alert> : <></> }
                 </Box>
             }
         </Grid>
-        , [delPrompt, promptInput, unsavedPrompts, props, displayFadeOptions, composableDiffusionWarning, commitChanges, theme]);
+        , [delPrompt, promptInput, unsavedPrompts, props, displayFadeOptions, composableDiffusionWarning, commitChanges, promptWarning, theme]);
 
 
     const reorderPrompts = useCallback(() => {
